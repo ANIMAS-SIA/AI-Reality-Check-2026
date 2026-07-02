@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Reality Check 2026</title>
+<meta name="description" content="Bezmaksas MI konference. 30. septembris, Rīgas Motormuzejs. 100 vietas."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+<style>
+/* ═══════════════════════════════════════════
+   RESET + ROOT + 8px SPACING SYSTEM
+═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* 8px spacing scale: 8, 16, 24, 32, 40, 48, 56, 64, 72, 80... */
+:root{
+  --K:#080808;   /* near-black */
+  --W:#F2EDE6;   /* warm white */
+  --P:#FF0090;   /* hot pink */
+  --Y:#FFE500;   /* electric yellow */
+  --V:#7B6FE8;   /* violet */
+  --G:#00FF94;   /* neon green accent */
+}
+html{scroll-behavior:smooth;cursor:none}
+body{
+  background:var(--K);
+  color:var(--W);
+  font-family:'Poppins',sans-serif;
+  overflow-x:hidden;
+  min-height:100vh;
+  line-height:1.6;
+}
+@media(max-width:768px){
+  html{cursor:auto}
+  #cursor,#cursor-ring{display:none !important}
+}
+.bb{font-family:'Anton',sans-serif}
+
+/* ─── CUSTOM CURSOR ──────────────────────── */
+#cursor{
+  position:fixed;width:12px;height:12px;
+  background:var(--V);border-radius:50%;
+  pointer-events:none;z-index:9999;
+  transform:translate(-50%,-50%);
+  transition:width .2s,height .2s,background .2s;
+  mix-blend-mode:difference;
+}
+#cursor-ring{
+  position:fixed;width:40px;height:40px;
+  border:1.5px solid rgba(123,111,232,.5);
+  border-radius:50%;pointer-events:none;
+  z-index:9998;transform:translate(-50%,-50%);
+  transition:all .12s ease;
+}
+a:hover~#cursor,button:hover~#cursor{width:28px;height:28px}
+
+/* ─── NAV ────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1rem 2rem;
+  transition:background .4s;
+}
+@media(max-width:768px){
+  nav{padding:1rem 1.5rem}
+}
+@media(max-width:480px){
+  nav{padding:.75rem 1rem}
+}
+nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06)}
+.nav-logo{display:flex;align-items:center;gap:.6rem;text-decoration:none}
+.nav-logo-ai{
+  font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;
+  color:var(--V);letter-spacing:.04em;
+}
+.nav-logo-text{font-size:.65rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(242,237,230,.4);line-height:1.4}
+.nav-links{display:flex;align-items:center;gap:2.5rem}
+.nav-link{
+  font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(242,237,230,.45);text-decoration:none;transition:color .2s;
+}
+.nav-link:hover{color:var(--V)}
+.nav-cta{
+  font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;
+  background:var(--V);color:#fff;
+  padding:.55rem 1.6rem;border-radius:100px;text-decoration:none;
+  transition:transform .2s,box-shadow .2s,background .2s;
+}
+.nav-cta:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(123,111,232,.5);background:#6457d0}
+@media(max-width:768px){
+  .nav-cta{font-size:.9rem;padding:.45rem 1.2rem}
+}
+@media(max-width:640px){
+  .nav-cta{display:none}
+}
+
+/* ─── HERO ───────────────────────────────── */
+#hero{
+  position:relative;min-height:70vh;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:4rem 0 5rem 0;overflow:hidden;
+  margin-top:0;
+}
+@media(max-width:768px){
+  #hero{padding:2.5rem 0 3rem 0;min-height:60vh}
+}
+@media(max-width:480px){
+  #hero{padding:2rem 0 2rem 0;min-height:55vh}
+}
+
+/* canvas fills hero */
+#hero-canvas{
+  position:absolute;inset:0;width:100%;height:100%;
+  z-index:0;
+}
+
+/* diagonal color slab */
+.hero-slab{
+  display:none;
+}
+@keyframes slabPulse{
+  from{opacity:.07;transform:skewX(-1deg)}
+  to{opacity:.12;transform:skewX(1deg)}
+}
+
+/* big vertical label */
+.hero-vert{
+  position:absolute;right:2rem;top:50%;
+  transform:translateY(-50%) rotate(90deg);
+  font-size:.6rem;font-weight:700;letter-spacing:.3em;
+  text-transform:uppercase;color:rgba(255,255,255,.08);
+  white-space:nowrap;z-index:2;
+}
+@media(max-width:1024px){
+  .hero-vert{display:none}
+}
+
+.hero-content{position:relative;z-index:5;width:100%;margin-top:0.5rem;display:flex;align-items:flex-end;justify-content:space-between;gap:4rem}
+
+/* GIANT title - Space Grotesk Bold for readability */
+.hero-t1{
+  font-family:'Poppins',sans-serif;
+  font-size:clamp(5rem,12vw,11rem);
+  font-weight:700;line-height:1;letter-spacing:-.02em;
+  color:var(--W);
+  margin-bottom:0.5rem;
+  min-width:clamp(4.5rem,10vw,10.5rem);
+  width:fit-content;
+  display:inline-block;
+  transform:none;
+  animation:none;
+  flex-shrink:0;
+}
+.hero-t2{
+  font-family:'Poppins',sans-serif;
+  font-size:clamp(4rem,10vw,9rem);
+  font-weight:700;line-height:1;letter-spacing:-.02em;
+  color:var(--V);
+  position:relative;display:inline-block;
+  margin-bottom:0.5rem;
+  min-width:clamp(3.5rem,9vw,8.5rem);
+  width:fit-content;
+  transform:none;
+  animation:none;
+  flex-shrink:0;
+}
+@media(max-width:768px){
+  .hero-t1, .hero-t2, .hero-t3, .hero-t4{font-size:clamp(2.5rem,8vw,6rem)}
+}
+@media(max-width:480px){
+  .hero-t1, .hero-t2, .hero-t3, .hero-t4{font-size:clamp(1.75rem,6vw,3.5rem);line-height:1}
+}
+/* text - outline style */
+.hero-t3{
+  font-family:'Poppins',sans-serif;
+  font-size:clamp(4rem,10vw,9rem);
+  font-weight:700;line-height:1;letter-spacing:-.02em;
+  color:transparent;
+  -webkit-text-stroke:1.5px rgba(242,237,230,.4);
+  margin-bottom:0.5rem;
+  min-width:clamp(3.5rem,9vw,8.5rem);
+  width:fit-content;
+  display:inline-block;
+  transform:none;
+  animation:none;
+  flex-shrink:0;
+}
+.hero-t4{
+  font-family:'Poppins',sans-serif;
+  font-size:clamp(4rem,10vw,9rem);
+  font-weight:700;line-height:1;letter-spacing:-.02em;
+  color:var(--P);
+  margin-bottom:2rem;
+  min-width:clamp(3.5rem,9vw,8.5rem);
+  width:fit-content;
+  display:inline-block;
+  transform:none;
+  animation:none;
+  flex-shrink:0;
+}
+
+/* scramble target - text animation only */
+.scramble{
+  display:inline;
+  transform:none;
+  animation:none;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  white-space:nowrap;
+}
+
+/* ensure title group can animate */
+.hero-t1, .hero-t2, .hero-t3, .hero-t4{
+  will-change:contents;
+}
+
+/* animated title text only - no layout impact */
+.hero-t1 .scramble,
+.hero-t2 .scramble,
+.hero-t3 .scramble,
+.hero-t4 .scramble{
+  display:inline;
+  transform:none;
+  animation:none;
+}
+
+/* hero visual element right side */
+.hero-visual{
+  position:absolute;
+  right:2rem;bottom:4rem;
+  width:clamp(250px,35vw,500px);height:clamp(250px,35vw,500px);
+  display:flex;align-items:center;justify-content:center;
+}
+.hero-visual-shape{
+  width:100%;height:100%;
+  opacity:.7;animation:float 8s ease-in-out infinite;
+}
+@keyframes float{
+  0%,100%{transform:translateY(0) rotateX(0deg) rotateY(0deg)}
+  50%{transform:translateY(-40px) rotateX(20deg) rotateY(40deg)}
+}
+@media(max-width:768px){
+  .hero-visual{display:none}
+}
+
+/* bottom meta strip */
+.hero-meta{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:2rem;margin-top:4rem;
+}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:.5rem;
+  font-size:0.95rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(242,237,230,.7);line-height:1.4;
+}
+.hero-dot{
+  width:.4rem;height:.4rem;border-radius:50%;
+  background:var(--V);animation:blink 1.2s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+.hero-pill-free{
+  display:inline-flex;align-items:center;gap:.5rem;
+  background:var(--Y);color:var(--K);
+  font-family:'Poppins',sans-serif;font-size:1rem;letter-spacing:0;font-weight:700;
+  padding:.6rem 1.2rem;border-radius:100px;
+}
+
+/* ─── MARQUEE STRIPS ─────────────────────── */
+.marquee-wrap{overflow:hidden;position:relative;padding:.9rem 0}
+.marquee-inner{
+  display:flex;gap:3rem;white-space:nowrap;
+  animation:roll 18s linear infinite;font-size:1.5rem;
+}
+.marquee-inner.rev{animation-direction:reverse;animation-duration:24s;font-size:1rem}
+@keyframes roll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(max-width:768px){
+  .marquee-inner{gap:2rem;font-size:1.1rem;animation-duration:22s}
+  .marquee-inner.rev{font-size:.85rem;animation-duration:28s}
+}
+@media(max-width:480px){
+  .marquee-wrap{padding:.6rem 0}
+  .marquee-inner{gap:1.5rem;font-size:.9rem;animation-duration:20s}
+  .marquee-inner.rev{font-size:.7rem;animation-duration:25s}
+}
+
+/* ─── SECTION SHARED ─────────────────────── */
+section{position:relative}
+.container{max-width:1280px;margin:0 auto;padding:0 2rem;width:100%}
+@media(max-width:768px){
+  .container{padding:0 1.5rem}
+}
+@media(max-width:480px){
+  .container{padding:0 1rem}
+}
+
+/* ─── STATS BAR ──────────────────────────── */
+#stats{padding:0}
+.stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+}
+.stat-cell{
+  padding:3.5rem 2rem;border-right:1px solid rgba(255,255,255,.06);
+  text-align:center;
+  transition:background .3s;
+}
+.stat-cell:last-child{border-right:0}
+.stat-cell:hover{background:rgba(123,111,232,.04)}
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .stat-cell{padding:2rem 1.5rem;border-right:1px solid rgba(255,255,255,.06)}
+  .stat-cell:nth-child(2){border-right:0}
+  .stat-cell:nth-child(3){border-right:1px solid rgba(255,255,255,.06)}
+}
+@media(max-width:480px){
+  .stat-cell{padding:1.5rem 1rem;font-size:.9rem}
+}
+.stat-n{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3.5rem,7vw,6rem);
+  line-height:1;
+  background:linear-gradient(135deg,var(--P),var(--V));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.stat-l{font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(242,237,230,.3);margin-top:.5rem}
+
+/* ─── ABOUT ──────────────────────────────── */
+#about{padding:6rem 0;border-top:1px solid rgba(255,255,255,.05)}
+@media(max-width:768px){
+  #about{padding:4rem 0}
+}
+@media(max-width:480px){
+  #about{padding:3rem 0}
+}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+@media(max-width:768px){
+  .about-grid{grid-template-columns:1fr;gap:2.5rem}
+}
+.section-eye{
+  font-size:.65rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--P);margin-bottom:1.5rem;
+}
+.section-h{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3rem,6vw,5.5rem);line-height:.92;
+  margin-bottom:2rem;
+}
+@media(max-width:480px){
+  .section-h{font-size:clamp(2rem,5vw,3rem);margin-bottom:1.5rem}
+}
+
+/* organizer section responsive */
+@media(max-width:768px){
+  section[style*="padding:6rem 0"] img{height:2.5rem !important}
+}
+.about-p{color:rgba(255,255,255,.65);font-size:1.05rem;line-height:1.8;margin-bottom:1.5rem}
+.pill-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}
+.pill{
+  display:inline-flex;align-items:center;gap:.5rem;
+  border:1px solid rgba(255,255,255,.1);
+  padding:.5rem 1.1rem;border-radius:100px;
+  font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(242,237,230,.5);transition:all .2s;
+}
+.pill:hover{border-color:var(--V);color:var(--V)}
+.pill-dot{width:.35rem;height:.35rem;border-radius:50%;background:var(--V)}
+
+/* grid of feature blocks */
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,.06)}
+@media(max-width:768px){
+  .feat-grid{grid-template-columns:1fr}
+}
+.feat{
+  background:var(--K);padding:2.2rem 2rem;
+  transition:background .25s;
+}
+@media(max-width:480px){
+  .feat{padding:1.5rem 1.2rem}
+}
+.feat:hover{background:rgba(123,111,232,.04)}
+.feat-icon{
+  width:2.8rem;height:2.8rem;border-radius:.6rem;
+  margin-bottom:1.2rem;display:flex;align-items:center;justify-content:center;
+}
+.feat-title{font-weight:700;font-size:.9rem;margin-bottom:.5rem}
+.feat-desc{font-size:.8rem;color:rgba(242,237,230,.35);line-height:1.6}
+
+/* ─── COUNTDOWN ──────────────────────────── */
+#countdown{
+  padding:4rem 0;
+  background:linear-gradient(135deg,rgba(255,0,144,.06),rgba(123,111,232,.06));
+  border-top:1px solid rgba(255,0,144,.1);
+  border-bottom:1px solid rgba(255,0,144,.1);
+}
+@media(max-width:768px){
+  #countdown{padding:3rem 0}
+}
+@media(max-width:480px){
+  #countdown{padding:2rem 0}
+}
+.cd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+@media(max-width:768px){
+  .cd-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .cd-grid{grid-template-columns:repeat(2,1fr)}
+}
+.cd-cell{
+  text-align:center;padding:2rem;
+  border-right:1px solid rgba(255,255,255,.05);
+}
+.cd-cell:last-child{border-right:0}
+@media(max-width:768px){
+  .cd-cell{padding:1.5rem;border-right:1px solid rgba(255,255,255,.05)}
+  .cd-cell:nth-child(2){border-right:0}
+  .cd-cell:nth-child(3){border-right:1px solid rgba(255,255,255,.05)}
+}
+@media(max-width:480px){
+  .cd-cell{padding:1rem}
+}
+.cd-n{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3rem,8vw,7rem);line-height:1;
+  color:var(--W);
+}
+@media(max-width:480px){
+  .cd-n{font-size:clamp(2rem,6vw,4rem)}
+}
+.cd-l{font-size:.6rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(242,237,230,.25);margin-top:.4rem}
+
+/* ─── SPEAKERS ───────────────────────────── */
+#speakers{padding:6rem 0;border-top:1px solid rgba(255,255,255,.05)}
+@media(max-width:768px){
+  #speakers{padding:4rem 0}
+}
+@media(max-width:480px){
+  #speakers{padding:3rem 0}
+}
+.spk-header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:4rem;
+}
+@media(max-width:768px){
+  .spk-header{flex-direction:column;align-items:flex-start;gap:2rem}
+  .spk-header p{text-align:left;max-width:100% !important}
+}
+.spk-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:rgba(255,255,255,.05);
+}
+@media(max-width:768px){
+  .spk-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .spk-grid{grid-template-columns:1fr}
+}
+.spk-card{
+  background:var(--K);padding:2rem 1.8rem;
+  position:relative;overflow:hidden;
+  cursor:default;transition:background .25s;
+}
+@media(max-width:480px){
+  .spk-card{padding:1.5rem 1.2rem}
+}
+.spk-card::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--P),var(--V));
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .3s ease;
+}
+.spk-card:hover{background:rgba(123,111,232,.03)}
+.spk-card:hover::before{transform:scaleX(1)}
+.spk-av{
+  width:3.5rem;height:3.5rem;border-radius:.75rem;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:1.4rem;
+  margin-bottom:1.2rem;flex-shrink:0;
+}
+.spk-name{font-weight:700;font-size:.9rem;line-height:1.3;margin-bottom:.3rem}
+.spk-org{font-size:.72rem;color:rgba(242,237,230,.35);margin-bottom:.8rem}
+.spk-badge{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  padding:.3rem .75rem;border-radius:100px;
+}
+/* moderator highlight */
+.spk-card.moderator{border:1px solid rgba(255,229,0,.25);background:rgba(255,229,0,.02)}
+.spk-card.moderator::before{background:linear-gradient(90deg,var(--Y),var(--P))}
+
+/* ─── AGENDA ─────────────────────────────── */
+#agenda{padding:6rem 0;border-top:1px solid rgba(255,255,255,.05);position:relative}
+@media(max-width:768px){
+  #agenda{padding:4rem 0}
+}
+@media(max-width:480px){
+  #agenda{padding:3rem 0}
+}
+.ag-timeline{
+  position:absolute;left:3.5rem;top:15rem;bottom:0;width:3px;
+  background:linear-gradient(to bottom,var(--P),var(--V),var(--Y),var(--P));
+  opacity:.3;
+}
+@media(max-width:768px){
+  .ag-timeline{left:1.8rem;top:10rem}
+}
+@media(max-width:480px){
+  .ag-timeline{left:1.2rem;top:8rem;width:2px}
+}
+.ag-dot{
+  position:absolute;left:-8px;width:18px;height:18px;
+  border-radius:50%;border:2px solid;
+  background:var(--K);
+}
+.ag-row{
+  display:grid;grid-template-columns:140px 1fr auto;
+  align-items:start;gap:2rem;
+  padding:1.8rem 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  transition:all .3s;
+  position:relative;
+}
+@media(max-width:768px){
+  .ag-row{grid-template-columns:100px 1fr;gap:1.5rem;padding:1.5rem 0}
+}
+@media(max-width:480px){
+  .ag-row{grid-template-columns:70px 1fr;gap:1rem;padding:1rem 0}
+}
+.ag-row:hover:not(.ag-break){
+  background:rgba(123,111,232,.04);
+  margin:0 -1rem;
+  padding-left:1rem;
+  padding-right:1rem;
+  border-radius:.5rem;
+  transform:translateX(8px);
+}
+.ag-time{
+  font-family:'Bebas Neue',sans-serif;font-size:1.8rem;
+  color:var(--P);white-space:nowrap;padding-top:.1rem;font-weight:900;
+}
+@media(max-width:768px){
+  .ag-time{font-size:1.4rem}
+}
+@media(max-width:480px){
+  .ag-time{font-size:1.1rem}
+}
+.ag-time-end{font-size:.9rem;color:rgba(242,237,230,.35);display:block;font-family:'Space Grotesk',sans-serif;font-weight:600}
+@media(max-width:480px){
+  .ag-time-end{font-size:.75rem}
+}
+.ag-title{
+  font-weight:900;font-size:1.15rem;
+  margin-bottom:.4rem;color:var(--W);
+  letter-spacing:-.01em;
+}
+@media(max-width:768px){
+  .ag-title{font-size:1rem}
+}
+@media(max-width:480px){
+  .ag-title{font-size:.95rem}
+}
+.ag-who{font-size:.92rem;color:rgba(242,237,230,.55);font-weight:600}
+@media(max-width:480px){
+  .ag-who{font-size:.8rem}
+}
+.ag-note{
+  font-size:.82rem;color:rgba(242,237,230,.4);
+  font-style:italic;margin-top:.5rem;line-height:1.6;
+}
+@media(max-width:480px){
+  .ag-note{font-size:.7rem}
+}
+.ag-badge{
+  font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  padding:.45rem 1rem;border-radius:100px;white-space:nowrap;align-self:start;margin-top:.2rem;
+  font-weight:800;
+}
+.ag-break{background:rgba(255,255,255,.015)}
+.ag-break .ag-time{color:rgba(242,237,230,.25);font-size:1.4rem}
+.ag-break .ag-title{color:rgba(242,237,230,.4);font-weight:700;font-size:1rem}
+.ag-break .ag-who{color:rgba(242,237,230,.25);font-size:.85rem}
+/* panel highlight */
+.ag-row.ag-panel{
+  border-left:3px solid var(--P);padding-left:1.5rem;
+  background:rgba(255,0,144,.04);
+}
+.ag-row.ag-panel .ag-title{color:var(--P);font-size:1.3rem}
+.panel-names{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem}
+.panel-name{
+  font-size:.78rem;font-weight:700;padding:.4rem 1rem;
+  border-radius:100px;background:rgba(255,0,144,.1);
+  color:var(--P);letter-spacing:.05em;
+}
+
+/* ─── REGISTRATION ───────────────────────── */
+#reg{
+  padding:8rem 0;
+  background:var(--K);
+  position:relative;overflow:hidden;
+}
+@media(max-width:768px){
+  #reg{padding:5rem 0}
+}
+@media(max-width:480px){
+  #reg{padding:3.5rem 0}
+}
+/* big diagonal pink block behind form */
+.reg-slab{
+  display:none;
+}
+@media(max-width:768px){
+  .reg-slab{display:none}
+}
+.reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:6rem;align-items:center}
+@media(max-width:768px){
+  .reg-grid{grid-template-columns:1fr;gap:3rem}
+}
+.reg-eyebrow{
+  display:inline-flex;align-items:center;gap:.6rem;
+  font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--P);margin-bottom:1.5rem;
+}
+.reg-h{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3.5rem,7vw,6.5rem);line-height:.9;margin-bottom:1.5rem;
+}
+@media(max-width:480px){
+  .reg-h{font-size:clamp(2.5rem,6vw,4rem)}
+}
+.seats-bar{
+  width:100%;height:6px;background:rgba(255,255,255,.08);
+  border-radius:100px;margin:2rem 0;overflow:hidden;
+}
+.seats-fill{
+  height:100%;background:linear-gradient(90deg,var(--P),var(--Y));
+  border-radius:100px;width:0;
+  transition:width 1.5s ease;
+}
+.seats-text{font-size:.72rem;color:rgba(242,237,230,.35);margin-top:.5rem}
+
+/* form */
+.form-card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:1.5rem;padding:2.5rem;
+  position:relative;z-index:2;
+}
+@media(max-width:480px){
+  .form-card{padding:1.5rem;border-radius:1rem}
+}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:480px){
+  .form-row{grid-template-columns:1fr;gap:.8rem}
+}
+.form-group{display:flex;flex-direction:column;gap:.5rem}
+.form-label{
+  font-size:.6rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(242,237,230,.35);
+}
+.form-input{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:.75rem;
+  padding:.9rem 1.1rem;
+  color:var(--W);font-family:'Space Grotesk',sans-serif;font-size:.9rem;
+  outline:none;transition:border-color .2s,background .2s;
+  width:100%;
+}
+.form-input::placeholder{color:rgba(242,237,230,.2)}
+.form-input:focus{border-color:var(--V);background:rgba(123,111,232,.04)}
+.form-submit{
+  width:100%;margin-top:1.2rem;
+  font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.1em;
+  background:var(--P);color:#fff;
+  border:none;border-radius:.75rem;padding:1.1rem;
+  cursor:none;transition:transform .2s,box-shadow .2s,background .2s;
+  display:flex;align-items:center;justify-content:center;gap:.75rem;
+}
+.form-submit:hover{transform:translateY(-2px);box-shadow:0 14px 44px rgba(255,0,144,.5);background:#d4007a}
+.form-note{text-align:center;font-size:.7rem;color:rgba(242,237,230,.2);margin-top:.8rem}
+
+/* success */
+.reg-success{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,0,144,.3);
+  border-radius:1.5rem;padding:3rem;text-align:center;display:none;
+}
+.success-check{
+  width:4rem;height:4rem;border-radius:50%;margin:0 auto 1.5rem;
+  background:rgba(255,0,144,.12);border:2px solid var(--P);
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ─── LOCATION ───────────────────────────── */
+#location{
+  padding:5rem 0;
+  border-top:1px solid rgba(255,255,255,.05);
+}
+@media(max-width:768px){
+  #location{padding:3.5rem 0}
+}
+@media(max-width:480px){
+  #location{padding:2.5rem 0}
+}
+.loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+@media(max-width:768px){
+  .loc-grid{grid-template-columns:1fr;gap:2.5rem}
+}
+.loc-map{
+  aspect-ratio:4/3;border-radius:1.2rem;overflow:hidden;
+  background:rgba(123,111,232,.08);
+  border:1px solid rgba(123,111,232,.15);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;
+}
+
+/* ─── FOOTER ─────────────────────────────── */
+footer{
+  padding:3rem 2rem;
+  border-top:1px solid rgba(255,255,255,.05);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;
+}
+@media(max-width:480px){
+  footer{padding:2rem 1rem;flex-direction:column;text-align:center}
+}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:.08em}
+.footer-logo span{color:var(--V)}
+.footer-links{display:flex;gap:2rem;flex-wrap:wrap}
+.footer-link{font-size:.7rem;color:rgba(242,237,230,.25);text-decoration:none;letter-spacing:.08em;transition:color .2s}
+.footer-link:hover{color:var(--V)}
+
+/* ─── SCROLL REVEAL ──────────────────────── */
+.sr{opacity:0;transform:translateY(32px);transition:opacity .8s ease,transform .8s ease}
+.sr.in{opacity:1;transform:none}
+.sr.delay-1{transition-delay:.1s}
+.sr.delay-2{transition-delay:.2s}
+.sr.delay-3{transition-delay:.3s}
+
+/* ─── MOBILE ─────────────────────────────── */
+#hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:none;padding:.4rem}
+#hamburger span{width:24px;height:2px;background:var(--W);display:block;transition:all .3s}
+#mobile-nav{
+  display:none;flex-direction:column;gap:1.2rem;
+  position:fixed;inset:0;background:var(--K);z-index:190;
+  padding:6rem 2rem 2rem;
+}
+#mobile-nav.open{display:flex}
+#mobile-nav .nav-link{font-size:1rem}
+
+@media(max-width:900px){
+  .nav-links{display:none}
+  .nav-cta{display:none}
+  #hamburger{display:flex}
+  .about-grid,.reg-grid,.loc-grid{grid-template-columns:1fr}
+  .spk-grid{grid-template-columns:1fr 1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .ag-row{grid-template-columns:100px 1fr;gap:1rem}
+  .ag-badge{display:none}
+  .form-row{grid-template-columns:1fr}
+  .reg-slab{display:none}
+}
+@media(max-width:500px){
+  .spk-grid{grid-template-columns:1fr}
+  .cd-grid{grid-template-columns:1fr 1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .marquee-inner,#cursor,#cursor-ring{animation:none;transition:none}
+  .sr{opacity:1;transform:none;transition:none}
+  html{cursor:auto}
+  #cursor,#cursor-ring{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- ═══════════ NAV ═══════════ -->
+<nav id="nav">
+  <a href="#" class="nav-logo">
+    <span class="nav-logo-ai">AI</span>
+    <div style="width:1px;height:1.4rem;background:rgba(255,255,255,.12)"></div>
+    <div class="nav-logo-text">Reality Check<br/>2026</div>
+  </a>
+  <div class="nav-links">
+    <a href="#speakers" class="nav-link">Runātāji</a>
+    <a href="#agenda"   class="nav-link">Programma</a>
+    <a href="#about"    class="nav-link">Par konferenci</a>
+  </div>
+  <a href="#reg" class="nav-cta">Reģistrēties</a>
+  <button id="hamburger" aria-label="Izvēlne">
+    <span id="hb1"></span><span id="hb2"></span><span id="hb3"></span>
+  </button>
+</nav>
+
+<div id="mobile-nav">
+  <a href="#speakers" class="nav-link">Runātāji</a>
+  <a href="#agenda"   class="nav-link">Programma</a>
+  <a href="#about"    class="nav-link">Par konferenci</a>
+  <a href="#reg"      class="nav-cta" style="text-align:center;margin-top:1rem">Reģistrēties — Bez maksas</a>
+</div>
+
+<!-- ═══════════ HERO ═══════════ -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-slab"></div>
+  <div class="hero-vert">MĀKSLĪGĀ INTELEKTA KONFERENCE · 2026</div>
+
+  <div class="container" style="display:flex;align-items:flex-end;justify-content:space-between;gap:4rem;width:100%">
+    <div style="flex:1;display:grid;grid-template-columns:minmax(350px,1fr) minmax(380px,480px);gap:clamp(80px,10vw,140px);align-items:stretch;height:100%;transform:none;animation:none">
+      <!-- LEFT: Main Title -->
+      <div style="display:flex;flex-direction:column;gap:0.6rem;transform:none;animation:none;flex-shrink:0;max-width:100%;overflow:hidden">
+        <!-- ANIMAS logo -->
+        <div style="margin-bottom:0.2rem">
+          <img src="https://raw.githubusercontent.com/ANIMAS-SIA/newsletter-assets/refs/heads/main/Animas-balts-bez-laukuma.png" alt="ANIMAS" style="height:1.2rem;object-fit:contain;opacity:.9">
+        </div>
+
+        <!-- main heading -->
+        <div style="display:flex;gap:1.2rem;align-items:center;max-width:100%;overflow:hidden">
+          <div class="hero-t1"><span class="scramble" data-text="AI">AI</span></div>
+          <div style="font-family:'Poppins',sans-serif;font-size:clamp(1rem,2.5vw,1.6rem);font-weight:700;letter-spacing:.02em;line-height:1.1;text-transform:uppercase;flex-shrink:0;overflow:hidden">
+            <div style="color:var(--W)">Mākslīgā</div>
+            <div style="color:var(--W)">intelekta</div>
+            <div style="color:var(--W)">konference</div>
+          </div>
+        </div>
+
+        <!-- remaining heading -->
+        <div style="margin-top:0.2rem;max-width:100%;overflow:hidden">
+          <div class="hero-t2"><span class="scramble" data-text="REALITY">REALITY</span></div>
+          <div class="hero-t3"><span class="scramble" data-text="CHECK">CHECK</span></div>
+          <div class="hero-t4"><span class="scramble" data-text="2026">2026</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Meta + CTA -->
+      <div style="display:flex;flex-direction:column;gap:1.5rem;align-items:flex-start;align-self:center;padding-top:2rem;transform:none !important;animation:none !important;position:relative;z-index:10">
+        <!-- Event Info + CTA Wrapper -->
+        <div style="display:flex;flex-direction:column;gap:1.2rem;width:100%;transform:none !important;animation:none !important">
+          <!-- Subtitle -->
+          <p style="font-size:.85rem;color:rgba(242,237,230,.35);font-style:italic;line-height:1.7;max-width:28rem">
+            MI praksē dažādās nozarēs, uzņēmumu pieredze un ietekme uz biznesu
+          </p>
+
+          <!-- Event Info Stack -->
+          <div style="display:flex;flex-direction:column;gap:1rem;transform:none !important;animation:none !important">
+            <div class="hero-tag">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              30. Septembris
+            </div>
+            <div class="hero-tag">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              Rīgas Motormuzejs
+            </div>
+            <div class="hero-tag" style="color:var(--P)">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-8 0v2"/><circle cx="12" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              100 vietas
+            </div>
+          </div>
+
+          <!-- CTA Button -->
+          <a href="#reg" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.08em;background:var(--V);color:#fff;padding:.8rem 2.2rem;border-radius:100px;text-decoration:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.6rem;white-space:nowrap;transform:none !important;animation:none !important"
+             onmouseover="this.style.boxShadow='0 12px 40px rgba(123,111,232,.55)';this.style.transform='translateY(-2px)'"
+             onmouseout="this.style.boxShadow='none';this.style.transform=''">
+            Reģistrēties
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ═══════════ MARQUEE ═══════════ -->
+<div class="marquee-wrap" style="background:var(--Y);padding:.9rem 0">
+  <div class="marquee-inner bb" style="font-size:1.5rem;letter-spacing:.12em;color:var(--K);gap:2.5rem">
+    <span>AI REALITY CHECK 2026</span><span style="opacity:.3">✦</span>
+    <span>30. SEPTEMBRIS</span><span style="opacity:.3">✦</span>
+    <span>RĪGAS MOTORMUZEJS</span><span style="opacity:.3">✦</span>
+    <span>100 VIETAS · BEZ MAKSAS</span><span style="opacity:.3">✦</span>
+    <span>ANIMAS</span><span style="opacity:.3">✦</span>
+    <span>AI REALITY CHECK 2026</span><span style="opacity:.3">✦</span>
+    <span>30. SEPTEMBRIS</span><span style="opacity:.3">✦</span>
+    <span>RĪGAS MOTORMUZEJS</span><span style="opacity:.3">✦</span>
+    <span>100 VIETAS · BEZ MAKSAS</span><span style="opacity:.3">✦</span>
+    <span>ANIMAS</span><span style="opacity:.3">✦</span>
+  </div>
+</div>
+<div class="marquee-wrap" style="background:rgba(255,255,255,.03);padding:.65rem 0;border-bottom:1px solid rgba(255,255,255,.05)">
+  <div class="marquee-inner rev bb" style="font-size:1rem;letter-spacing:.22em;color:rgba(242,237,230,.15);gap:2rem">
+    <span>MĀKSLĪGAIS INTELEKTS</span><span>·</span><span>BIZNESS</span><span>·</span><span>INOVĀCIJAS</span><span>·</span><span>NĀKOTNE</span><span>·</span><span>LATVIJA</span><span>·</span>
+    <span>MĀKSLĪGAIS INTELEKTS</span><span>·</span><span>BIZNESS</span><span>·</span><span>INOVĀCIJAS</span><span>·</span><span>NĀKOTNE</span><span>·</span><span>LATVIJA</span><span>·</span>
+  </div>
+</div>
+
+<!-- ═══════════ STATS ═══════════ -->
+<section id="stats">
+  <div class="stats-grid" style="border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)">
+    <div class="stat-cell sr"><div class="stat-n">11</div><div class="stat-l">Runātāji</div></div>
+    <div class="stat-cell sr delay-1"><div class="stat-n">6h</div><div class="stat-l">Saturs</div></div>
+    <div class="stat-cell sr delay-2"><div class="stat-n">100</div><div class="stat-l">Vietas</div></div>
+    <div class="stat-cell sr delay-3"><div class="stat-n">0€</div><div class="stat-l">Ieeja</div></div>
+  </div>
+</section>
+
+<!-- ═══════════ ABOUT ═══════════ -->
+<section id="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="sr">
+        <div class="section-eye">Par konferenci</div>
+        <h2 class="section-h">KĀDA IR<br/><span style="color:var(--P)">REĀLĀ MI</span><br/>IETEKME?</h2>
+        <p class="about-p">AI Reality Check 2026 ir bezmaksas konference, kas piedāvā godīgu skatījumu uz mākslīgo intelektu — ne tikai tehnoloģiju, bet reālus piemērus, kļūdas un panākumus no Latvijas vadošajiem uzņēmumiem un iestādēm.</p>
+        <p class="about-p">Prezentācijas, paneļdiskusija, networking pusdienas un kafijas pauzes — viss vienā dienā Rīgas Motormuzejā.</p>
+        <div class="pill-row">
+          <div class="pill"><div class="pill-dot"></div>MI Praksē</div>
+          <div class="pill"><div class="pill-dot"></div>Valsts stratēģija</div>
+          <div class="pill"><div class="pill-dot"></div>Paneļdiskusija</div>
+          <div class="pill"><div class="pill-dot"></div>Networking</div>
+        </div>
+      </div>
+      <div class="feat-grid sr delay-2" style="border:1px solid rgba(255,255,255,.06)">
+        <div class="feat">
+          <div class="feat-icon" style="background:rgba(255,0,144,.12)">
+            <svg width="20" height="20" fill="none" stroke="var(--P)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <div class="feat-title">MI Praksē</div>
+          <div class="feat-desc">Reāli projekti no Latvijas uzņēmumiem un iestādēm</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon" style="background:rgba(123,111,232,.12)">
+            <svg width="20" height="20" fill="none" stroke="var(--V)" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <div class="feat-title">Valsts Pozīcija</div>
+          <div class="feat-desc">Stratēģija, regulācijas un MI politika Latvijā</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon" style="background:rgba(255,229,0,.1)">
+            <svg width="20" height="20" fill="none" stroke="var(--Y)" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-8 0v2"/><circle cx="12" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <div class="feat-title">Paneļdiskusija</div>
+          <div class="feat-desc">5 eksperti, pretrunīgi viedokļi, reālas debates</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon" style="background:rgba(0,255,148,.08)">
+            <svg width="20" height="20" fill="none" stroke="var(--G)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+          </div>
+          <div class="feat-title">Networking</div>
+          <div class="feat-desc">Pusdienas, networking un kontakti ar nozares līderiem</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ COUNTDOWN ═══════════ -->
+<section id="countdown">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:2.5rem">
+      <div style="font-size:.62rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:rgba(242,237,230,.25)">Atlikušais laiks</div>
+    </div>
+    <div class="cd-grid">
+      <div class="cd-cell sr"><div class="cd-n" id="cd-d">—</div><div class="cd-l">Dienas</div></div>
+      <div class="cd-cell sr delay-1"><div class="cd-n" id="cd-h">—</div><div class="cd-l">Stundas</div></div>
+      <div class="cd-cell sr delay-2"><div class="cd-n" id="cd-m">—</div><div class="cd-l">Minūtes</div></div>
+      <div class="cd-cell sr delay-3"><div class="cd-n" id="cd-s">—</div><div class="cd-l">Sekundes</div></div>
+    </div>
+    <div style="text-align:center;margin-top:2.5rem">
+      <a href="#reg" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.1em;background:transparent;color:var(--P);border:2px solid var(--P);padding:.7rem 2.2rem;border-radius:100px;text-decoration:none;transition:all .2s;display:inline-block"
+         onmouseover="this.style.background='var(--P)';this.style.color='#fff'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--P)'">
+        Nodrošini savu vietu →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SPEAKERS ═══════════ -->
+<section id="speakers">
+  <div class="container">
+    <div class="spk-header sr">
+      <div>
+        <div class="section-eye">2026. gada runātāji</div>
+        <h2 class="section-h" style="margin-bottom:0">RUNĀTĀJI &<br/>MODERATORS</h2>
+      </div>
+      <p style="max-width:20rem;color:rgba(242,237,230,.35);font-size:.85rem;line-height:1.7;text-align:right">
+        Nozares eksperti un praktiķi no vadošajiem Latvijas uzņēmumiem un iestādēm.
+      </p>
+    </div>
+
+    <div class="spk-grid sr">
+
+      <!-- Valdis Melderis - Moderators -->
+      <div class="spk-card moderator">
+        <div class="spk-av" style="background:rgba(255,229,0,.12)">
+          <span style="color:var(--Y);font-family:'Bebas Neue',sans-serif;font-size:1.4rem">VM</span>
+        </div>
+        <div class="spk-name">Valdis Melderis</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Mediji un komunikācija</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(255,229,0,.15);color:var(--Y)">Moderators</span>
+        </div>
+      </div>
+
+      <!-- Gatis Romanovskis - Atklāšana -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,229,0,.12)"><span style="color:var(--Y)">GR</span></div>
+        <div class="spk-name">Gatis Romanovskis</div>
+        <div class="spk-org">ANIMAS</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Mākslīgais intelekts un biznesa transformācija</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(255,0,144,.2);color:var(--P)">Atklāšana</span>
+        </div>
+      </div>
+
+      <!-- Betija Deina Muižniece - Keynote -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,229,0,.1)"><span style="color:var(--Y);font-family:'Bebas Neue',sans-serif;font-size:1.4rem">BD</span></div>
+        <div class="spk-name">Betija Deina Muižniece</div>
+        <div class="spk-org">ANIMAS</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Mākslīgais intelekts</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(255,229,0,.15);color:var(--Y)">Keynote</span>
+        </div>
+      </div>
+
+      <!-- Gatis Ozols - Runātājs -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(123,111,232,.15)"><span style="color:var(--V)">GO</span></div>
+        <div class="spk-name">Gatis Ozols</div>
+        <div class="spk-org">VARAM</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Valsts pārvalde un digitalizācija</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+        </div>
+      </div>
+
+      <!-- Jānis Grants - Runātājs -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(123,111,232,.15)"><span style="color:var(--V)">JG</span></div>
+        <div class="spk-name">Jānis Grants</div>
+        <div class="spk-org">DPD Latvija</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Loģistika un e-komercija</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+        </div>
+      </div>
+
+      <!-- Lilita Beķere - Runātājs -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(123,111,232,.15)"><span style="color:var(--V)">LB</span></div>
+        <div class="spk-name">Lilita Beķere</div>
+        <div class="spk-org">Numeri Latvija</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Grāmatvedība un finanšu vadība</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+        </div>
+      </div>
+
+      <!-- Artūrs Kostins - Runātājs -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(123,111,232,.15)"><span style="color:var(--V)">AK</span></div>
+        <div class="spk-name">Artūrs Kostins</div>
+        <div class="spk-org">ALTERO</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Finanšu tehnoloģijas (FinTech)</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+        </div>
+      </div>
+
+      <!-- Dace Benhena - Paneļdiskusija -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,0,144,.15)"><span style="color:var(--P)">DB</span></div>
+        <div class="spk-name">Dace Benhena</div>
+        <div class="spk-org">CSDD</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Mobilitāte, valsts pakalpojumi un digitalizācija</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+          <span class="spk-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Paneļdiskusija</span>
+        </div>
+      </div>
+
+      <!-- Kristaps Cīrulis - Paneļdiskusija -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,0,144,.15)"><span style="color:var(--P)">KC</span></div>
+        <div class="spk-name">Kristaps Cīrulis</div>
+        <div class="spk-org">SHIFT²</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">AI integrācija, organizāciju transformācija un AI-first uzņēmumi</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+          <span class="spk-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Paneļdiskusija</span>
+        </div>
+      </div>
+
+      <!-- Guna Pūce - Paneļdiskusija -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,0,144,.15)"><span style="color:var(--P)">GP</span></div>
+        <div class="spk-name">Guna Pūce</div>
+        <div class="spk-org">MIC – Mākslīgā intelekta centrs</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Mākslīgais intelekts, inovācijas un AI attīstība</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Runātājs</span>
+          <span class="spk-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Paneļdiskusija</span>
+        </div>
+      </div>
+
+      <!-- Sanda Dejus - Paneļdiskusija -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,0,144,.15)"><span style="color:var(--P)">SD</span></div>
+        <div class="spk-name">Sanda Dejus</div>
+        <div class="spk-org">Radio SWH</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Mediji un komunikācija</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Paneļdiskusija</span>
+        </div>
+      </div>
+
+      <!-- Jekaterina Macuka - DVU -->
+      <div class="spk-card">
+        <div class="spk-av" style="background:rgba(255,0,144,.12)"><span style="color:var(--P)">JM</span></div>
+        <div class="spk-name">Jekaterina Macuka</div>
+        <div class="spk-org">Datu valsts inspekcija</div>
+        <div class="spk-industry" style="font-size:.72rem;color:rgba(242,237,230,.4);margin-bottom:.6rem">Datu aizsardzība un regulējums</div>
+        <div class="spk-tags" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="spk-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Paneļdiskusija</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ AGENDA ═══════════ -->
+<section id="agenda">
+  <div class="ag-timeline"></div>
+  <div class="container">
+    <div class="sr" style="margin-bottom:3.5rem">
+      <div class="section-eye">30. Septembris 2026</div>
+      <h2 class="section-h">DIENAS<br/><span style="color:var(--P)">PROGRAMMA</span></h2>
+    </div>
+
+    <div class="sr" style="position:relative;z-index:2">
+
+      <div class="ag-row">
+        <div><div class="ag-dot" style="border-color:var(--P);top:-12px"></div><div class="ag-time">9:00<span class="ag-time-end">– 9:30</span></div></div>
+        <div><div class="ag-title">Reģistrācija</div><div class="ag-who">Ieeja un reģistrācija, networking pirms sākuma</div></div>
+        <span class="ag-badge" style="background:rgba(255,255,255,.05);color:rgba(242,237,230,.4)">30 min</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-dot" style="border-color:var(--P)"></div><div class="ag-time">9:30<span class="ag-time-end">– 9:40</span></div></div>
+        <div>
+          <div class="ag-title">Ievadvārdi</div>
+          <div class="ag-who">Gatis Romanovskis</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,0,144,.15);color:var(--P);box-shadow:0 0 12px rgba(255,0,144,.3)">Atklāšana</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-dot" style="border-color:var(--Y);width:20px;height:20px;left:-9.5px;box-shadow:0 0 12px rgba(255,229,0,.5)"></div><div class="ag-time">9:40<span class="ag-time-end">– 10:00</span></div></div>
+        <div>
+          <div class="ag-title">MI industrijas iekšējais skatījums</div>
+          <div class="ag-who">Betija Deina Muižniece · ANIMAS</div>
+          <div class="ag-note">Kas notiek pašlaik, kā tas ietekmē visu, kur mēs ejam</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,229,0,.12);color:var(--Y);box-shadow:0 0 12px rgba(255,229,0,.2)">Keynote</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-dot" style="border-color:var(--V);box-shadow:0 0 8px rgba(123,111,232,.6)"></div><div class="ag-time" style="color:var(--V)">10:00<span class="ag-time-end">– 10:20</span></div></div>
+        <div>
+          <div class="ag-title">Valsts nostāja MI — stratēģija un mērķi</div>
+          <div class="ag-who">Gatis Ozols · VARAM</div>
+          <div class="ag-note">Virziens, stratēģija, mērķi, pašreizējais statuss</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(123,111,232,.12);color:var(--V)">Valsts</span>
+      </div>
+
+      <div class="ag-row ag-break">
+        <div><div class="ag-time">10:20<span class="ag-time-end">– 10:40</span></div></div>
+        <div><div class="ag-title">Kafijas pauze</div><div class="ag-who">Uzkodas, kafija, tēja · Networkings</div></div>
+        <span class="ag-badge" style="background:rgba(255,255,255,.05);color:rgba(242,237,230,.25)">Pauze</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-dot" style="border-color:var(--P);box-shadow:0 0 8px rgba(255,0,144,.4)"></div><div class="ag-time">10:40<span class="ag-time-end">– 11:00</span></div></div>
+        <div>
+          <div class="ag-title">Sūtījumu automatizācija un robotizācija</div>
+          <div class="ag-who">Jānis Grants · DPD</div>
+          <div class="ag-note">DPD pieredzes stāsts par automatizāciju un robotizāciju praksē</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Loģistika</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-dot" style="border-color:var(--V);box-shadow:0 0 10px rgba(123,111,232,.5)"></div><div class="ag-time" style="color:var(--V)">11:00<span class="ag-time-end">– 11:20</span></div></div>
+        <div>
+          <div class="ag-title">MI bankās — ikdiena un prasības</div>
+          <div class="ag-who">Lilita Beķere · Numeri Latvija</div>
+          <div class="ag-note">Kā MI maina bankas ikdienu, izaicinājumi un regulatīvās prasības</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(123,111,232,.15);color:var(--V)">Grāmatvedība un finanšu vadība</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-time">11:20<span class="ag-time-end">– 11:40</span></div></div>
+        <div>
+          <div class="ag-title">ALTERO platforma & AI projekti</div>
+          <div class="ag-who">Artūrs Kostins · ALTERO</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,0,144,.1);color:var(--P)">FinTech</span>
+      </div>
+
+      <div class="ag-row ag-break">
+        <div><div class="ag-time">11:40<span class="ag-time-end">– 13:00</span></div></div>
+        <div><div class="ag-title">Pusdienas</div><div class="ag-who">Rīgas Motormuzeja kafejnīca · 1. stāvs · Networkings</div></div>
+        <span class="ag-badge" style="background:rgba(255,255,255,.05);color:rgba(242,237,230,.25)">80 min</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-time" style="color:var(--V)">13:00<span class="ag-time-end">– 13:20</span></div></div>
+        <div>
+          <div class="ag-title">Kā CSDD izmanto MI</div>
+          <div class="ag-who">Dace Benhena · CSDD</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,0,144,.1);color:var(--P)">Valsts</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-time">13:20<span class="ag-time-end">– 13:40</span></div></div>
+        <div>
+          <div class="ag-title">AI pasaulē — Nākotnes virziens</div>
+          <div class="ag-who">Kristaps Cīrulis</div>
+          <div class="ag-note">Kur mēs ejam? Globālais skatījums uz MI nākotni</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,0,144,.1);color:var(--P)">AI transformācija</span>
+      </div>
+
+      <div class="ag-row">
+        <div><div class="ag-time" style="color:var(--V)">13:40<span class="ag-time-end">– 14:00</span></div></div>
+        <div>
+          <div class="ag-title">Guna Pūce · MIC</div>
+        </div>
+        <span class="ag-badge" style="background:rgba(123,111,232,.12);color:var(--V)">MIC</span>
+      </div>
+
+      <div class="ag-row ag-break">
+        <div><div class="ag-time">14:00<span class="ag-time-end">– 14:15</span></div></div>
+        <div><div class="ag-title">Kafijas pauze</div><div class="ag-who">Uzkodas, kafija, tēja · Networkings</div></div>
+        <span class="ag-badge" style="background:rgba(255,255,255,.05);color:rgba(242,237,230,.25)">Pauze</span>
+      </div>
+
+      <div class="ag-row ag-panel" style="border-radius:.5rem">
+        <div><div class="ag-dot" style="border-color:var(--P);width:22px;height:22px;left:-11px;box-shadow:0 0 16px rgba(255,0,144,.6),0 0 32px rgba(255,0,144,.3)"></div><div class="ag-time">14:15<span class="ag-time-end">– 15:00</span></div></div>
+        <div>
+          <div class="ag-title" style="font-size:1rem">Paneļdiskusija</div>
+          <div class="ag-note" style="margin-top:.5rem">
+            Kas notiek, ja MI neievieš? · Vai MI ir investīcija vai izmaksu pozīcija? · AI tumšās puses un izaicinājumi
+          </div>
+          <div class="panel-names" style="margin-top:.8rem">
+            <span class="panel-name">Sanda Dejus</span>
+            <span class="panel-name">Jekaterina Macuka · DVI</span>
+            <span class="panel-name">Dace Benhena · CSDD</span>
+            <span class="panel-name">Guna Pūce · MIC</span>
+            <span class="panel-name">Kristaps Cīrulis</span>
+          </div>
+          <div class="ag-note" style="margin-top:.6rem">
+            Moderators: <strong style="color:var(--W)">Valdis Melderis</strong>
+          </div>
+        </div>
+        <span class="ag-badge" style="background:rgba(255,0,144,.15);color:var(--P)">Panelis</span>
+      </div>
+
+    </div><!-- /sr -->
+  </div>
+</section>
+
+<!-- ═══════════ REGISTRATION ═══════════ -->
+<section id="reg">
+  <div class="reg-slab"></div>
+  <div class="container">
+    <div class="reg-grid">
+
+      <div class="sr">
+        <div class="reg-eyebrow">
+          <span class="hero-dot"></span>
+          Ierobežots skaits — 100 vietas
+        </div>
+        <h2 class="reg-h">PIETEIKTIES<br/><span style="color:var(--P)">BEZ</span><br/>MAKSAS</h2>
+        <p style="color:rgba(242,237,230,.4);line-height:1.8;font-size:.9rem;margin-bottom:1.5rem">
+          Reģistrācija ir obligāta. Vietu skaits ir strikti ierobežots. Apstiprinājums tiks nosūtīts uz e-pastu.
+        </p>
+        <!-- seats progress -->
+        <div>
+          <div class="seats-bar"><div class="seats-fill" id="seats-fill"></div></div>
+          <div class="seats-text" id="seats-text">Ielādē brīvās vietas...</div>
+        </div>
+        <!-- event details -->
+        <div style="margin-top:2.5rem;display:flex;flex-direction:column;gap:1rem">
+          <div style="display:flex;align-items:center;gap:.8rem;font-size:.82rem;color:rgba(242,237,230,.4)">
+            <svg width="16" height="16" fill="none" stroke="var(--P)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            30. Septembris, 2026 · 9:00 – 15:00
+          </div>
+          <div style="display:flex;align-items:center;gap:.8rem;font-size:.82rem;color:rgba(242,237,230,.4)">
+            <svg width="16" height="16" fill="none" stroke="var(--P)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+            Sergeja Eizenšteina iela 6, Rīga
+          </div>
+          <div style="display:flex;align-items:center;gap:.8rem;font-size:.82rem;color:rgba(242,237,230,.4)">
+            <svg width="16" height="16" fill="none" stroke="var(--G)" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Pusdienas un kafijas pauzes iekļautas
+          </div>
+        </div>
+      </div>
+
+      <div class="sr delay-2">
+        <form class="form-card" id="regForm" onsubmit="handleReg(event)">
+          <div style="font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(242,237,230,.3);margin-bottom:1.5rem">Reģistrācijas forma</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="f-name">Vārds, Uzvārds *</label>
+              <input class="form-input" id="f-name" type="text" required placeholder="Jānis Bērziņš"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="f-email">E-pasts *</label>
+              <input class="form-input" id="f-email" type="email" required placeholder="janis@uznemums.lv"/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="f-co">Uzņēmums</label>
+              <input class="form-input" id="f-co" type="text" placeholder="SIA Piemērs"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="f-role">Amats</label>
+              <input class="form-input" id="f-role" type="text" placeholder="CEO, Vadītājs..."/>
+            </div>
+          </div>
+          <button class="form-submit" type="submit" id="submitBtn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-8 0v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Reģistrēties bez maksas
+          </button>
+          <div class="form-note">Apstiprinājums tiks nosūtīts uz Jūsu e-pastu</div>
+        </form>
+
+        <div class="reg-success" id="regOk">
+          <div class="success-check">
+            <svg width="28" height="28" fill="none" stroke="var(--P)" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h3 class="bb" style="font-size:2.2rem;letter-spacing:.06em;margin-bottom:.8rem">REĢISTRĀCIJA VEIKSMĪGA!</h3>
+          <p style="color:rgba(242,237,230,.4);font-size:.9rem">Paldies! Sīkāka informācija tiks nosūtīta uz Jūsu e-pastu.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ LOCATION ═══════════ -->
+<section id="location">
+  <div class="container">
+    <div class="loc-grid">
+      <div class="sr">
+        <div class="section-eye">Norises vieta</div>
+        <h2 class="section-h">RĪGAS<br/><span style="color:var(--V)">MOTOR&shy;MUZEJS</span></h2>
+        <p style="color:rgba(242,237,230,.4);line-height:1.8;font-size:.9rem;margin-bottom:1.5rem">
+          Unikāla industriālā telpa, kur tehnoloģiju pagātne satiekas ar mākslīgā intelekta nākotni.
+        </p>
+        <div style="display:flex;align-items:center;gap:.6rem;color:rgba(242,237,230,.35);font-size:.82rem;margin-bottom:1.5rem">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          Sergeja Eizenšteina iela 6, Rīga
+        </div>
+        <a href="https://maps.google.com/?q=Rīgas+Motormuzejs" target="_blank" rel="noopener"
+           class="bb" style="font-size:1.1rem;letter-spacing:.1em;border:2px solid var(--V);color:var(--V);padding:.6rem 1.8rem;border-radius:100px;text-decoration:none;display:inline-block;transition:all .2s"
+           onmouseover="this.style.background='var(--V)';this.style.color='#fff'"
+           onmouseout="this.style.background='transparent';this.style.color='var(--V)'">
+          Atvērt Google Maps →
+        </a>
+      </div>
+      <div class="loc-map sr delay-2">
+        <svg width="48" height="48" fill="none" stroke="rgba(123,111,232,.4)" stroke-width="1" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        <p style="color:rgba(242,237,230,.2);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;font-weight:600">Rīgas Motormuzejs</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ ORGANIZER ═══════════ -->
+<section style="padding:6rem 0;border-top:1px solid rgba(255,255,255,.05);background:rgba(123,111,232,.02)">
+  <div class="container">
+    <div style="text-align:center;max-width:700px;margin:0 auto">
+      <div class="sr">
+        <div style="font-size:1.5rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--V);margin-bottom:1.5rem">Rīko</div>
+        <img src="https://raw.githubusercontent.com/ANIMAS-SIA/newsletter-assets/refs/heads/main/Animas-balts-bez-laukuma.png" alt="ANIMAS" style="height:3rem;object-fit:contain;margin-bottom:2rem;opacity:.9">
+        <p style="color:rgba(242,237,230,.45);line-height:1.8;font-size:.95rem;margin-bottom:2rem">
+          Animas — tehnoloģiju uzņēmums, kas veido praktiskus MI un automatizācijas risinājumus uzņēmumiem.
+        </p>
+        <a href="mailto:info@animas.lv" style="display:inline-block;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;border:2px solid var(--V);color:var(--V);padding:.6rem 1.6rem;border-radius:100px;text-decoration:none;transition:all .2s"
+           onmouseover="this.style.background='var(--V)';this.style.color='#fff'"
+           onmouseout="this.style.background='transparent';this.style.color='var(--V)'">
+          Sazinieties ar ANIMAS
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer style="display:grid;grid-template-columns:auto 1fr;gap:4rem;align-items:center;padding:2rem 0">
+  <div style="display:flex;align-items:center;gap:0.75rem;white-space:nowrap">
+    <span style="font-size:.75rem;font-weight:400;letter-spacing:.05em;color:rgba(242,237,230,.5)">Powered by</span>
+    <img src="https://raw.githubusercontent.com/ANIMAS-SIA/newsletter-assets/refs/heads/main/Animas-balts-bez-laukuma.png" alt="ANIMAS" style="height:0.9rem;object-fit:contain;opacity:.7">
+  </div>
+  <div class="footer-links">
+    <a href="mailto:info@animas.lv" class="footer-link">info@animas.lv</a>
+    <a href="#" class="footer-link">Privātuma politika</a>
+    <span style="font-size:.7rem;color:rgba(242,237,230,.15)">© 2026 ANIMAS · AI Reality Check 2026</span>
+  </div>
+</footer>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script>
+/* ── Cursor ─────────────────────────────────── */
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'});
+(function animRing(){rx+=(mx-rx)*.14;ry+=(my-ry)*.14;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing)})();
+document.querySelectorAll('a,button,input').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='24px';cur.style.height='24px';ring.style.width='60px';ring.style.height='60px';ring.style.borderColor='rgba(123,111,232,.8)'});
+  el.addEventListener('mouseleave',()=>{cur.style.width='12px';cur.style.height='12px';ring.style.width='40px';ring.style.height='40px';ring.style.borderColor='rgba(123,111,232,.5)'});
+});
+
+/* ── Nav scroll ─────────────────────────────── */
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled',scrollY>60);
+},{passive:true});
+
+/* ── Mobile menu ────────────────────────────── */
+const hbtn=document.getElementById('hamburger');
+const mn=document.getElementById('mobile-nav');
+const h1=document.getElementById('hb1'),h2=document.getElementById('hb2'),h3=document.getElementById('hb3');
+let mopen=false;
+hbtn.addEventListener('click',()=>{
+  mopen=!mopen;mn.classList.toggle('open',mopen);
+  h1.style.transform=mopen?'translateY(7px) rotate(45deg)':'';
+  h2.style.opacity=mopen?'0':'1';
+  h3.style.transform=mopen?'translateY(-7px) rotate(-45deg)':'';
+});
+mn.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
+  mopen=false;mn.classList.remove('open');
+  h1.style.transform=h3.style.transform='';h2.style.opacity='1';
+}));
+
+/* ── Hero Canvas — particle field ───────────── */
+(function(){
+  const canvas=document.getElementById('hero-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,pts=[];
+  const N=80;
+
+  function resize(){
+    W=canvas.width=canvas.offsetWidth;
+    H=canvas.height=canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize',()=>{resize();init()});
+
+  function rand(a,b){return a+Math.random()*(b-a)}
+
+  function init(){
+    pts=[];
+    for(let i=0;i<N;i++) pts.push({
+      x:rand(0,W),y:rand(0,H),
+      vx:rand(-.3,.3),vy:rand(-.3,.3),
+      r:rand(1,2.5),
+      alpha:rand(.15,.5),
+      color:Math.random()<.5?'255,0,144':'123,111,232'
+    });
+  }
+  init();
+
+  let mouseX=W/2,mouseY=H/2;
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect();
+    mouseX=e.clientX-r.left; mouseY=e.clientY-r.top;
+  });
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    /* connect nearby pts */
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<140){
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x,pts[i].y);
+          ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.strokeStyle=`rgba(255,0,144,${.12*(1-d/140)})`;
+          ctx.lineWidth=.6;
+          ctx.stroke();
+        }
+      }
+    }
+
+    pts.forEach(p=>{
+      /* mouse repel */
+      const dx=p.x-mouseX, dy=p.y-mouseY;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){const f=.4*(1-d/120);p.vx+=dx/d*f;p.vy+=dy/d*f}
+
+      /* dampen */
+      p.vx*=.96; p.vy*=.96;
+      p.x+=p.vx; p.y+=p.vy;
+
+      /* wrap */
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.color},${p.alpha})`;
+      ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ── Text Scramble on hero ───────────────────── */
+const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+function scrambleText(el){
+  const orig=el.dataset.text;
+  let iter=0;
+  const iv=setInterval(()=>{
+    el.textContent=orig.split('').map((_,i)=>
+      i<iter ? orig[i] : chars[Math.floor(Math.random()*chars.length)]
+    ).join('');
+    if(iter>=orig.length) clearInterval(iv);
+    iter+=.2;
+  },60);
+}
+document.querySelectorAll('.scramble').forEach((el,i)=>{
+  setTimeout(()=>scrambleText(el),i*280);
+});
+
+/* ── Scroll reveal ────────────────────────────── */
+const io=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}});
+},{threshold:.08});
+document.querySelectorAll('.sr').forEach(el=>io.observe(el));
+
+/* ── Countdown ────────────────────────────────── */
+function tick(){
+  const d=new Date('2026-09-30T09:00:00')-Date.now();
+  if(d<=0){['cd-d','cd-h','cd-m','cd-s'].forEach(id=>document.getElementById(id).textContent='00');return}
+  const pad=n=>String(Math.floor(n)).padStart(2,'0');
+  document.getElementById('cd-d').textContent=pad(d/864e5);
+  document.getElementById('cd-h').textContent=pad(d%864e5/36e5);
+  document.getElementById('cd-m').textContent=pad(d%36e5/6e4);
+  document.getElementById('cd-s').textContent=pad(d%6e4/1e3);
+}
+tick(); setInterval(tick,1000);
+
+/* ── Seats progress bar ───────────────────────── */
+let seatsAvailable=100, totalSeats=100;
+function updateSeatsDisplay(){
+  const taken=totalSeats-seatsAvailable;
+  const pct=(taken/totalSeats*100).toFixed(0);
+  document.getElementById('seats-fill').style.width=pct+'%';
+  document.getElementById('seats-text').textContent=`${seatsAvailable} vietas vēl pieejamas no ${totalSeats}`;
+}
+setTimeout(updateSeatsDisplay,600);
+
+/* ── Registration ─────────────────────────────── */
+function handleReg(e){
+  e.preventDefault();
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;
+  btn.innerHTML='<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Nosūta...';
+
+  /* POST reģistrāciju */
+  const formData=new FormData(document.getElementById('regForm'));
+  fetch('/api/register',{method:'POST',body:formData})
+    .then(r=>r.json())
+    .then(data=>{
+      /* Samazināt vietas par 1 ja reģistrācija veiksmīga */
+      if(data.success && seatsAvailable>0){
+        seatsAvailable--;
+        updateSeatsDisplay();
+      }
+      setTimeout(()=>{
+        document.getElementById('regForm').style.display='none';
+        document.getElementById('regOk').style.display='block';
+      },300);
+    })
+    .catch(err=>{
+      console.error('Registration error:',err);
+      btn.disabled=false;
+      btn.innerHTML='Pieteikties';
+    });
+}
+</script>
+
+<style>
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+</style>
+</body>
+</html>
