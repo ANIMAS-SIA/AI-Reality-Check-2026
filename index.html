@@ -14,6 +14,16 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 
+<!-- SVG FILTERS -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="hologram-displacement">
+      <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="4" result="noise" seed="3" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="15" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </defs>
+</svg>
+
 <style>
 /* ═══════════════════════════════════════════
    RESET + ROOT + 8px SPACING SYSTEM
@@ -537,6 +547,11 @@ section{position:relative}
   overflow:hidden;
   position:relative;
 }
+/* SVG DISPLACEMENT ON IMAGE */
+.spk-flip-back img{
+  filter:url(#hologram-displacement);
+  animation:displacement-pulse 3s ease-in-out infinite;
+}
 /* HOLOGRAM GRID OVERLAY */
 .spk-flip-back::before{
   content:'';
@@ -604,6 +619,11 @@ section{position:relative}
   60%{transform:translateX(2px)}
   80%{transform:translateX(-2px)}
   100%{transform:translateX(0)}
+}
+@keyframes displacement-pulse{
+  0%{filter:url(#hologram-displacement) brightness(1) contrast(1)}
+  50%{filter:url(#hologram-displacement) brightness(1.1) contrast(1.2)}
+  100%{filter:url(#hologram-displacement) brightness(1) contrast(1)}
 }
 
 /* ─── AGENDA ─────────────────────────────── */
