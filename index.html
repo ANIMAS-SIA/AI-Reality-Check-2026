@@ -573,7 +573,7 @@ section{position:relative}
   z-index:2;
   mix-blend-mode:screen;
 }
-/* SCANLINES + GLASS FROSTED OVERLAY */
+/* GLITCH EFFECT OVERLAY */
 .spk-flip-back::after{
   content:'';
   position:absolute;
@@ -581,23 +581,26 @@ section{position:relative}
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(123,111,232,.04) 0px,
-      rgba(123,111,232,.04) 2px,
+      rgba(255,0,144,.05) 0px,
+      rgba(255,0,144,.05) 2px,
       transparent 2px,
       transparent 4px
     ),
-    rgba(123,111,232,.12);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  animation:scanlines 8s linear infinite, glitch-shift 0.3s ease-in-out infinite;
+    repeating-linear-gradient(
+      90deg,
+      rgba(123,111,232,0) 0px,
+      rgba(123,111,232,0) 2px,
+      rgba(255,0,144,.02) 2px,
+      rgba(255,0,144,.02) 4px
+    );
+  animation:glitch-flicker 0.15s infinite, scanlines 8s linear infinite;
   pointer-events:none;
   z-index:5;
   border-radius:.5rem;
   box-shadow:
-    inset 0 0 40px rgba(123,111,232,.4),
-    inset 0 0 20px rgba(255,0,144,.2),
-    0 0 50px rgba(123,111,232,.6),
-    0 0 80px rgba(255,0,144,.3);
+    0 0 10px rgba(255,0,144,.3),
+    inset 0 0 40px rgba(123,111,232,.3),
+    0 0 30px rgba(255,0,144,.4);
 }
 /* NEON BORDER */
 .spk-flip-card:hover .spk-flip-back{
@@ -632,6 +635,18 @@ section{position:relative}
   0%{filter:url(#hologram-displacement) brightness(1) contrast(1)}
   50%{filter:url(#hologram-displacement) brightness(1.1) contrast(1.2)}
   100%{filter:url(#hologram-displacement) brightness(1) contrast(1)}
+}
+@keyframes glitch-flicker{
+  0%{opacity:1;box-shadow:0 0 10px rgba(255,0,144,.3),inset 0 0 40px rgba(123,111,232,.3),0 0 30px rgba(255,0,144,.4)}
+  10%{opacity:.8;transform:translate(2px,0)}
+  20%{opacity:1;transform:translate(-2px,1px)}
+  30%{opacity:.9;transform:translate(1px,-2px)}
+  40%{opacity:1}
+  50%{opacity:.7;box-shadow:0 0 20px rgba(255,0,144,.5),inset 0 0 50px rgba(123,111,232,.4),0 0 40px rgba(255,0,144,.5)}
+  60%{opacity:1;transform:translate(-1px,2px)}
+  70%{opacity:.85;transform:translate(2px,-1px)}
+  80%{opacity:1}
+  100%{opacity:1;transform:translate(0,0);box-shadow:0 0 10px rgba(255,0,144,.3),inset 0 0 40px rgba(123,111,232,.3),0 0 30px rgba(255,0,144,.4)}
 }
 
 /* ─── AGENDA ─────────────────────────────── */
