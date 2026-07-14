@@ -454,6 +454,7 @@ section{position:relative}
 .spk-grid{
   display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
   background:rgba(255,255,255,.05);
+  align-items:stretch;
 }
 @media(max-width:768px){
   .spk-grid{grid-template-columns:repeat(2,1fr)}
@@ -465,6 +466,9 @@ section{position:relative}
   background:var(--K);padding:2rem 1.8rem;
   position:relative;overflow:hidden;
   cursor:default;transition:background .25s;
+  height:100%;
+  display:flex;
+  flex-direction:column;
 }
 @media(max-width:480px){
   .spk-card{padding:1.5rem 1.2rem}
