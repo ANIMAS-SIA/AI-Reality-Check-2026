@@ -9,7 +9,9 @@ type ParticipantRow = {
   last_name: string;
   email: string;
   status: string;
+  company_id: string | null;
 };
+type CompanyRow = { id: string; name: string };
 type GoogleServiceAccount = {
   client_email: string;
   private_key: string;
@@ -28,6 +30,15 @@ async function resolveParticipant(db: SupabaseRest, token: string): Promise<Part
     id: `eq.${tokenRow.participant_id}`,
     limit: 1,
   }))[0] || null;
+}
+
+async function resolveCompanyName(db: SupabaseRest, companyId: string | null): Promise<string> {
+  if (!companyId) return "";
+  const company = (await db.select<CompanyRow>("companies", {
+    id: `eq.${companyId}`,
+    limit: 1,
+  }))[0];
+  return company?.name || "";
 }
 
 function base64Url(input: string | ArrayBuffer) {
@@ -80,7 +91,7 @@ async function signGoogleJwt(payload: Record<string, unknown>, serviceAccount: G
   return `${unsigned}.${base64Url(signature)}`;
 }
 
-async function googleSaveUrl(participant: ParticipantRow, token: string): Promise<{ saveUrl: string; objectId: string; payload: Record<string, unknown> } | null> {
+async function googleSaveUrl(participant: ParticipantRow, token: string, companyName: string): Promise<{ saveUrl: string; objectId: string; payload: Record<string, unknown> } | null> {
   const issuerId = Deno.env.get("GOOGLE_WALLET_ISSUER_ID");
   const classSuffix = Deno.env.get("GOOGLE_WALLET_CLASS_ID");
   const serviceAccount = readGoogleServiceAccount();
@@ -89,6 +100,12 @@ async function googleSaveUrl(participant: ParticipantRow, token: string): Promis
   const classId = walletId(issuerId, classSuffix);
   const objectId = `${issuerId}.arc2026_${participant.id.replaceAll("-", "_")}`;
   const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
+  const ticketNumber = `ARC-2026-${participant.id.slice(0, 8).toUpperCase()}`;
+  const textModulesData = [
+    { header: "Dalībnieks", body: `${participant.first_name} ${participant.last_name}`.trim(), id: "participant" },
+    ...(companyName ? [{ header: "Uzņēmums", body: companyName, id: "company" }] : []),
+    { header: "E-pasts", body: participant.email, id: "email" },
+  ];
   const payload = {
     iss: serviceAccount.client_email,
     aud: "google",
@@ -101,16 +118,13 @@ async function googleSaveUrl(participant: ParticipantRow, token: string): Promis
         classId,
         state: "ACTIVE",
         ticketHolderName: `${participant.first_name} ${participant.last_name}`.trim(),
-        ticketNumber: `ARC-2026-${participant.id.slice(0, 8).toUpperCase()}`,
+        ticketNumber,
         barcode: {
           type: "QR_CODE",
           value: `${siteUrl}/checkin/?token=${token}`,
-          alternateText: "AI Reality Check 2026",
+          alternateText: ticketNumber,
         },
-        textModulesData: [
-          { header: "Dalībnieks", body: `${participant.first_name} ${participant.last_name}`.trim(), id: "participant" },
-          { header: "E-pasts", body: participant.email, id: "email" },
-        ],
+        textModulesData,
       }],
     },
   };
@@ -122,7 +136,7 @@ async function googleSaveUrl(participant: ParticipantRow, token: string): Promis
   };
 }
 
-function applePassJson(participant: ParticipantRow) {
+function applePassJson(participant: ParticipantRow, companyName: string) {
   return {
     formatVersion: 1,
     passTypeIdentifier: Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.lv.animas.conference",
@@ -140,7 +154,10 @@ function applePassJson(participant: ParticipantRow) {
         { key: "date", label: "Datums", value: "30.09.2026" },
         { key: "name", label: "Dalībnieks", value: `${participant.first_name} ${participant.last_name}` },
       ],
-      auxiliaryFields: [{ key: "venue", label: "Vieta", value: "Rīgas Motormuzejs" }],
+      auxiliaryFields: [
+        { key: "venue", label: "Vieta", value: "Rīgas Motormuzejs" },
+        ...(companyName ? [{ key: "company", label: "Uzņēmums", value: companyName }] : []),
+      ],
     },
     barcodes: [{
       message: participant.id,
@@ -163,9 +180,10 @@ Deno.serve(async (request) => {
     const db = new SupabaseRest();
     const participant = await resolveParticipant(db, token);
     if (!participant) return errorResponse("Participant not found", 404);
+    const companyName = await resolveCompanyName(db, participant.company_id);
 
     if (provider === "apple") {
-      const passJson = applePassJson(participant);
+      const passJson = applePassJson(participant, companyName);
       await db.upsert("wallet_passes", [{
         participant_id: participant.id,
         provider: "apple",
@@ -181,7 +199,7 @@ Deno.serve(async (request) => {
     }
 
     if (provider === "google") {
-      const google = await googleSaveUrl(participant, token);
+      const google = await googleSaveUrl(participant, token, companyName);
       await db.upsert("wallet_passes", [{
         participant_id: participant.id,
         provider: "google",
