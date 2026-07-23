@@ -468,6 +468,9 @@ function initRegistration() {
   const companyInput = document.getElementById("company");
   const companyEmbed = document.getElementById("company360Embed");
   const companyEmbedShell = document.getElementById("companyEmbedShell");
+  const companySelectedChip = document.getElementById("companySelectedChip");
+  const companySelectedName = document.getElementById("companySelectedName");
+  const companySelectedChange = document.getElementById("companySelectedChange");
   const noCompany = document.getElementById("noCompany");
   const contextTitle = document.getElementById("registrationContextTitle");
   const contextDescription = document.getElementById("registrationContextDescription");
@@ -486,15 +489,37 @@ function initRegistration() {
     }
   };
 
-  if (companyEmbed) {
+  function resetCompanyEmbed() {
+    if (!companyEmbed) return;
     const embedKey = window.C360_EMBED_API_KEY || "PASTE_API_KEY_HERE";
     companyEmbed.src = `https://company360.lv/embed/company-search?api_key=${encodeURIComponent(embedKey)}`;
   }
+
+  function showCompanySelection(name) {
+    if (companySelectedName) companySelectedName.textContent = name;
+    companySelectedChip?.removeAttribute("hidden");
+    companyEmbedShell?.classList.add("has-selection");
+  }
+
+  function hideCompanySelection() {
+    companySelectedChip?.setAttribute("hidden", "");
+    companyEmbedShell?.classList.remove("has-selection");
+  }
+
+  resetCompanyEmbed();
 
   function setCompanyEmbedDisabled(disabled) {
     companyEmbedShell?.classList.toggle("is-disabled", disabled);
     companyEmbed?.setAttribute("tabindex", disabled ? "-1" : "0");
   }
+
+  companySelectedChange?.addEventListener("click", () => {
+    selectedCompany = null;
+    companyInput.value = "";
+    hideCompanySelection();
+    resetCompanyEmbed();
+    validate();
+  });
 
   function updateStep() {
     steps.forEach((el) => el.classList.toggle("is-active", Number(el.dataset.step) === step));
@@ -597,7 +622,7 @@ function initRegistration() {
       companyInput.value = selectedCompany.name;
       noCompany.checked = false;
       setCompanyEmbedDisabled(false);
-      companyEmbedShell?.classList.add("has-selection");
+      showCompanySelection(selectedCompany.name);
       validate();
     }
 
@@ -606,7 +631,7 @@ function initRegistration() {
       companyInput.value = (event.data.query || "").trim();
       noCompany.checked = false;
       setCompanyEmbedDisabled(false);
-      companyEmbedShell?.classList.add("has-selection");
+      showCompanySelection(companyInput.value);
       validate();
     }
   });
@@ -618,7 +643,7 @@ function initRegistration() {
     if (noCompany.checked) {
       companyInput.value = "";
       selectedCompany = null;
-      companyEmbedShell?.classList.remove("has-selection");
+      hideCompanySelection();
     }
     validate();
   });

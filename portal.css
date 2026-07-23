@@ -555,15 +555,8 @@ h3 {
   opacity: .35;
 }
 
-.company-embed-shell.has-selection::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 48px;
-  background: #030303;
-  pointer-events: none;
+.company-embed-shell.has-selection {
+  display: none;
 }
 
 .company-embed-shell iframe {
@@ -574,6 +567,36 @@ h3 {
   background: #030303;
   color-scheme: dark;
   filter: invert(.94) hue-rotate(180deg) saturate(.72) brightness(.9);
+}
+
+.company-selected-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.company-selected-chip[hidden] {
+  display: none;
+}
+
+.company-selected-change {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--V);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .choice-list {
