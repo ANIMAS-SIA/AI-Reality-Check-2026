@@ -115,6 +115,34 @@ function applyWalletLinks(token) {
   }
 }
 
+function buildEventIcs() {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//AI Reality Check 2026//konference.animas.lv//LV",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    "UID:ai-reality-check-2026@konference.animas.lv",
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
+    "DTSTART:20260930T060000Z",
+    "DTEND:20260930T120000Z",
+    "SUMMARY:AI Reality Check 2026",
+    "LOCATION:Rīgas Motormuzejs\\, Sergeja Eizenšteina iela 8\\, Rīga",
+    "DESCRIPTION:Bezmaksas MI konference. Prezentācijas\\, paneļdiskusija\\, networking pusdienas un kafijas pauzes.",
+    "URL:https://konference.animas.lv/",
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ];
+  return lines.join("\r\n");
+}
+
+function initAddToCalendar() {
+  const link = document.getElementById("addToCalendarLink");
+  if (!link) return;
+  const blob = new Blob([buildEventIcs()], { type: "text/calendar;charset=utf-8" });
+  link.href = URL.createObjectURL(blob);
+}
+
 function initNetworkingPass(token) {
   const networkingPanel = document.getElementById("networkingPanel");
   if (!networkingPanel || !token) return;
@@ -654,6 +682,7 @@ function initRegistration() {
 async function initPass() {
   const token = new URLSearchParams(window.location.search).get("token");
   applyWalletLinks(token);
+  initAddToCalendar();
   initNetworkingPass(token);
   let p = getParticipant();
   try {
