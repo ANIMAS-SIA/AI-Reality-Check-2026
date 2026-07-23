@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in | AI Reality Check 2026</title>
+  <meta name="description" content="AI Reality Check 2026 QR check-in.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="stylesheet" href="../portal.css">
+</head>
+<body data-page="checkin">
+  <main class="portal-shell">
+    <header class="topbar">
+      <a class="brand" href="../admin/">
+        <span class="brand-mark">QR</span>
+        <span class="brand-text">
+          <span class="brand-title">Check-in</span>
+          <span class="brand-subtitle">Dalībnieka QR pārbaude</span>
+        </span>
+      </a>
+      <div class="top-actions">
+        <span class="mode-chip">Organizators</span>
+        <a class="btn secondary" href="../admin/">Admin</a>
+      </div>
+    </header>
+
+    <section class="hero-panel registration-hero">
+      <div>
+        <div class="eyebrow">AI Reality Check 2026</div>
+        <h1 class="registration-title">Check-in</h1>
+      </div>
+    </section>
+
+    <section class="card registration-card" style="margin-top:20px">
+      <div class="grid two">
+        <div class="field">
+          <label for="checkinAdminKey">Admin atslēga</label>
+          <input id="checkinAdminKey" type="password" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="checkinToken">QR token</label>
+          <input id="checkinToken" autocomplete="off">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" type="button" id="previewCheckin">Pārbaudīt</button>
+        <button class="btn pink" type="button" id="confirmCheckin" disabled>Apstiprināt ierašanos</button>
+      </div>
+      <p class="fine" id="checkinStatus">Noskenē QR vai ielīmē tokenu.</p>
+      <div id="checkinResult" class="checkin-result"></div>
+    </section>
+  </main>
+  <script src="../config.js"></script>
+  <script src="../portal.js"></script>
+</body>
+</html>

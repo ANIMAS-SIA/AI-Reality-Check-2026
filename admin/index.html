@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin | AI Reality Check 2026</title>
+  <meta name="description" content="AI Reality Check 2026 reģistrāciju administrēšana.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="stylesheet" href="../portal.css">
+</head>
+<body data-page="admin">
+  <main class="portal-shell">
+    <header class="topbar">
+      <a class="brand" href="../">
+        <span class="brand-mark">AI</span>
+        <span class="brand-text">
+          <span class="brand-title">Admin</span>
+          <span class="brand-subtitle">Reģistrācijas un apstiprināšana</span>
+        </span>
+      </a>
+      <div class="top-actions">
+        <span class="mode-chip">Organizators</span>
+        <a class="btn secondary" href="../">Sākumlapa</a>
+      </div>
+    </header>
+
+    <section class="hero-panel registration-hero">
+      <div>
+        <div class="eyebrow">AI Reality Check 2026</div>
+        <h1 class="registration-title">Reģistrācijas</h1>
+      </div>
+    </section>
+
+    <section class="card registration-card" style="margin-top:20px">
+      <div class="grid two">
+        <div class="field">
+          <label for="adminKey">Admin atslēga</label>
+          <input id="adminKey" type="password" autocomplete="off">
+        </div>
+        <div class="btn-row" style="align-items:end;margin-top:0">
+          <button class="btn" type="button" id="loadRegistrations">Ielādēt</button>
+          <button class="btn secondary" type="button" id="clearAdminKey">Notīrīt</button>
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:12px">
+        <div class="field">
+          <label for="registrationStatusFilter">Statuss</label>
+          <select id="registrationStatusFilter">
+            <option value="all">Visi</option>
+            <option value="application_received">Saņemts</option>
+            <option value="approved">Apstiprināts</option>
+            <option value="waitlisted">Gaidīšanas saraksts</option>
+            <option value="rejected">Atteikts</option>
+            <option value="reconfirm_required">Jāapstiprina ierašanās</option>
+            <option value="arrived">Ieradies</option>
+          </select>
+        </div>
+        <div class="btn-row" style="align-items:end;margin-top:0">
+          <button class="btn secondary" type="button" id="exportRegistrations">CSV</button>
+          <button class="btn secondary" type="button" id="loadCheckinStats">Check-in</button>
+        </div>
+      </div>
+      <p class="fine" id="adminStatus">Ievadi admin atslēgu, lai ielādētu pieteikumus.</p>
+      <div class="card" style="margin:14px 0">
+        <div class="card-title-row">
+          <div>
+            <span class="eyebrow">Apstiprināšana</span>
+            <h2>Auto režīms</h2>
+          </div>
+          <label class="choice" style="margin:0">
+            <input type="checkbox" id="autoApproveEnabled">
+            <span>Auto</span>
+          </label>
+        </div>
+        <div class="grid two" style="margin-top:12px">
+          <div class="field">
+            <label for="autoApproveLimit">Automātiski apstiprināt pirmos</label>
+            <input id="autoApproveLimit" type="number" min="0" step="1" value="0">
+          </div>
+          <div class="field">
+            <label for="graphCalendarUser">Kalendāra organizators</label>
+            <input id="graphCalendarUser" type="email" value="konference@animas.lv">
+          </div>
+          <div class="field">
+            <label for="microsoftGraphEventId">Microsoft Graph eventId</label>
+            <input id="microsoftGraphEventId" type="text" placeholder="AAMk...">
+          </div>
+          <div class="btn-row" style="align-items:end;margin-top:0">
+            <button class="btn secondary" type="button" id="loadApprovalSettings">Ielādēt</button>
+            <button class="btn" type="button" id="saveApprovalSettings">Saglabāt</button>
+          </div>
+        </div>
+        <p class="fine" id="approvalSettingsStatus">Auto režīms nav ielādēts.</p>
+      </div>
+      <div class="grid two" id="checkinStats" style="margin:14px 0"></div>
+      <div class="admin-list" id="adminRegistrations"></div>
+    </section>
+
+    <section class="card registration-card" style="margin-top:20px">
+      <div class="card-title-row">
+        <div>
+          <span class="eyebrow">Live programma</span>
+          <h2>Šobrīd</h2>
+        </div>
+        <button class="btn secondary" type="button" id="loadLiveAdmin">Ielādēt programmu</button>
+      </div>
+      <p class="fine" id="adminLiveStatus">Programmas pārslēgšanai izmanto to pašu admin atslēgu.</p>
+      <div class="grid two" style="margin-top:16px">
+        <div class="field">
+          <label for="agendaTitle">Programmas punkts</label>
+          <input id="agendaTitle" type="text" placeholder="Nosaukums">
+        </div>
+        <div class="field">
+          <label for="agendaSpeaker">Runātājs</label>
+          <input id="agendaSpeaker" type="text" placeholder="Nav obligāts">
+        </div>
+        <div class="field">
+          <label for="agendaSpeakerRole">Runātāja amats</label>
+          <input id="agendaSpeakerRole" type="text" placeholder="Nav obligāts">
+        </div>
+        <div class="field">
+          <label for="agendaSpeakerCompany">Runātāja uzņēmums</label>
+          <input id="agendaSpeakerCompany" type="text" placeholder="Nav obligāts">
+        </div>
+        <div class="field">
+          <label for="agendaStarts">Sākums</label>
+          <input id="agendaStarts" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="agendaEnds">Beigas</label>
+          <input id="agendaEnds" type="datetime-local">
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:12px">
+        <div class="field">
+          <label for="agendaDescription">Apraksts</label>
+          <textarea id="agendaDescription" placeholder="Plašāka informācija par tēmu"></textarea>
+        </div>
+        <div class="field">
+          <label for="agendaSpeakerImageUrl">Runātāja attēla URL</label>
+          <input id="agendaSpeakerImageUrl" type="url" placeholder="https://...">
+        </div>
+      </div>
+      <div class="grid two" style="margin-top:12px">
+        <div class="field">
+          <label for="agendaMaterialsUrl">Materiāli</label>
+          <input id="agendaMaterialsUrl" type="url" placeholder="https://...">
+        </div>
+        <div class="field">
+          <label for="agendaVideoUrl">Video</label>
+          <input id="agendaVideoUrl" type="url" placeholder="https://...">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" type="button" id="saveAgendaItem">Pievienot punktu</button>
+      </div>
+      <div class="admin-list" id="adminLiveAgenda"></div>
+    </section>
+
+    <section class="card registration-card" style="margin-top:20px">
+      <div class="card-title-row">
+        <div>
+          <span class="eyebrow">Jautājumi</span>
+          <h2>Moderācija</h2>
+        </div>
+        <button class="btn secondary" type="button" id="loadAdminQuestions">Ielādēt jautājumus</button>
+      </div>
+      <p class="fine" id="adminQuestionsStatus">Jautājumi, kas gaida moderāciju un apstiprinātie jautājumi.</p>
+      <div class="grid two" style="margin-top:12px">
+        <div class="field">
+          <label for="questionStatusFilter">Statuss</label>
+          <select id="questionStatusFilter">
+            <option value="all">Visi</option>
+            <option value="pending">Gaida</option>
+            <option value="approved">Apstiprināti</option>
+            <option value="answered">Atbildēti</option>
+            <option value="hidden">Paslēpti</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="questionAgendaFilter">Programmas punkts</label>
+          <select id="questionAgendaFilter">
+            <option value="all">Visi</option>
+          </select>
+        </div>
+      </div>
+      <div class="admin-list" id="adminQuestions"></div>
+    </section>
+
+    <section class="card registration-card" style="margin-top:20px">
+      <div class="card-title-row">
+        <div>
+          <span class="eyebrow">Balsojumi</span>
+          <h2>Vadība</h2>
+        </div>
+        <button class="btn secondary" type="button" id="loadAdminPolls">Ielādēt balsojumus</button>
+      </div>
+      <p class="fine" id="adminPollsStatus">Aktivizē, slēdz un publicē balsojumus.</p>
+      <div class="grid two" style="margin-top:16px">
+        <div class="field">
+          <label for="pollTitle">Balsojuma jautājums</label>
+          <input id="pollTitle" type="text" placeholder="Piemēram: Cik gatavs ir tavs uzņēmums MI ieviešanai?">
+        </div>
+        <div class="field">
+          <label for="pollAgendaItemId">Programmas punkts</label>
+          <select id="pollAgendaItemId">
+            <option value="">Nav piesaistīts</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="pollOptions">Atbilžu varianti</label>
+        <textarea id="pollOptions" rows="4" placeholder="Viens variants katrā rindā"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn" type="button" id="createAdminPoll">Izveidot balsojumu</button>
+      </div>
+      <div class="admin-list" id="adminPolls"></div>
+    </section>
+
+    <section class="card registration-card" style="margin-top:20px">
+      <div class="card-title-row">
+        <div>
+          <span class="eyebrow">Statistika</span>
+          <h2>Kopsavilkums</h2>
+        </div>
+        <button class="btn secondary" type="button" id="loadAdminStats">Ielādēt statistiku</button>
+      </div>
+      <div class="grid two" id="adminStats" style="margin-top:16px"></div>
+    </section>
+  </main>
+  <script src="../config.js"></script>
+  <script src="../portal.js"></script>
+</body>
+</html>

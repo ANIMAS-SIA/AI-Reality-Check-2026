@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mans AI Pass | AI Reality Check 2026</title>
+  <meta name="description" content="Dalībnieka QR biļete un personīgā konferences vide.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="stylesheet" href="../portal.css">
+</head>
+<body data-page="pass">
+  <main class="portal-shell pass-shell">
+    <header class="topbar pass-topbar">
+      <a class="brand" href="../">
+        <span class="brand-mark">AI</span>
+        <span class="brand-text">
+          <span class="brand-title">Reality Check</span>
+          <span class="brand-subtitle">2026</span>
+        </span>
+      </a>
+      <nav class="pass-nav" aria-label="Live portāla sadaļas">
+        <a href="../live/#programma">Programma</a>
+        <a href="../live/#jautajumi">Jautājumi</a>
+        <a href="../live/#balsojumi">Balsojumi</a>
+        <a href="../live/#rezultati">Rezultāti</a>
+      </nav>
+      <div class="top-actions pass-actions">
+        <span class="mode-chip" id="passAccess">Pilna pieeja</span>
+        <a class="pass-pill" href="../pass/">Mans Pass</a>
+      </div>
+    </header>
+
+    <section class="pass-stage" aria-labelledby="passHeading">
+      <div class="pass-heading">
+        <div>
+          <p class="pass-eyebrow">Dalībnieka vide</p>
+          <h1 id="passHeading">Mans AI Pass</h1>
+        </div>
+        <div class="pass-countdown" aria-label="Laiks līdz konferencei">
+          <span><strong>68</strong>Dienas</span>
+          <span><strong>20</strong>Stundas</span>
+          <span><strong>42</strong>Min</span>
+        </div>
+      </div>
+
+      <div class="pass-grid">
+        <article class="pass-ticket" aria-label="AI Pass biļete">
+          <div class="pass-ticket-top">
+            <div class="pass-ticket-brand">
+              <span>AI</span>
+              <strong>Reality Check<br>2026</strong>
+            </div>
+            <span class="status-chip is-ok" id="passStatus">Apstiprināts</span>
+          </div>
+
+          <div class="pass-person">
+            <span class="pass-number">Dalībnieks #0064</span>
+            <strong id="passName">Dalībnieks Piemērs</strong>
+            <p><span id="passCompany">Uzņēmums</span> · <span id="passRole">Vadītājs</span></p>
+          </div>
+
+          <div class="pass-code-panel">
+            <div class="pass-qr" role="img" aria-label="Dalībnieka QR kods">
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+              <img id="passQrImage" alt="QR kods ieejai">
+            </div>
+            <div>
+              <span>Ieejas kods</span>
+              <strong id="passId">ARC26-0064</strong>
+              <small>Parādi šo kodu pie ieejas</small>
+            </div>
+          </div>
+
+          <footer class="pass-ticket-footer">
+            <span>30. septembris · 09:00</span>
+            <span>Rīgas Motormuzejs</span>
+          </footer>
+        </article>
+
+        <aside class="pass-side" aria-label="AI Pass darbības">
+          <article class="pass-panel pass-wallet-panel">
+            <p class="pass-panel-label">Pievieno telefonam</p>
+            <h2>Biļete vienmēr pa rokai</h2>
+            <div class="wallet-actions">
+              <a id="appleWalletLink" href="#" target="_blank" rel="noopener">
+                <span class="wallet-icon">●</span>
+                <span><small>Add to</small>Apple Wallet</span>
+              </a>
+              <a id="googleWalletLink" href="#" target="_blank" rel="noopener">
+                <span class="wallet-icon">G</span>
+                <span><small>Add to</small>Google Wallet</span>
+              </a>
+            </div>
+            <a class="pass-action-row" href="../live/#programma">
+              <span class="pass-row-icon">□</span>
+              <strong>Pievienot kalendāram</strong>
+            </a>
+          </article>
+
+          <article class="pass-panel pass-live-panel">
+            <p class="pass-green-label">Live portāls</p>
+            <h2>Pilna pieeja aktīva</h2>
+            <p>Programma, jautājumi, balsojumi un rezultāti.</p>
+            <a class="pass-action-row" href="../live/">
+              <strong>Atvērt Live portālu</strong>
+              <span aria-hidden="true">→</span>
+            </a>
+          </article>
+
+          <a class="pass-panel pass-location-panel" href="https://maps.google.com/?q=R%C4%ABgas%20Motormuzejs%20Sergeja%20Eizen%C5%A1teina%20iela%208" target="_blank" rel="noopener">
+            <span class="pass-row-icon">⌖</span>
+            <span>
+              <strong>Rīgas Motormuzejs</strong>
+              <small>Sergeja Eizenšteina iela 8</small>
+            </span>
+            <span aria-hidden="true">→</span>
+          </a>
+        </aside>
+      </div>
+
+      <p class="pass-stage-note" id="aiStage">Izmēģinām atsevišķus rīkus</p>
+      <button class="sr-only" id="activatePortal" type="button">Aktivizēt pilno pieredzi</button>
+    </section>
+  </main>
+  <script src="../config.js"></script>
+  <script src="../portal.js"></script>
+</body>
+</html>

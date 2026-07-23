@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+secrets/
+supabase/.temp/
+*.p12
+*.pem
+*.key
+.DS_Store

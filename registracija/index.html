@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reģistrācija | AI Reality Check 2026</title>
+  <meta name="description" content="AI Reality Check 2026 trīs soļu reģistrācijas plūsma.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="stylesheet" href="../portal.css">
+</head>
+<body data-page="registration">
+  <main class="portal-shell registration-shell">
+    <header class="topbar registration-topbar">
+      <a class="brand" href="../">
+        <span class="brand-mark">AI</span>
+        <span class="brand-text">
+          <span class="brand-title">Reality Check</span>
+          <span class="brand-subtitle">2026</span>
+        </span>
+      </a>
+      <nav class="registration-nav" aria-label="Galvenā navigācija">
+        <a href="../#about">Par konferenci</a>
+        <a href="../#speakers">Runātāji</a>
+        <a href="../#agenda">Programma</a>
+      </nav>
+      <a class="registration-nav-cta" id="registrationNavCta" href="#registrationForm">Reģistrēties <span aria-hidden="true">→</span></a>
+    </header>
+
+    <section class="registration-workspace" id="registrationForm">
+      <aside class="registration-context">
+        <button class="registration-back" type="button" data-back hidden>
+          <span aria-hidden="true">←</span> Atpakaļ
+        </button>
+        <div class="registration-context-copy">
+          <p class="registration-context-kicker">AI Reality Check 2026</p>
+          <h1 id="registrationContextTitle">Rezervē<br>savu vietu.</h1>
+          <p id="registrationContextDescription">Trīs īsi soļi līdz dalībai AI Reality Check 2026.</p>
+        </div>
+        <div class="registration-after">
+          <span class="registration-after-mark" aria-hidden="true">↘</span>
+          <div>
+            <strong id="registrationAfterTitle">Pēc apstiprināšanas</strong>
+            <p id="registrationAfterDescription">Saņemsi QR biļeti un iespēju pievienot to Wallet.</p>
+          </div>
+        </div>
+      </aside>
+
+      <section class="registration-card">
+        <div class="registration-form">
+        <div class="stepper" aria-label="Reģistrācijas soļi">
+          <span class="step-pill" data-step="1"><b>1</b><span>Dalībnieks</span></span>
+          <span class="step-pill" data-step="2"><b>2</b><span>AI Reality Check</span></span>
+          <span class="step-pill" data-step="3"><b>3</b><span>Izvēles</span></span>
+        </div>
+
+        <div class="form-step" data-step="1">
+          <p class="form-step-label">1. solis no 3</p>
+          <h2>Dalībnieka informācija</h2>
+          <div class="grid two">
+            <div class="field">
+              <label for="firstName">Vārds <span class="required-mark" aria-hidden="true">*</span></label>
+              <input id="firstName" autocomplete="given-name">
+              <span class="field-error" data-error-for="firstName"></span>
+            </div>
+            <div class="field">
+              <label for="lastName">Uzvārds <span class="required-mark" aria-hidden="true">*</span></label>
+              <input id="lastName" autocomplete="family-name">
+              <span class="field-error" data-error-for="lastName"></span>
+            </div>
+            <div class="field">
+              <label for="email">Darba e-pasts <span class="required-mark" aria-hidden="true">*</span></label>
+              <input id="email" type="email" autocomplete="email">
+              <span class="field-error" data-error-for="email"></span>
+            </div>
+            <div class="field">
+              <label for="role">Amats</label>
+              <input id="role" autocomplete="organization-title">
+              <span class="field-error" data-error-for="role"></span>
+            </div>
+          </div>
+          <div class="field company-box">
+            <div class="company-embed-shell" id="companyEmbedShell">
+              <iframe
+                id="company360Embed"
+                title="Company360 uzņēmumu meklētājs"
+                width="100%"
+                height="210"
+                scrolling="no"
+                loading="lazy"
+              ></iframe>
+            </div>
+            <input id="company" type="hidden">
+            <span class="field-error" data-error-for="company"></span>
+          </div>
+          <label class="check-choice">
+            <input id="noCompany" type="checkbox">
+            <span><strong>Neatrodu uzņēmumu / nepārstāvu uzņēmumu</strong></span>
+          </label>
+        </div>
+
+        <div class="form-step" data-step="2">
+          <p class="form-step-label">2. solis no 3</p>
+          <h2>Uzņēmuma AI briedums</h2>
+          <p class="question-line">Izvēlies vienu atbildi. To varēsi mainīt pasākuma laikā.</p>
+          <div class="choice-list maturity-list">
+            <label class="choice"><span class="choice-number">01</span><span><strong>Vēl tikai interesējamies</strong></span><input type="radio" name="aiStage" value="Vēl neizmantojam"></label>
+            <label class="choice"><span class="choice-number">02</span><span><strong>Eksperimentējam</strong></span><input type="radio" name="aiStage" value="Izmēģinām atsevišķus rīkus"></label>
+            <label class="choice"><span class="choice-number">03</span><span><strong>Izmantojam ikdienā</strong></span><input type="radio" name="aiStage" value="Izmantojam vairākos procesos"></label>
+            <label class="choice"><span class="choice-number">04</span><span><strong>Mērogojam uzņēmumā</strong></span><input type="radio" name="aiStage" value="MI ir daļa no uzņēmuma stratēģijas"></label>
+          </div>
+          <p class="form-footnote">Atbildes tiks rādītas tikai apkopotā veidā.</p>
+          <input id="aiAnonymous" type="checkbox" checked hidden>
+        </div>
+
+        <div class="form-step" data-step="3">
+          <p class="form-step-label">3. solis no 3</p>
+          <h2>Kā vēlies piedalīties?</h2>
+          <div class="choice-list participation-list">
+            <label class="participation-choice">
+              <input id="fullPortal" type="radio" name="participationMode" value="full" checked>
+              <span class="participation-copy">
+                <em>Ieteicams</em>
+                <strong>Pilna konferences pieredze</strong>
+                <small>Profils · jautājumi · balsojumi · rezultāti · networking</small>
+              </span>
+            </label>
+            <label class="participation-choice">
+              <input id="anonymousPortal" type="radio" name="participationMode" value="anonymous">
+              <span class="participation-copy">
+                <em>Bez profila</em>
+                <strong>Anonīma dalība</strong>
+                <small>Programma, anonīmi jautājumi un balsošana</small>
+              </span>
+            </label>
+          </div>
+          <div class="consent-list">
+            <label class="plain-check">
+              <input id="requiredConsent" type="checkbox">
+              <span>Piekrītu noteikumiem un privātuma politikai</span>
+            </label>
+            <label class="plain-check">
+              <input id="newsletter" type="checkbox">
+              <span>Vēlos saņemt ANIMAS jaunumus</span>
+            </label>
+          </div>
+          <input id="publicCompany" type="checkbox" hidden>
+          <input id="networking" type="checkbox" hidden>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" type="button" data-next>Turpināt</button>
+          <button class="btn" type="button" data-submit hidden>Pabeigt reģistrāciju</button>
+        </div>
+      </div>
+
+      <div class="confirmation">
+        <div class="confirmation-signal" aria-hidden="true">
+          <span>✓</span>
+        </div>
+        <p class="confirmation-eyebrow">Reģistrācija pabeigta</p>
+        <h2 id="confirmationName" class="confirmation-title">Paldies, tavs pieteikums ir saņemts.</h2>
+        <p class="confirmation-lead">Uz darba e-pastu nosūtīsim dalības apstiprinājumu un tavu unikālo AI Pass saiti.</p>
+
+        <div class="confirmation-details">
+          <div class="confirmation-detail">
+            <span>01</span>
+            <div>
+              <small>Pieteikuma statuss</small>
+              <strong id="confirmationStatus">Pieteikums saņemts</strong>
+            </div>
+          </div>
+          <div class="confirmation-detail">
+            <span>02</span>
+            <div>
+              <small>Nākamais solis</small>
+              <strong>Gaidīsim tevi 30. septembrī Rīgas Motormuzejā</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="confirmation-pass">
+          <div>
+            <span>Tavs dalībnieka profils</span>
+            <strong>AI Pass</strong>
+          </div>
+          <a class="btn" id="confirmationPassLink" href="../pass/">Atvērt manu AI Pass</a>
+        </div>
+
+        <a class="confirmation-home" href="../"><span aria-hidden="true">←</span> Atgriezties sākumlapā</a>
+      </div>
+      </section>
+    </section>
+  </main>
+  <script src="../config.js"></script>
+  <script src="../portal.js"></script>
+</body>
+</html>

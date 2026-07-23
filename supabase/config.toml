@@ -1,0 +1,46 @@
+project_id = "ai-reality-check-2026"
+
+[functions.companies-search]
+verify_jwt = false
+
+[functions.registrations]
+verify_jwt = false
+
+[functions.participant-pass]
+verify_jwt = false
+
+[functions.admin-registrations]
+verify_jwt = false
+
+[functions.checkin-scan]
+verify_jwt = false
+
+[functions.live-state]
+verify_jwt = false
+
+[functions.admin-live]
+verify_jwt = false
+
+[functions.questions]
+verify_jwt = false
+
+[functions.admin-questions]
+verify_jwt = false
+
+[functions.polls]
+verify_jwt = false
+
+[functions.admin-polls]
+verify_jwt = false
+
+[functions.results]
+verify_jwt = false
+
+[functions.wallet]
+verify_jwt = false
+
+[functions.networking]
+verify_jwt = false
+
+[functions.archive]
+verify_jwt = false
