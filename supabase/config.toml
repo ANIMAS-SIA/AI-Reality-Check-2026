@@ -44,3 +44,12 @@ verify_jwt = false
 
 [functions.archive]
 verify_jwt = false
+
+[functions.presentation]
+verify_jwt = false
+
+[functions.presentation-links]
+verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false
