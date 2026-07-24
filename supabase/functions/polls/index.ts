@@ -10,18 +10,24 @@ type PollRow = {
   agenda_item_id: string | null;
   title: string;
   status: string;
+  poll_type: string;
   allow_anonymous: boolean;
   results_public: boolean;
 };
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string };
+type TextResponseRow = { id: string; poll_id: string; response_text: string; created_at: string };
 type VotePayload = {
   pollId?: string;
   optionId?: string;
+  optionIds?: string[];
+  responseText?: string;
   participantId?: string;
   anonymousSessionId?: string;
   isAnonymous?: boolean;
 };
+
+const TEXT_POLL_TYPES = ["open_text", "word_cloud"];
 
 function clean(value?: string): string {
   return (value || "").trim();
@@ -35,6 +41,21 @@ async function getEvent(db: SupabaseRest): Promise<EventRow> {
 }
 
 async function resultsForPoll(db: SupabaseRest, poll: PollRow) {
+  if (TEXT_POLL_TYPES.includes(poll.poll_type)) {
+    const responses = await db.select<TextResponseRow>("poll_text_responses", {
+      poll_id: `eq.${poll.id}`,
+      hidden: "eq.false",
+      order: "created_at.desc",
+      limit: 300,
+    });
+    return {
+      poll,
+      options: [],
+      text_responses: responses.map((row) => row.response_text),
+      total_votes: responses.length,
+    };
+  }
+
   const options = await db.select<PollOptionRow>("poll_options", {
     poll_id: `eq.${poll.id}`,
     order: "display_order.asc",
@@ -70,8 +91,7 @@ async function listPolls(db: SupabaseRest, eventId: string): Promise<Response> {
 
 async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Response> {
   const pollId = clean(payload.pollId);
-  const optionId = clean(payload.optionId);
-  if (!pollId || !optionId) return errorResponse("Poll and option are required", 400);
+  if (!pollId) return errorResponse("Poll is required", 400);
 
   const poll = (await db.select<PollRow>("polls", { id: `eq.${pollId}`, limit: 1 }))[0];
   if (!poll) return errorResponse("Poll not found", 404);
@@ -80,14 +100,33 @@ async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Respo
   const participantId = clean(payload.participantId);
   const anonymousSessionId = clean(payload.anonymousSessionId) || crypto.randomUUID();
 
+  if (TEXT_POLL_TYPES.includes(poll.poll_type)) {
+    const responseText = clean(payload.responseText);
+    if (!responseText) return errorResponse("Response text is required", 400);
+    if (responseText.length > 280) return errorResponse("Response is too long", 422);
+    await db.insert("poll_text_responses", [{
+      poll_id: pollId,
+      participant_id: participantId || null,
+      anonymous_session_id: participantId ? null : anonymousSessionId,
+      response_text: responseText,
+    }]);
+    await broadcast("live:ai-reality-check-2026", "poll_voted", { poll_id: pollId });
+    return jsonResponse({ ok: true, anonymousSessionId, results: await resultsForPoll(db, poll) });
+  }
+
+  const optionIds = poll.poll_type === "multiple_choice"
+    ? (payload.optionIds || []).map(clean).filter(Boolean)
+    : [clean(payload.optionId)].filter(Boolean);
+  if (!optionIds.length) return errorResponse("At least one option is required", 400);
+
   try {
-    await db.insert("poll_votes", [{
+    await db.insert("poll_votes", optionIds.map((optionId) => ({
       poll_id: pollId,
       option_id: optionId,
       participant_id: participantId || null,
       anonymous_session_id: participantId ? null : anonymousSessionId,
       is_anonymous: payload.isAnonymous !== false,
-    }]);
+    })));
   } catch (error) {
     return errorResponse("Šajā balsojumā balss jau ir iesniegta.", 409, String(error));
   }

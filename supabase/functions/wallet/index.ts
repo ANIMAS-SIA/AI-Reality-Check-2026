@@ -1,6 +1,13 @@
 import { errorResponse, handleOptions, jsonResponse, requiredEnv } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { hashToken } from "../_shared/tokens.ts";
+import {
+  buildApplePassBody,
+  createApplePass,
+  logPerkPassError,
+  perkPassUserMessage,
+  PerkPassApiError,
+} from "../_shared/perkpass.ts";
 
 type TokenRow = { participant_id: string; expires_at: string | null; revoked_at: string | null };
 type ParticipantRow = {
@@ -12,6 +19,10 @@ type ParticipantRow = {
   company_id: string | null;
 };
 type CompanyRow = { id: string; name: string };
+type WalletPassRow = {
+  serial_number: string | null;
+  payload: { share_url?: string; barcode_value?: string } | null;
+};
 type GoogleServiceAccount = {
   client_email: string;
   private_key: string;
@@ -136,37 +147,6 @@ async function googleSaveUrl(participant: ParticipantRow, token: string, company
   };
 }
 
-function applePassJson(participant: ParticipantRow, companyName: string) {
-  return {
-    formatVersion: 1,
-    passTypeIdentifier: Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.lv.animas.conference",
-    serialNumber: participant.id,
-    teamIdentifier: Deno.env.get("APPLE_TEAM_ID") || "TEAMID",
-    organizationName: "ANIMAS",
-    description: "AI Reality Check 2026",
-    logoText: "AI Reality Check 2026",
-    foregroundColor: "rgb(244,240,233)",
-    backgroundColor: "rgb(6,6,6)",
-    labelColor: "rgb(141,141,150)",
-    eventTicket: {
-      primaryFields: [{ key: "event", label: "Konference", value: "AI Reality Check 2026" }],
-      secondaryFields: [
-        { key: "date", label: "Datums", value: "30.09.2026" },
-        { key: "name", label: "Dalībnieks", value: `${participant.first_name} ${participant.last_name}` },
-      ],
-      auxiliaryFields: [
-        { key: "venue", label: "Vieta", value: "Rīgas Motormuzejs" },
-        ...(companyName ? [{ key: "company", label: "Uzņēmums", value: companyName }] : []),
-      ],
-    },
-    barcodes: [{
-      message: participant.id,
-      format: "PKBarcodeFormatQR",
-      messageEncoding: "iso-8859-1",
-    }],
-  };
-}
-
 Deno.serve(async (request) => {
   const options = handleOptions(request);
   if (options) return options;
@@ -183,19 +163,39 @@ Deno.serve(async (request) => {
     const companyName = await resolveCompanyName(db, participant.company_id);
 
     if (provider === "apple") {
-      const passJson = applePassJson(participant, companyName);
-      await db.upsert("wallet_passes", [{
-        participant_id: participant.id,
-        provider: "apple",
-        serial_number: participant.id,
-        status: "pending_certificate",
-        payload: passJson,
-      }], "participant_id,provider");
-      return jsonResponse({
-        status: "pending_certificate",
-        message: "Apple .pkpass signing requires APPLE_PASS_CERT_PATH and certificate deployment.",
-        pass: passJson,
+      const existing = (await db.select<WalletPassRow>("wallet_passes", {
+        participant_id: `eq.${participant.id}`,
+        provider: "eq.apple",
+        limit: 1,
+      }))[0];
+      if (existing?.serial_number && existing.payload?.share_url) {
+        return jsonResponse({ shareUrl: existing.payload.share_url });
+      }
+
+      const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
+      const ticketId = `ARC-2026-${participant.id.slice(0, 8).toUpperCase()}`;
+      const barcodeValue = `${siteUrl}/checkin/?token=${token}`;
+      const passBody = buildApplePassBody({
+        attendeeName: `${participant.first_name} ${participant.last_name}`.trim(),
+        companyName,
+        barcodeValue,
       });
+
+      try {
+        const created = await createApplePass(passBody);
+        await db.upsert("wallet_passes", [{
+          participant_id: participant.id,
+          provider: "apple",
+          serial_number: created.serialNumber,
+          status: "created",
+          payload: { share_url: created.shareUrl, barcode_value: barcodeValue },
+        }], "participant_id,provider");
+        return jsonResponse({ shareUrl: created.shareUrl });
+      } catch (error) {
+        logPerkPassError({ participantId: participant.id, ticketId }, error);
+        const status = error instanceof PerkPassApiError && error.status === 429 ? 429 : 502;
+        return errorResponse(perkPassUserMessage(), status);
+      }
     }
 
     if (provider === "google") {

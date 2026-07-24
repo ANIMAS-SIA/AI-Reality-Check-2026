@@ -106,7 +106,25 @@ function applyWalletLinks(token) {
     if (qr) qr.removeAttribute("src");
     return;
   }
-  if (apple) apple.href = `${API_BASE}/wallet?provider=apple&token=${encodeURIComponent(token)}`;
+  if (apple) {
+    apple.removeAttribute("aria-disabled");
+    apple.href = `${API_BASE}/wallet?provider=apple&token=${encodeURIComponent(token)}`;
+    apple.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (apple.getAttribute("aria-disabled") === "true") return;
+      apple.setAttribute("aria-disabled", "true");
+      fetch(apple.href)
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.shareUrl) {
+            throw new Error(data.error || "Apple Wallet biļeti pašlaik neizdevās izveidot. Lūdzu, mēģiniet vēlreiz.");
+          }
+          window.open(data.shareUrl, "_blank", "noopener");
+        })
+        .catch((error) => showToast(error.message || "Apple Wallet biļeti pašlaik neizdevās izveidot. Lūdzu, mēģiniet vēlreiz."))
+        .finally(() => apple.removeAttribute("aria-disabled"));
+    });
+  }
   if (google) google.href = `${API_BASE}/wallet?provider=google&token=${encodeURIComponent(token)}`;
   if (qr) {
     const checkinUrl = new URL("../checkin/", window.location.href);
@@ -248,20 +266,6 @@ function initNetworkingPass(token) {
   reloadNetworking();
 }
 
-async function adminRequest(path, options = {}) {
-  const adminKey = sessionStorage.getItem("arcAdminKey") || "";
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "x-admin-key": adminKey,
-      ...(options.headers || {})
-    }
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Admin pieprasījums neizdevās.");
-  return data;
-}
-
 function getAnonSessionId() {
   let id = localStorage.getItem("arcAnonymousSessionId");
   if (!id) {
@@ -380,13 +384,15 @@ async function respondNetworkingContact(token, requestId, status) {
   return data;
 }
 
-async function submitPollVote(pollId, optionId) {
+async function submitPollVote(pollId, answer) {
   const response = await fetch(`${API_BASE}/polls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       pollId,
-      optionId,
+      optionId: answer?.optionId,
+      optionIds: answer?.optionIds,
+      responseText: answer?.responseText,
       anonymousSessionId: getAnonSessionId(),
       isAnonymous: true,
     }),
@@ -408,6 +414,7 @@ function subscribeLiveRealtime(onMessage) {
     .on("broadcast", { event: "question_moderated" }, onMessage)
     .on("broadcast", { event: "poll_changed" }, onMessage)
     .on("broadcast", { event: "poll_voted" }, onMessage)
+    .on("broadcast", { event: "presentation_changed" }, onMessage)
     .subscribe((status, error) => {
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") console.warn(status, error);
     });
@@ -749,23 +756,16 @@ function setActiveTab(name) {
   });
 }
 
-function formatTimeRange(item) {
-  if (!item) return "";
-  const start = item.time || "";
-  const end = new Intl.DateTimeFormat("lv-LV", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Riga",
-  }).format(new Date(item.ends_at));
-  return `${start}-${end}`;
-}
-
 async function fetchLiveState() {
   if (!API_BASE) return null;
   const response = await fetch(`${API_BASE}/live-state`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Live programmu neizdevās ielādēt.");
   return data;
+}
+
+function agendaSignature(agenda) {
+  return (agenda || []).map((item) => `${item.id}:${item.status}`).join("|");
 }
 
 function renderLiveProgram(agenda) {
@@ -792,16 +792,31 @@ function renderLiveProgram(agenda) {
             ? "Pabeigts"
             : "Vēlāk";
     const meta = [item.speaker_name, item.speaker_company].filter(Boolean).join(" · ") || item.description;
+    const actions = item.is_break ? "" : `
+      <div class="agenda-actions">
+        <button class="agenda-action" type="button" data-agenda-action="questions" data-agenda-id="${item.id}" aria-expanded="false" aria-label="Jautāt par: ${item.title}">
+          <span class="agenda-action-icon" aria-hidden="true">?</span>Jautāt <b data-question-count="${item.id}">0</b>
+        </button>
+        <button class="agenda-action" type="button" data-agenda-action="polls" data-agenda-id="${item.id}" aria-expanded="false" aria-label="Balsot par: ${item.title}">
+          <span class="agenda-action-icon" aria-hidden="true">▤</span>Balsot <b class="agenda-live-badge" data-poll-live="${item.id}" hidden>LIVE</b>
+        </button>
+      </div>`;
     return `
-      <button class="program-item ${cls}" type="button" data-agenda-id="${item.id}" aria-label="Atvērt programmas punktu: ${item.title}">
-        <span class="time">${item.time}</span>
-        <div>
-          <span class="program-type">${item.is_break ? "Pauze" : item.status === "now" ? "Live" : "Programma"}</span>
-          <strong>${item.title}</strong>
-          <p>${meta || ""}</p>
+      <article class="program-item ${cls}" data-agenda-item="${item.id}">
+        <div class="program-item-row">
+          <span class="time">${item.time}</span>
+          <div class="program-item-body">
+            <span class="program-type">${item.is_break ? "Pauze" : item.status === "now" ? "Live" : "Programma"}</span>
+            <strong>${item.title}</strong>
+            <p>${meta || ""}</p>
+          </div>
+          <div class="program-item-side">
+            <span class="program-state">${item.status === "now" ? "<i></i>" : ""}${label}</span>
+            ${actions}
+          </div>
         </div>
-        <span class="program-state">${item.status === "now" ? "<i></i>" : ""}${label} <b>→</b></span>
-      </button>
+        ${item.is_break ? "" : `<div class="agenda-expand" data-agenda-expand="${item.id}" hidden></div>`}
+      </article>
     `;
   }).join("");
 }
@@ -821,15 +836,36 @@ function questionCardsMarkup(questions) {
     `).join("");
 }
 
-function renderLiveQuestions(questions) {
-  document.querySelectorAll("[data-live-questions]").forEach((container) => {
-    container.innerHTML = questionCardsMarkup(questions);
+function wordCloudMarkup(responses) {
+  if (!responses.length) return `<p class="live-empty">Vēl nav atbilžu.</p>`;
+  const counts = new Map();
+  responses.forEach((text) => {
+    text.toLowerCase().split(/\s+/).filter((word) => word.length > 2).forEach((word) => {
+      counts.set(word, (counts.get(word) || 0) + 1);
+    });
   });
-  setText("liveNowQuestionCount", `${questions.length} ${questions.length === 1 ? "jautājums" : "jautājumi"}`);
-  setText("liveNowQuestionMeta", questions[0]?.body || "Uzdod jautājumu pašreizējam runātājam.");
+  const max = Math.max(1, ...counts.values());
+  const words = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40);
+  return `<div class="word-cloud">${words.map(([word, count]) => {
+    const size = 12 + Math.round((count / max) * 28);
+    return `<span style="font-size:${size}px">${word}</span>`;
+  }).join(" ")}</div>`;
+}
+
+function textResponseListMarkup(responses) {
+  if (!responses.length) return `<p class="live-empty">Vēl nav atbilžu.</p>`;
+  return `<ul class="poll-text-list">${responses.map((text) => `<li>${text}</li>`).join("")}</ul>`;
 }
 
 function renderPollResultSet(result, container) {
+  if (result.text_responses) {
+    container.innerHTML = `
+      <span class="live-kicker">Rezultāti · ${result.total_votes || 0} atbildes</span>
+      <h3>${result.poll.title}</h3>
+      ${result.poll.poll_type === "word_cloud" ? wordCloudMarkup(result.text_responses) : textResponseListMarkup(result.text_responses)}
+    `;
+    return;
+  }
   container.innerHTML = `
     <span class="live-kicker">Rezultāti · ${result.total_votes || 0} atbildes</span>
     <h3>${result.poll.title}</h3>
@@ -845,113 +881,88 @@ function renderPollResultSet(result, container) {
   `;
 }
 
-function renderLivePolls(state) {
-  const active = state?.active;
-  const pollCard = document.getElementById("liveActivePoll");
-  const resultsBox = document.getElementById("livePollResults");
-  const resultsPanel = document.getElementById("liveResultsList");
-
-  if (pollCard) {
-    if (!active) {
-      pollCard.innerHTML = `<span class="live-kicker">Balsojumi</span><h2>Pašlaik nav aktīva balsojuma</h2><p class="live-empty">Kad moderators aktivizēs balsojumu, tas parādīsies šeit.</p>`;
-      setText("livePollQuestionMirror", "Pašlaik nav aktīva balsojuma.");
-      setText("liveNowPollTitle", "Gaida aktīvo balsojumu");
-      setText("liveNowPollMeta", "Rezultāti būs pieejami pēc balsojuma.");
-    } else {
-      setText("livePollQuestionMirror", active.poll.title);
-      setText("liveNowPollTitle", active.poll.title);
-      setText("liveNowPollMeta", `${active.total_votes || 0} dalībnieki jau atbildējuši.`);
-      pollCard.innerHTML = `
-        <header><strong>Izvēlies vienu atbildi</strong><span>1 no 1</span></header>
-        ${active.options.map((option) => `
-          <button class="poll-option" type="button" data-poll-id="${active.poll.id}" data-option-id="${option.id}">
-            <span class="poll-letter">${String.fromCharCode(65 + active.options.indexOf(option))}</span>
-            <strong>${option.label}</strong>
-            <i></i>
-          </button>
-        `).join("")}
-        <label class="poll-anonymous"><input type="checkbox"> Atbildēt anonīmi</label>
-        <button class="live-submit" type="button" disabled>Iesniegt atbildi <span>→</span></button>
-      `;
-    }
-  }
-
-  if (resultsBox && active) renderPollResultSet(active, resultsBox);
-
-  if (resultsPanel) {
-    const results = state?.results || [];
-    resultsPanel.innerHTML = results.length
-      ? results.map((result) => `<article class="live-result-card" data-result-poll="${result.poll.id}"></article>`).join("")
-      : `<article class="live-result-empty"><span>Rezultāti</span><h2>Publicētu rezultātu vēl nav</h2></article>`;
-    const totalVotes = results.reduce((sum, result) => sum + Number(result.total_votes || 0), 0);
-    setText("liveResultScore", results.length && totalVotes
-      ? Math.min(100, Math.round(totalVotes / results.length))
-      : "--");
-    results.forEach((result) => {
-      const container = resultsPanel.querySelector(`[data-result-poll="${result.poll.id}"]`);
-      if (container) renderPollResultSet(result, container);
-    });
-  }
+function readinessLabel(percent) {
+  if (percent >= 75) return "Aktīvi ievieš MI";
+  if (percent >= 50) return "Praktiski ieinteresēti";
+  if (percent >= 25) return "Izzina iespējas";
+  return "Sākuma posmā";
 }
 
-function renderPublicResults(data, target) {
-  if (!target) return;
-  if (!data) {
-    target.innerHTML = `<article class="card"><h2>Rezultāti nav pieejami.</h2></article>`;
-    return;
-  }
-  const segments = data.company_segments || {};
-  target.innerHTML = `
-    <article class="card is-accent">
-      <span class="eyebrow">Kopējais AI Reality Check</span>
-      <h2>${data.summary?.headline || "Rezultāti tiks publicēti drīzumā."}</h2>
-      <p class="fine">${data.summary?.participant_count || 0} dalībnieki · ${data.summary?.represented_companies || 0} uzņēmumi</p>
-    </article>
-    ${(data.polls || []).map((result) => `<article class="card" data-public-result="${result.poll.id}"></article>`).join("")}
-    <article class="card">
-      <span class="eyebrow">Company360 griezumi</span>
-      <h2>Agregēti segmenti</h2>
-      <p class="fine">Segmenti tiek rādīti tikai grupām ar vismaz 3 uzņēmumiem.</p>
-      <div class="grid three">
-        <div><strong>Nozares</strong><p class="fine">${(segments.industries || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-        <div><strong>Lielums</strong><p class="fine">${(segments.sizes || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-        <div><strong>Reģioni</strong><p class="fine">${(segments.regions || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-      </div>
-    </article>
-  `;
-  (data.polls || []).forEach((result) => {
-    const container = target.querySelector(`[data-public-result="${result.poll.id}"]`);
-    if (container) renderPollResultSet(result, container);
-  });
-}
+function renderResultsSection(data) {
+  const intro = document.getElementById("resultsIntro");
+  const scoreRing = document.getElementById("resultsScoreRing");
+  const scoreValue = document.getElementById("resultsScoreValue");
+  const scoreLabel = document.getElementById("resultsScoreLabel");
+  const highlights = document.getElementById("resultsHighlights");
+  const pollList = document.getElementById("resultsPollList");
+  const segmentsBox = document.getElementById("resultsSegments");
 
-function applyLiveState(state) {
-  const current = state?.current;
-  const next = state?.next;
-  if (current) {
-    setText("liveCurrentTime", `● Live · ${current.time}`);
-    setText("liveCurrentDuration", formatTimeRange(current));
-    setText("liveCurrentTitle", current.title);
-    const speaker = [current.speaker_name, current.speaker_company].filter(Boolean).join(" · ");
-    setText("liveCurrentDescription", [speaker, current.description].filter(Boolean).join(". "));
-    setText("liveProgramCurrentTime", `● Šobrīd · ${current.time}`);
-    setText("liveProgramRemaining", formatTimeRange(current));
-    setText("liveProgramCurrentTitle", current.title);
-    setText("liveProgramCurrentMeta", [speaker, current.description].filter(Boolean).join(". "));
-    setText("liveQuestionAgenda", `Jautājums tiks piesaistīts prezentācijai “${current.title}”.`);
-    setText("livePollAgenda", current.title);
-    setText("livePollSpeaker", speaker || "Atbildi anonīmi un redzi kopējo auditorijas viedokli.");
+  const summary = data?.summary || {};
+  const segments = data?.company_segments || {};
+  const polls = data?.polls || [];
+  const hasData = Boolean(summary.participant_count);
+  const score = Number(summary.using_ai_percent || 0);
+
+  if (intro) {
+    intro.textContent = hasData
+      ? `Ko par MI domā ${summary.participant_count} konferences dalībnieki no ${summary.represented_companies || 0} Latvijas uzņēmumiem un organizācijām.`
+      : (summary.headline || "Rezultāti tiks publicēti drīzumā.");
   }
-  setText("liveNextLine", next ? `Tālāk: ${next.title}, ${next.time}.` : "Tālāk: programma noslēgumā.");
-  renderLiveProgram(state?.agenda || []);
+  if (scoreRing) scoreRing.style.setProperty("--score", score);
+  if (scoreValue) scoreValue.textContent = hasData ? String(score) : "--";
+  if (scoreLabel) scoreLabel.textContent = hasData ? readinessLabel(score) : "Ielādē datus...";
+
+  if (highlights) {
+    const tiles = polls.filter((result) => result.top).slice(0, 3);
+    highlights.hidden = !tiles.length;
+    highlights.innerHTML = tiles.map((result) => `
+      <article class="results-tile">
+        <strong>${result.top.percent || 0}%</strong>
+        <span>${result.top.label}</span>
+        <small>${result.poll.title}</small>
+      </article>
+    `).join("");
+  }
+
+  if (pollList) {
+    pollList.innerHTML = polls.length
+      ? polls.map((result, index) => `
+        <article class="results-poll-card">
+          <span class="live-kicker">${String(index + 1).padStart(2, "0")} · MI auditorijas balsojums</span>
+          <h3>${result.poll.title}</h3>
+          <div class="meter">
+            ${result.options.map((option) => `
+              <div class="meter-row">
+                <span>${option.label}</span>
+                <span class="meter-track"><span class="meter-fill" style="--value:${option.percent || 0}%"></span></span>
+                <strong>${option.percent || 0}%</strong>
+              </div>
+            `).join("")}
+          </div>
+          <small class="results-poll-meta">${result.total_votes || 0} atbildes</small>
+        </article>
+      `).join("")
+      : `<article class="results-empty"><span>Rezultāti</span><h2>Publicētu balsojumu vēl nav</h2></article>`;
+  }
+
+  if (segmentsBox) {
+    segmentsBox.innerHTML = `
+      <div><strong>Nozares</strong><p class="fine">${(segments.industries || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+      <div><strong>Lielums</strong><p class="fine">${(segments.sizes || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+      <div><strong>Reģioni</strong><p class="fine">${(segments.regions || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+    `;
+  }
 }
 
 function initLive() {
   const p = getParticipant();
-  let currentAgendaItemId = null;
-  let selectedAgendaItemId = null;
-  let activePollId = null;
   let agendaItems = [];
+  let lastAgendaSignature = "";
+  let questionsByItem = new Map();
+  let latestPollState = null;
+  let openExpand = null;
+  let activeQuestionFilter = "top";
+
   setText("liveMode", p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja");
   setText("liveUser", `${p.firstName} ${p.lastName}`);
 
@@ -959,152 +970,261 @@ function initLive() {
     button.addEventListener("click", () => setActiveTab(button.dataset.liveTab || button.dataset.tab));
   });
 
-  async function refreshQuestions() {
+  function myQuestionIds() {
     try {
-      const questions = await fetchQuestions(currentAgendaItemId);
-      renderLiveQuestions(questions);
-    } catch (error) {
-      console.warn(error);
+      return new Set(JSON.parse(localStorage.getItem("arcMyQuestionIds") || "[]"));
+    } catch {
+      return new Set();
     }
   }
 
-  function speakerInitials(name) {
-    return (name || "")
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "AI";
+  function rememberMyQuestion(id) {
+    const ids = myQuestionIds();
+    ids.add(id);
+    localStorage.setItem("arcMyQuestionIds", JSON.stringify([...ids]));
   }
 
-  function renderAgendaPolls(itemId, pollState) {
-    const container = document.getElementById("agendaDetailPolls");
-    if (!container) return;
-    const active = pollState?.active?.poll?.agenda_item_id === itemId ? pollState.active : null;
-    const published = (pollState?.results || []).filter((result) => result.poll?.agenda_item_id === itemId);
-    const resultIds = new Set(published.map((result) => result.poll.id));
-    const cards = [];
+  function agendaExpandQuestionsMarkup() {
+    return `
+      <div class="live-question-layout">
+        <article class="live-question-form">
+          <span class="live-kicker">Jautā runātājam</span>
+          <h2>Ko vēlies uzzināt?</h2>
+          <p>Jautājums automātiski tiks piesaistīts šim programmas punktam.</p>
+          <textarea data-role="question-input" maxlength="280" placeholder="Ieraksti savu jautājumu..."></textarea>
+          <div class="live-question-meta">
+            <span data-role="question-count">280 rakstzīmes</span>
+            <label><input type="checkbox" data-role="question-anon" checked> Iesniegt anonīmi</label>
+          </div>
+          <button class="live-submit" type="button" data-role="question-submit">Iesniegt jautājumu <span>→</span></button>
+        </article>
+        <section class="live-audience-questions">
+          <div class="agenda-question-tabs">
+            <button type="button" class="is-active" data-role="question-filter" data-filter="top">Populārākie</button>
+            <button type="button" data-role="question-filter" data-filter="mine">Mani jautājumi</button>
+          </div>
+          <div data-role="question-list"><p class="live-empty">Ielādē jautājumus...</p></div>
+        </section>
+      </div>
+    `;
+  }
 
+  function renderQuestionListInto(container, itemId, filter) {
+    if (!container) return;
+    const all = questionsByItem.get(itemId) || [];
+    if (filter === "mine") {
+      const mine = myQuestionIds();
+      const list = all.filter((question) => mine.has(question.id));
+      container.innerHTML = list.length
+        ? questionCardsMarkup(list)
+        : `<p class="live-empty">Tu vēl neesi uzdevis jautājumu šai tēmai.</p>`;
+      return;
+    }
+    container.innerHTML = questionCardsMarkup(all);
+  }
+
+  function agendaPollMarkup(itemId, pollState) {
+    const active = pollState?.active?.poll?.agenda_item_id === itemId ? pollState.active : null;
+    const published = (pollState?.results || [])
+      .filter((result) => result.poll?.agenda_item_id === itemId && (!active || result.poll.id !== active.poll.id));
+
+    if (!active && !published.length) {
+      return `<p class="live-empty">Šai tēmai pašlaik nav aktīvu vai publicētu balsojumu.</p>`;
+    }
+
+    const cards = [];
     if (active) {
-      cards.push(`
-        <article class="agenda-poll-card">
-          <span class="live-status-label"><i></i> Aktīvs balsojums</span>
-          <h3>${active.poll.title}</h3>
+      const pollType = active.poll.poll_type;
+      const isText = pollType === "open_text" || pollType === "word_cloud";
+      const isMulti = pollType === "multiple_choice";
+      const body = isText
+        ? `
+          <textarea class="poll-text-input" maxlength="280" placeholder="Ieraksti savu atbildi..."></textarea>
+          <button class="live-submit" type="button" data-role="poll-text-submit" data-poll-id="${active.poll.id}">Iesniegt atbildi <span>→</span></button>
+        `
+        : `
           ${active.options.map((option, index) => `
-            <button class="poll-option" type="button" data-poll-id="${active.poll.id}" data-option-id="${option.id}">
+            <button class="poll-option" type="button" data-poll-id="${active.poll.id}" data-option-id="${option.id}" data-multi="${isMulti}">
               <span class="poll-letter">${String.fromCharCode(65 + index)}</span>
               <strong>${option.label}</strong>
               <i></i>
             </button>
           `).join("")}
-          <button class="live-submit" type="button" disabled>Iesniegt atbildi <span>→</span></button>
+          <label class="poll-anonymous"><input type="checkbox" checked disabled> Atbilde vienmēr anonīma</label>
+          <button class="live-submit" type="button" disabled data-role="poll-option-submit">Iesniegt atbildi <span>→</span></button>
+        `;
+      cards.push(`
+        <article class="agenda-poll-card">
+          <span class="live-status-label"><i></i> Aktīvs balsojums</span>
+          <h3>${active.poll.title}</h3>
+          ${body}
         </article>
       `);
     }
-
     published.forEach((result) => {
       cards.push(`<article class="agenda-poll-card" data-agenda-result="${result.poll.id}"></article>`);
     });
+    return `<div class="agenda-poll-grid">${cards.join("")}</div>`;
+  }
 
-    if (!cards.length) {
-      container.innerHTML = `<p class="live-empty">Šai tēmai pašlaik nav aktīvu vai publicētu balsojumu.</p>`;
-      return;
-    }
+  function fillPollPanel(itemId, container) {
+    if (!container) return;
+    container.innerHTML = agendaPollMarkup(itemId, latestPollState);
+    (latestPollState?.results || [])
+      .filter((result) => result.poll?.agenda_item_id === itemId)
+      .forEach((result) => {
+        const target = container.querySelector(`[data-agenda-result="${result.poll.id}"]`);
+        if (target) renderPollResultSet(result, target);
+      });
+  }
 
-    container.innerHTML = `<div class="agenda-poll-grid">${cards.join("")}</div>`;
-    published.forEach((result) => {
-      const target = container.querySelector(`[data-agenda-result="${result.poll.id}"]`);
-      if (target) renderPollResultSet(result, target);
-    });
-
-    if (active && resultIds.has(active.poll.id)) {
-      const duplicate = container.querySelector(`[data-agenda-result="${active.poll.id}"]`);
-      duplicate?.remove();
+  function fillExpandContent(itemId, mode) {
+    const card = document.querySelector(`.program-item[data-agenda-item="${itemId}"]`);
+    const panel = card?.querySelector("[data-agenda-expand]");
+    if (!panel) return;
+    if (mode === "questions") {
+      renderQuestionListInto(panel.querySelector('[data-role="question-list"]'), itemId, activeQuestionFilter);
+    } else {
+      fillPollPanel(itemId, panel.querySelector('[data-role="poll-panel"]'));
     }
   }
 
-  async function openAgendaDetail(itemId, activateView = true) {
-    const item = agendaItems.find((agendaItem) => agendaItem.id === itemId);
-    if (!item) return;
-    selectedAgendaItemId = item.id;
-    const talkIndex = agendaItems.filter((agendaItem) => !agendaItem.is_break).findIndex((agendaItem) => agendaItem.id === item.id);
-    const displayNumber = item.is_break ? agendaItems.findIndex((agendaItem) => agendaItem.id === item.id) + 1 : talkIndex + 1;
-    setText("agendaDetailType", item.is_break ? "Pauze" : item.status === "now" ? "Live · programmas punkts" : "Programmas punkts");
-    setText("agendaDetailTime", formatTimeRange(item));
-    setText("agendaDetailTitle", item.title);
-    setText("agendaDetailDescription", item.description || (item.is_break ? "Laiks atelpai un sarunām ar citiem dalībniekiem." : "Plašāka informācija par šo programmas punktu tiks papildināta."));
-    setText("agendaDetailSpeaker", item.speaker_name || (item.is_break ? "Konferences pauze" : "Runātājs tiks precizēts"));
-    setText("agendaDetailSpeakerMeta", [item.speaker_role, item.speaker_company].filter(Boolean).join(" · "));
-    setText("agendaDetailNumber", String(Math.max(displayNumber, 1)).padStart(2, "0"));
+  function setExpandChrome(itemId, mode, isOpen) {
+    const card = document.querySelector(`.program-item[data-agenda-item="${itemId}"]`);
+    if (!card) return;
+    card.classList.toggle("is-expanded", isOpen);
+    card.querySelectorAll("[data-agenda-action]").forEach((btn) => {
+      const active = isOpen && btn.dataset.agendaAction === mode;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-expanded", String(active));
+    });
+  }
 
-    const portrait = document.getElementById("agendaDetailPortrait");
-    if (portrait) {
-      portrait.innerHTML = item.speaker_image_url
-        ? `<img src="${item.speaker_image_url}" alt="">`
-        : `<span>${speakerInitials(item.speaker_name)}</span>`;
+  function closeAgendaExpand() {
+    if (!openExpand) return;
+    const { itemId } = openExpand;
+    const card = document.querySelector(`.program-item[data-agenda-item="${itemId}"]`);
+    const panel = card?.querySelector("[data-agenda-expand]");
+    setExpandChrome(itemId, null, false);
+    if (panel) {
+      panel.hidden = true;
+      panel.innerHTML = "";
     }
+    openExpand = null;
+  }
 
-    const interactionGrid = document.querySelector(".agenda-detail-grid");
-    const pollsSection = document.querySelector(".agenda-detail-polls");
-    if (interactionGrid) interactionGrid.hidden = Boolean(item.is_break);
-    if (pollsSection) pollsSection.hidden = Boolean(item.is_break);
-    if (activateView) {
-      setActiveTab("agenda-detail");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  async function openAgendaExpand(itemId, mode) {
+    if (openExpand && openExpand.itemId === itemId && openExpand.mode === mode) {
+      closeAgendaExpand();
+      return;
     }
-    if (item.is_break) return;
+    if (openExpand) closeAgendaExpand();
 
-    const questionsBox = document.getElementById("agendaDetailQuestions");
-    const pollsBox = document.getElementById("agendaDetailPolls");
-    if (questionsBox) questionsBox.innerHTML = `<p class="live-empty">Ielādē jautājumus...</p>`;
-    if (pollsBox) pollsBox.innerHTML = `<p class="live-empty">Ielādē balsojumus...</p>`;
+    const card = document.querySelector(`.program-item[data-agenda-item="${itemId}"]`);
+    const panel = card?.querySelector("[data-agenda-expand]");
+    if (!card || !panel) return;
+
+    openExpand = { itemId, mode };
+    activeQuestionFilter = "top";
+    setExpandChrome(itemId, mode, true);
+    panel.hidden = false;
+    panel.innerHTML = mode === "questions"
+      ? agendaExpandQuestionsMarkup()
+      : `<div class="live-loading" data-role="poll-loading">Ielādē balsojumu...</div><div class="agenda-poll-panel" data-role="poll-panel" hidden></div>`;
+
+    if (mode === "polls" && !latestPollState) {
+      try {
+        latestPollState = await fetchPollState();
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+    if (!openExpand || openExpand.itemId !== itemId || openExpand.mode !== mode) return;
+    if (mode === "polls") {
+      panel.querySelector('[data-role="poll-loading"]')?.remove();
+      const box = panel.querySelector('[data-role="poll-panel"]');
+      if (box) box.hidden = false;
+    }
+    fillExpandContent(itemId, mode);
+  }
+
+  function restoreOpenExpandAfterRerender() {
+    if (!openExpand) return;
+    const { itemId, mode } = openExpand;
+    const card = document.querySelector(`.program-item[data-agenda-item="${itemId}"]`);
+    const panel = card?.querySelector("[data-agenda-expand]");
+    if (!card || !panel) {
+      openExpand = null;
+      return;
+    }
+    setExpandChrome(itemId, mode, true);
+    panel.hidden = false;
+    panel.innerHTML = mode === "questions"
+      ? agendaExpandQuestionsMarkup()
+      : `<div class="agenda-poll-panel" data-role="poll-panel"></div>`;
+    fillExpandContent(itemId, mode);
+  }
+
+  function updateAgendaBadges() {
+    document.querySelectorAll("[data-question-count]").forEach((el) => {
+      el.textContent = String((questionsByItem.get(el.dataset.questionCount) || []).length);
+    });
+    document.querySelectorAll("[data-poll-live]").forEach((el) => {
+      el.hidden = latestPollState?.active?.poll?.agenda_item_id !== el.dataset.pollLive;
+    });
+  }
+
+  async function refreshQuestions() {
     try {
-      const [questions, polls] = await Promise.all([fetchQuestions(item.id), fetchPollState()]);
-      if (selectedAgendaItemId !== item.id) return;
-      if (questionsBox) questionsBox.innerHTML = questionCardsMarkup(questions);
-      renderAgendaPolls(item.id, polls);
+      const all = await fetchQuestions();
+      questionsByItem = new Map();
+      all.forEach((question) => {
+        const key = question.agenda_item_id || "";
+        if (!questionsByItem.has(key)) questionsByItem.set(key, []);
+        questionsByItem.get(key).push(question);
+      });
+      updateAgendaBadges();
+      if (openExpand?.mode === "questions") fillExpandContent(openExpand.itemId, "questions");
     } catch (error) {
-      if (questionsBox) questionsBox.innerHTML = `<p class="live-empty">Datus neizdevās ielādēt. Mēģini vēlreiz.</p>`;
-      if (pollsBox) pollsBox.innerHTML = `<p class="live-empty">Datus neizdevās ielādēt. Mēģini vēlreiz.</p>`;
       console.warn(error);
     }
   }
 
   async function refreshPolls() {
     try {
-      const pollState = await fetchPollState();
-      const nextPollId = pollState?.active?.poll?.id || null;
-      if (activePollId && nextPollId && activePollId !== nextPollId) {
-        const notice = document.getElementById("livePollNotice");
-        if (notice) {
-          notice.hidden = false;
-          window.setTimeout(() => { notice.hidden = true; }, 5000);
-        }
-      }
-      activePollId = nextPollId;
-      renderLivePolls(pollState);
+      latestPollState = await fetchPollState();
+      updateAgendaBadges();
+      if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
     } catch (error) {
       console.warn(error);
-      setText("liveSyncStatus", "Savienojums nestabils. Mēģinām vēlreiz...");
+    }
+  }
+
+  async function refreshResults() {
+    try {
+      renderResultsSection(await fetchResults());
+    } catch (error) {
+      console.warn(error);
     }
   }
 
   async function refreshLive() {
     try {
       const state = await fetchLiveState();
-      if (state) {
-        currentAgendaItemId = state.current?.id || null;
-        agendaItems = state.agenda || [];
-        applyLiveState(state);
-        setText("liveSyncStatus", "Live dati atjaunināti.");
-        await refreshQuestions();
-        await refreshPolls();
-        if (selectedAgendaItemId) await openAgendaDetail(selectedAgendaItemId, false);
+      if (!state) return;
+      agendaItems = state.agenda || [];
+      const signature = agendaSignature(agendaItems);
+      if (signature !== lastAgendaSignature) {
+        lastAgendaSignature = signature;
+        renderLiveProgram(agendaItems);
+        restoreOpenExpandAfterRerender();
+        updateAgendaBadges();
       }
+      await refreshQuestions();
+      await refreshPolls();
+      await refreshResults();
     } catch (error) {
       console.warn(error);
-      setText("liveSyncStatus", "Nav savienojuma. Dati tiks atkārtoti ielādēti.");
     }
   }
 
@@ -1112,54 +1232,54 @@ function initLive() {
   window.setInterval(refreshLive, 10000);
   subscribeLiveRealtime(() => refreshLive());
 
-  const question = document.getElementById("questionText");
-  const count = document.getElementById("questionCount");
-  question?.addEventListener("input", () => {
-    const left = 280 - question.value.length;
-    count.textContent = `${left} rakstzīmes`;
-  });
-
-  document.getElementById("sendQuestion")?.addEventListener("click", () => {
-    const body = question.value.trim();
-    if (!body) {
-      showToast("Ierakstiet jautājumu pirms iesniegšanas.");
-      return;
-    }
-    const isAnonymous = document.getElementById("questionAnonymous")?.checked !== false;
-    submitQuestion(body, currentAgendaItemId, isAnonymous)
-      .then(() => {
-        question.value = "";
-        count.textContent = "280 rakstzīmes";
-        showToast("Jautājums iesniegts moderācijai.");
-      })
-      .catch((error) => showToast(error.message || "Jautājumu neizdevās iesniegt."));
-  });
-
-  const agendaQuestion = document.getElementById("agendaQuestionText");
-  const agendaQuestionCount = document.getElementById("agendaQuestionCount");
-  agendaQuestion?.addEventListener("input", () => {
-    agendaQuestionCount.textContent = `${280 - agendaQuestion.value.length} rakstzīmes`;
-  });
-
-  document.getElementById("sendAgendaQuestion")?.addEventListener("click", () => {
-    const body = agendaQuestion?.value.trim() || "";
-    if (!body || !selectedAgendaItemId) {
-      showToast("Ierakstiet jautājumu pirms iesniegšanas.");
-      return;
-    }
-    const isAnonymous = document.getElementById("agendaQuestionAnonymous")?.checked !== false;
-    submitQuestion(body, selectedAgendaItemId, isAnonymous)
-      .then(() => {
-        agendaQuestion.value = "";
-        agendaQuestionCount.textContent = "280 rakstzīmes";
-        showToast("Jautājums iesniegts moderācijai un piesaistīts šai tēmai.");
-      })
-      .catch((error) => showToast(error.message || "Jautājumu neizdevās iesniegt."));
-  });
-
   document.getElementById("liveProgramList")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-agenda-id]");
-    if (button) openAgendaDetail(button.dataset.agendaId);
+    const actionBtn = event.target.closest("[data-agenda-action]");
+    if (actionBtn) {
+      openAgendaExpand(actionBtn.dataset.agendaId, actionBtn.dataset.agendaAction);
+      return;
+    }
+
+    const filterBtn = event.target.closest('[data-role="question-filter"]');
+    if (filterBtn) {
+      filterBtn.parentElement.querySelectorAll("button").forEach((btn) => btn.classList.remove("is-active"));
+      filterBtn.classList.add("is-active");
+      activeQuestionFilter = filterBtn.dataset.filter;
+      if (openExpand) {
+        const listBox = filterBtn.closest(".live-audience-questions")?.querySelector('[data-role="question-list"]');
+        renderQuestionListInto(listBox, openExpand.itemId, activeQuestionFilter);
+      }
+      return;
+    }
+
+    const submitBtn = event.target.closest('[data-role="question-submit"]');
+    if (submitBtn && openExpand) {
+      const form = submitBtn.closest(".live-question-form");
+      const textarea = form?.querySelector('[data-role="question-input"]');
+      const body = textarea?.value.trim() || "";
+      if (!body) {
+        showToast("Ierakstiet jautājumu pirms iesniegšanas.");
+        return;
+      }
+      const isAnonymous = form.querySelector('[data-role="question-anon"]')?.checked !== false;
+      submitBtn.disabled = true;
+      submitQuestion(body, openExpand.itemId, isAnonymous)
+        .then((data) => {
+          if (data?.question?.id) rememberMyQuestion(data.question.id);
+          textarea.value = "";
+          const counter = form.querySelector('[data-role="question-count"]');
+          if (counter) counter.textContent = "280 rakstzīmes";
+          showToast("Jautājums iesniegts moderācijai.");
+        })
+        .catch((error) => showToast(error.message || "Jautājumu neizdevās iesniegt."))
+        .finally(() => { submitBtn.disabled = false; });
+    }
+  });
+
+  document.getElementById("liveProgramList")?.addEventListener("input", (event) => {
+    const input = event.target.closest('[data-role="question-input"]');
+    if (!input) return;
+    const counter = input.closest(".live-question-form")?.querySelector('[data-role="question-count"]');
+    if (counter) counter.textContent = `${280 - input.value.length} rakstzīmes`;
   });
 
   document.addEventListener("click", (event) => {
@@ -1170,7 +1290,6 @@ function initLive() {
       .then(() => {
         button.classList.add("is-voted");
         refreshQuestions();
-        if (selectedAgendaItemId) openAgendaDetail(selectedAgendaItemId, false);
       })
       .catch((error) => {
         showToast(error.message || "Balsojumu neizdevās iesniegt.");
@@ -1178,42 +1297,61 @@ function initLive() {
       });
   });
 
-  document.querySelectorAll(".poll-option").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.querySelectorAll(".poll-option").forEach((item) => item.classList.remove("is-selected"));
-      button.classList.add("is-selected");
-      document.getElementById("pollResults").hidden = false;
-      showToast("Balsojums iesniegts. Atkārtota balsošana šajā sesijā ir bloķēta.");
-    });
-  });
-
   document.addEventListener("click", (event) => {
     const option = event.target.closest("[data-poll-id][data-option-id]");
     if (!option) return;
-    document.querySelectorAll("[data-poll-id][data-option-id]").forEach((item) => item.classList.remove("is-selected"));
-    option.classList.add("is-selected");
-    const submit = option.closest("#liveActivePoll, .agenda-poll-card")?.querySelector(".live-submit");
-    if (submit) {
-      submit.disabled = false;
-      submit.dataset.pollId = option.dataset.pollId;
-      submit.dataset.optionId = option.dataset.optionId;
+    const card = option.closest(".agenda-poll-card");
+    if (option.dataset.multi === "true") {
+      option.classList.toggle("is-selected");
+    } else {
+      card?.querySelectorAll("[data-poll-id][data-option-id]").forEach((item) => item.classList.remove("is-selected"));
+      option.classList.add("is-selected");
     }
+    const submit = card?.querySelector('[data-role="poll-option-submit"]');
+    if (submit) submit.disabled = !card?.querySelector(".poll-option.is-selected");
   });
 
   document.addEventListener("click", (event) => {
-    const submit = event.target.closest(".live-submit[data-poll-id][data-option-id]");
+    const submit = event.target.closest('[data-role="poll-option-submit"]');
     if (!submit) return;
+    const card = submit.closest(".agenda-poll-card");
+    const selected = [...(card?.querySelectorAll(".poll-option.is-selected") || [])];
+    if (!selected.length) return;
+    const pollId = selected[0].dataset.pollId;
+    const optionIds = selected.map((item) => item.dataset.optionId);
     submit.disabled = true;
-    submitPollVote(submit.dataset.pollId, submit.dataset.optionId)
+    submitPollVote(pollId, optionIds.length > 1 ? { optionIds } : { optionId: optionIds[0] })
       .then(() => {
         showToast("Balsojums iesniegts.");
         refreshPolls();
-        if (selectedAgendaItemId) openAgendaDetail(selectedAgendaItemId, false);
+        if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
       })
       .catch((error) => {
         showToast(error.message || "Balsojumu neizdevās iesniegt.");
         submit.disabled = false;
       });
+  });
+
+  document.addEventListener("click", (event) => {
+    const submit = event.target.closest('[data-role="poll-text-submit"]');
+    if (!submit) return;
+    const card = submit.closest(".agenda-poll-card");
+    const textarea = card?.querySelector(".poll-text-input");
+    const text = textarea?.value.trim() || "";
+    if (!text) {
+      showToast("Ierakstiet atbildi pirms iesniegšanas.");
+      return;
+    }
+    submit.disabled = true;
+    submitPollVote(submit.dataset.pollId, { responseText: text })
+      .then(() => {
+        textarea.value = "";
+        showToast("Atbilde iesniegta.");
+        refreshPolls();
+        if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
+      })
+      .catch((error) => showToast(error.message || "Atbildi neizdevās iesniegt."))
+      .finally(() => { submit.disabled = false; });
   });
 
   const params = new URLSearchParams(window.location.search);
@@ -1226,543 +1364,23 @@ function initLive() {
     }
   }
   if (networkingToken) {
-    document.querySelectorAll(".live-pass-link").forEach((link) => {
+    document.querySelectorAll(".live-pass-link, [data-pass-link]").forEach((link) => {
       link.href = `../pass/?token=${encodeURIComponent(networkingToken)}`;
     });
     initNetworkingPass(networkingToken);
   }
 
-  const availableViews = ["now", "program", "questions", "polls", "results", "networking"];
+  const availableViews = ["program", "results", "networking"];
   const requestedView = params.get("view");
-  setActiveTab(availableViews.includes(requestedView) ? requestedView : "now");
-}
-
-function initAdmin() {
-  const keyInput = document.getElementById("adminKey");
-  const loadButton = document.getElementById("loadRegistrations");
-  const clearButton = document.getElementById("clearAdminKey");
-  const statusFilter = document.getElementById("registrationStatusFilter");
-  const exportButton = document.getElementById("exportRegistrations");
-  const checkinStatsButton = document.getElementById("loadCheckinStats");
-  const checkinStatsBox = document.getElementById("checkinStats");
-  const autoApproveEnabled = document.getElementById("autoApproveEnabled");
-  const autoApproveLimit = document.getElementById("autoApproveLimit");
-  const graphCalendarUser = document.getElementById("graphCalendarUser");
-  const microsoftGraphEventId = document.getElementById("microsoftGraphEventId");
-  const loadApprovalSettings = document.getElementById("loadApprovalSettings");
-  const saveApprovalSettings = document.getElementById("saveApprovalSettings");
-  const approvalSettingsStatus = document.getElementById("approvalSettingsStatus");
-  const status = document.getElementById("adminStatus");
-  const list = document.getElementById("adminRegistrations");
-  const liveStatus = document.getElementById("adminLiveStatus");
-  const liveList = document.getElementById("adminLiveAgenda");
-  const loadLiveButton = document.getElementById("loadLiveAdmin");
-  const saveAgendaButton = document.getElementById("saveAgendaItem");
-  const questionsStatus = document.getElementById("adminQuestionsStatus");
-  const questionsList = document.getElementById("adminQuestions");
-  const loadQuestionsButton = document.getElementById("loadAdminQuestions");
-  const questionStatusFilter = document.getElementById("questionStatusFilter");
-  const questionAgendaFilter = document.getElementById("questionAgendaFilter");
-  const pollsStatus = document.getElementById("adminPollsStatus");
-  const pollsList = document.getElementById("adminPolls");
-  const loadPollsButton = document.getElementById("loadAdminPolls");
-  const createPollButton = document.getElementById("createAdminPoll");
-  const pollTitle = document.getElementById("pollTitle");
-  const pollOptions = document.getElementById("pollOptions");
-  const pollAgendaItemId = document.getElementById("pollAgendaItemId");
-  const statsBox = document.getElementById("adminStats");
-  const loadStatsButton = document.getElementById("loadAdminStats");
-
-  if (!API_BASE) {
-    status.textContent = "API nav konfigurēts.";
-    return;
-  }
-
-  keyInput.value = sessionStorage.getItem("arcAdminKey") || "";
-
-  function setStatus(message) {
-    status.textContent = message;
-  }
-
-  function setApprovalStatus(message) {
-    if (approvalSettingsStatus) approvalSettingsStatus.textContent = message;
-  }
-
-  async function loadAutoApprovalSettings() {
-    const key = keyInput.value.trim();
-    if (!key) return setApprovalStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    try {
-      const data = await adminRequest("/admin-registrations?action=settings");
-      const settings = data.settings || {};
-      if (autoApproveEnabled) autoApproveEnabled.checked = Boolean(settings.auto_approve_enabled);
-      if (autoApproveLimit) autoApproveLimit.value = String(settings.auto_approve_limit || 0);
-      if (graphCalendarUser) graphCalendarUser.value = settings.graph_calendar_user || "konference@animas.lv";
-      if (microsoftGraphEventId) microsoftGraphEventId.value = settings.microsoft_graph_event_id || "";
-      setApprovalStatus(`Apstiprināti ${settings.approved_count || 0}/${settings.capacity || 0}. Auto limits: ${settings.auto_approve_limit || 0}.`);
-    } catch (error) {
-      setApprovalStatus(error.message || "Iestatījumus neizdevās ielādēt.");
-    }
-  }
-
-  async function saveAutoApprovalSettings() {
-    const key = keyInput.value.trim();
-    if (!key) return setApprovalStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    try {
-      const data = await adminRequest("/admin-registrations?action=settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          autoApproveEnabled: Boolean(autoApproveEnabled?.checked),
-          autoApproveLimit: Number(autoApproveLimit?.value || 0),
-          graphCalendarUser: graphCalendarUser?.value || "",
-          microsoftGraphEventId: microsoftGraphEventId?.value || "",
-        }),
-      });
-      const settings = data.settings || {};
-      setApprovalStatus(`Saglabāts. Auto ${settings.auto_approve_enabled ? "ieslēgts" : "izslēgts"}, limits ${settings.auto_approve_limit || 0}.`);
-    } catch (error) {
-      setApprovalStatus(error.message || "Iestatījumus neizdevās saglabāt.");
-    }
-  }
-
-  function render(rows) {
-    list.innerHTML = "";
-    if (!rows.length) {
-      list.innerHTML = `<p class="fine">Pieteikumu vēl nav.</p>`;
-      return;
-    }
-
-    rows.forEach((row) => {
-      const item = document.createElement("div");
-      item.className = "admin-row";
-      const name = `${row.first_name || ""} ${row.last_name || ""}`.trim();
-      item.innerHTML = `
-        <div>
-          <strong>${name || row.email}</strong>
-          <span class="fine">${row.email} · ${row.role || "Amats nav norādīts"} · ${row.status}</span>
-        </div>
-        <div class="admin-row-actions">
-          <button class="btn secondary" type="button" data-approve="${row.id}" ${row.status === "approved" ? "disabled" : ""}>Apstiprināt</button>
-          <button class="btn secondary" type="button" data-waitlist="${row.id}" ${row.status === "waitlisted" ? "disabled" : ""}>Gaidīšana</button>
-          <button class="btn secondary" type="button" data-reject="${row.id}" ${row.status === "rejected" ? "disabled" : ""}>Atteikt</button>
-          <button class="btn secondary" type="button" data-reconfirm="${row.id}">7 dienas</button>
-          <button class="btn secondary" type="button" data-edit-participant="${row.id}">Labot</button>
-          <button class="btn secondary" type="button" data-revoke="${row.id}">Revokēt</button>
-        </div>
-      `;
-      list.appendChild(item);
-    });
-  }
-
-  async function load() {
-    const key = keyInput.value.trim();
-    if (!key) {
-      setStatus("Ievadi admin atslēgu.");
-      return;
-    }
-    sessionStorage.setItem("arcAdminKey", key);
-    setStatus("Ielādē...");
-    try {
-      const qs = statusFilter?.value && statusFilter.value !== "all" ? `?status=${encodeURIComponent(statusFilter.value)}` : "";
-      const data = await adminRequest(`/admin-registrations${qs}`);
-      render(data.registrations || []);
-      setStatus(`Ielādēti pieteikumi: ${(data.registrations || []).length}`);
-    } catch (error) {
-      setStatus(error.message || "Neizdevās ielādēt pieteikumus.");
-    }
-  }
-
-  loadButton?.addEventListener("click", load);
-  loadApprovalSettings?.addEventListener("click", loadAutoApprovalSettings);
-  saveApprovalSettings?.addEventListener("click", saveAutoApprovalSettings);
-  statusFilter?.addEventListener("change", load);
-  exportButton?.addEventListener("click", async () => {
-    const key = keyInput.value.trim();
-    if (!key) return setStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    const qs = statusFilter?.value && statusFilter.value !== "all" ? `&status=${encodeURIComponent(statusFilter.value)}` : "";
-    try {
-      const response = await fetch(`${API_BASE}/admin-registrations?action=export${qs}`, {
-        headers: { "x-admin-key": key },
-      });
-      if (!response.ok) throw new Error("CSV eksportu neizdevās sagatavot.");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "ai-reality-check-registrations.csv";
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      setStatus(error.message || "CSV eksportu neizdevās sagatavot.");
-    }
-  });
-  checkinStatsButton?.addEventListener("click", async () => {
-    const key = keyInput.value.trim();
-    if (!key || !checkinStatsBox) return setStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    try {
-      const data = await adminRequest("/admin-registrations?action=stats");
-      checkinStatsBox.innerHTML = `
-        <article class="card"><span class="eyebrow">Ieradušies</span><h2>${data.arrived || 0}</h2></article>
-        <article class="card"><span class="eyebrow">Apstiprināti</span><h2>${data.approved || 0}</h2></article>
-        <article class="card"><span class="eyebrow">Check-in skeni</span><h2>${data.checkins || 0}</h2></article>
-        <article class="card"><span class="eyebrow">Dublikāti</span><h2>${data.duplicate_scans || 0}</h2></article>
-      `;
-    } catch (error) {
-      setStatus(error.message || "Check-in statistiku neizdevās ielādēt.");
-    }
-  });
-  clearButton?.addEventListener("click", () => {
-    sessionStorage.removeItem("arcAdminKey");
-    keyInput.value = "";
-    list.innerHTML = "";
-    setStatus("Atslēga notīrīta.");
-  });
-
-  list?.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-approve],[data-waitlist],[data-reject],[data-reconfirm],[data-edit-participant],[data-revoke]");
-    if (!button) return;
-    if (button.dataset.editParticipant) {
-      const row = button.closest(".admin-row");
-      const current = row?.querySelector("strong")?.textContent?.split(" ") || [];
-      const email = row?.querySelector(".fine")?.textContent?.split(" · ")[0] || "";
-      const firstName = prompt("Vārds", current[0] || "");
-      if (firstName === null) return;
-      const lastName = prompt("Uzvārds", current.slice(1).join(" ") || "");
-      if (lastName === null) return;
-      const updatedEmail = prompt("E-pasts", email);
-      if (updatedEmail === null) return;
-      const role = prompt("Amats", "");
-      try {
-        await adminRequest(`/admin-registrations?action=update&participant_id=${button.dataset.editParticipant}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ firstName, lastName, email: updatedEmail, role }),
-        });
-        showToast("Dalībnieka dati atjaunināti.");
-        await load();
-      } catch (error) {
-        showToast(error.message || "Datus neizdevās saglabāt.");
-      }
-      return;
-    }
-
-    const action = button.dataset.approve
-      ? "approve"
-      : button.dataset.waitlist
-        ? "waitlist"
-        : button.dataset.reject
-          ? "reject"
-          : button.dataset.reconfirm
-            ? "reconfirm"
-            : button.dataset.revoke
-              ? "revoke-tokens"
-              : "";
-    const participantId = button.dataset.approve || button.dataset.waitlist || button.dataset.reject || button.dataset.reconfirm || button.dataset.revoke;
-    if (!action || !participantId) return;
-    button.disabled = true;
-    button.textContent = "Saglabā...";
-    try {
-      await adminRequest(`/admin-registrations?action=${action}&participant_id=${participantId}`, {
-        method: "POST"
-      });
-      showToast("Dalībnieka statuss atjaunināts.");
-      await load();
-    } catch (error) {
-      showToast(error.message || "Darbība neizdevās.");
-      button.disabled = false;
-      button.textContent = "Mēģināt vēlreiz";
-    }
-  });
-
-  function setLiveStatus(message) {
-    if (liveStatus) liveStatus.textContent = message;
-  }
-
-  function renderLiveAdmin(state) {
-    if (!liveList) return;
-    const agenda = state?.agenda || [];
-    renderPollAgendaOptions(agenda);
-    if (!agenda.length) {
-      liveList.innerHTML = `<p class="fine">Programma vēl nav ielādēta.</p>`;
-      return;
-    }
-    liveList.innerHTML = agenda.map((item) => `
-      <div class="admin-row">
-        <div>
-          <strong>${item.time} · ${item.title}</strong>
-          <span class="fine">${item.is_break ? "Pauze" : item.status}${item.speaker_name ? ` · ${item.speaker_name}` : ""}</span>
-        </div>
-        <div class="admin-row-actions">
-          <button class="btn secondary" type="button" data-current-agenda="${item.id}" ${item.is_break || item.status === "now" ? "disabled" : ""}>Pārslēgt uz šobrīd</button>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  async function loadLiveAdmin() {
-    const key = keyInput.value.trim();
-    if (!key) return setLiveStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    setLiveStatus("Ielādē programmu...");
-    try {
-      const state = await fetchLiveState();
-      renderLiveAdmin(state);
-      setLiveStatus(state?.current ? `Šobrīd: ${state.current.title}` : "Nav aktīva programmas punkta.");
-    } catch (error) {
-      setLiveStatus(error.message || "Programmu neizdevās ielādēt.");
-    }
-  }
-
-  loadLiveButton?.addEventListener("click", loadLiveAdmin);
-  saveAgendaButton?.addEventListener("click", async () => {
-    const key = keyInput.value.trim();
-    if (!key) return setLiveStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    const starts = document.getElementById("agendaStarts")?.value;
-    const ends = document.getElementById("agendaEnds")?.value;
-    const title = document.getElementById("agendaTitle")?.value.trim();
-    if (!starts || !ends || !title) return setLiveStatus("Aizpildi sākumu, beigas un nosaukumu.");
-    try {
-      await adminRequest("/admin-live?action=upsert-agenda", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          startsAt: new Date(starts).toISOString(),
-          endsAt: new Date(ends).toISOString(),
-          description: document.getElementById("agendaDescription")?.value || "",
-          speakerName: document.getElementById("agendaSpeaker")?.value || "",
-          speakerRole: document.getElementById("agendaSpeakerRole")?.value || "",
-          speakerCompany: document.getElementById("agendaSpeakerCompany")?.value || "",
-          speakerImageUrl: document.getElementById("agendaSpeakerImageUrl")?.value || "",
-          materialsUrl: document.getElementById("agendaMaterialsUrl")?.value || "",
-          videoUrl: document.getElementById("agendaVideoUrl")?.value || "",
-          displayOrder: Date.now(),
-        }),
-      });
-      showToast("Programmas punkts saglabāts.");
-      await loadLiveAdmin();
-    } catch (error) {
-      setLiveStatus(error.message || "Programmas punktu neizdevās saglabāt.");
-    }
-  });
-  liveList?.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-current-agenda]");
-    if (!button) return;
-    button.disabled = true;
-    button.textContent = "Pārslēdz...";
-    try {
-      await adminRequest(`/admin-live?action=set-current&agenda_item_id=${button.dataset.currentAgenda}`, {
-        method: "POST"
-      });
-      showToast("Live programmas punkts pārslēgts.");
-      await loadLiveAdmin();
-    } catch (error) {
-      showToast(error.message || "Neizdevās pārslēgt programmu.");
-      button.disabled = false;
-      button.textContent = "Pārslēgt uz šobrīd";
-    }
-  });
-
-  function setQuestionsStatus(message) {
-    if (questionsStatus) questionsStatus.textContent = message;
-  }
-
-  function renderAdminQuestions(rows) {
-    if (!questionsList) return;
-    if (!rows.length) {
-      questionsList.innerHTML = `<p class="fine">Jautājumu vēl nav.</p>`;
-      return;
-    }
-    questionsList.innerHTML = rows.map((question) => `
-      <div class="admin-row">
-        <div>
-          <strong>${question.body}</strong>
-          <span class="fine">${question.status} · balsis ${question.vote_count || 0} · ${question.is_anonymous ? "Anonīms" : "Ar vārdu"}</span>
-        </div>
-        <div class="admin-row-actions">
-          <button class="btn secondary" type="button" data-question-status="approved" data-question-id="${question.id}" ${question.status === "approved" ? "disabled" : ""}>Apstiprināt</button>
-          <button class="btn secondary" type="button" data-question-status="answered" data-question-id="${question.id}" ${question.status === "answered" ? "disabled" : ""}>Atbildēts</button>
-          <button class="btn secondary" type="button" data-question-status="hidden" data-question-id="${question.id}" ${question.status === "hidden" ? "disabled" : ""}>Paslēpt</button>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  async function loadAdminQuestions() {
-    const key = keyInput.value.trim();
-    if (!key) return setQuestionsStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    setQuestionsStatus("Ielādē jautājumus...");
-    try {
-      if (questionAgendaFilter && questionAgendaFilter.dataset.loaded !== "true") {
-        const liveState = await fetchLiveState();
-        renderPollAgendaOptions(liveState?.agenda || []);
-      }
-      const params = new URLSearchParams();
-      if (questionStatusFilter?.value && questionStatusFilter.value !== "all") params.set("status", questionStatusFilter.value);
-      if (questionAgendaFilter?.value && questionAgendaFilter.value !== "all") params.set("agenda_item_id", questionAgendaFilter.value);
-      const data = await adminRequest(`/admin-questions${params.toString() ? `?${params}` : ""}`);
-      renderAdminQuestions(data.questions || []);
-      setQuestionsStatus(`Jautājumi: ${(data.questions || []).length}`);
-    } catch (error) {
-      setQuestionsStatus(error.message || "Jautājumus neizdevās ielādēt.");
-    }
-  }
-
-  loadQuestionsButton?.addEventListener("click", loadAdminQuestions);
-  questionStatusFilter?.addEventListener("change", loadAdminQuestions);
-  questionAgendaFilter?.addEventListener("change", loadAdminQuestions);
-  questionsList?.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-question-status]");
-    if (!button) return;
-    button.disabled = true;
-    try {
-      await adminRequest(`/admin-questions?question_id=${button.dataset.questionId}&status=${button.dataset.questionStatus}`, {
-        method: "POST"
-      });
-      showToast("Jautājums atjaunināts.");
-      await loadAdminQuestions();
-    } catch (error) {
-      showToast(error.message || "Jautājumu neizdevās atjaunināt.");
-      button.disabled = false;
-    }
-  });
-
-  function setPollsStatus(message) {
-    if (pollsStatus) pollsStatus.textContent = message;
-  }
-
-  function renderPollAgendaOptions(agenda) {
-    const talkItems = (agenda || []).filter((item) => !item.is_break);
-    if (pollAgendaItemId && pollAgendaItemId.dataset.loaded !== "true") {
-      pollAgendaItemId.innerHTML = `<option value="">Nav piesaistīts</option>${talkItems.map((item) => (
-        `<option value="${item.id}">${item.time} · ${item.title}</option>`
-      )).join("")}`;
-      pollAgendaItemId.dataset.loaded = "true";
-    }
-    if (questionAgendaFilter && questionAgendaFilter.dataset.loaded !== "true") {
-      questionAgendaFilter.innerHTML = `<option value="all">Visi</option>${talkItems.map((item) => (
-        `<option value="${item.id}">${item.time} · ${item.title}</option>`
-      )).join("")}`;
-      questionAgendaFilter.dataset.loaded = "true";
-    }
-  }
-
-  function renderAdminPolls(rows) {
-    if (!pollsList) return;
-    if (!rows.length) {
-      pollsList.innerHTML = `<p class="fine">Balsojumu vēl nav.</p>`;
-      return;
-    }
-    pollsList.innerHTML = rows.map((poll) => `
-      <div class="admin-row">
-        <div>
-          <strong>${poll.title}</strong>
-          <span class="fine">${poll.status} · rezultāti ${poll.results_public ? "publicēti" : "nav publicēti"}</span>
-        </div>
-        <div class="admin-row-actions">
-          <button class="btn secondary" type="button" data-poll-action="activate" data-poll-id="${poll.id}" ${poll.status === "active" ? "disabled" : ""}>Aktivizēt</button>
-          <button class="btn secondary" type="button" data-poll-action="close" data-poll-id="${poll.id}" ${poll.status === "closed" ? "disabled" : ""}>Slēgt</button>
-          <button class="btn secondary" type="button" data-poll-action="publish" data-poll-id="${poll.id}" ${poll.results_public ? "disabled" : ""}>Publicēt</button>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  async function loadAdminPolls() {
-    const key = keyInput.value.trim();
-    if (!key) return setPollsStatus("Ievadi admin atslēgu.");
-    sessionStorage.setItem("arcAdminKey", key);
-    setPollsStatus("Ielādē balsojumus...");
-    try {
-      if (pollAgendaItemId && pollAgendaItemId.dataset.loaded !== "true") {
-        const liveState = await fetchLiveState();
-        renderPollAgendaOptions(liveState?.agenda || []);
-      }
-      const data = await adminRequest("/admin-polls");
-      renderAdminPolls(data.polls || []);
-      setPollsStatus(`Balsojumi: ${(data.polls || []).length}`);
-    } catch (error) {
-      setPollsStatus(error.message || "Balsojumus neizdevās ielādēt.");
-    }
-  }
-
-  loadPollsButton?.addEventListener("click", loadAdminPolls);
-  createPollButton?.addEventListener("click", async () => {
-    const key = keyInput.value.trim();
-    const title = pollTitle?.value.trim() || "";
-    const options = (pollOptions?.value || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
-    if (!key) return setPollsStatus("Ievadi admin atslēgu.");
-    if (!title) return setPollsStatus("Ievadi balsojuma jautājumu.");
-    if (options.length < 2) return setPollsStatus("Ievadi vismaz divus atbilžu variantus.");
-    sessionStorage.setItem("arcAdminKey", key);
-    createPollButton.disabled = true;
-    try {
-      await adminRequest("/admin-polls?action=create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          options,
-          agendaItemId: pollAgendaItemId?.value.trim() || undefined,
-        }),
-      });
-      if (pollTitle) pollTitle.value = "";
-      if (pollOptions) pollOptions.value = "";
-      if (pollAgendaItemId) pollAgendaItemId.value = "";
-      showToast("Balsojums izveidots.");
-      await loadAdminPolls();
-    } catch (error) {
-      setPollsStatus(error.message || "Balsojumu neizdevās izveidot.");
-    } finally {
-      createPollButton.disabled = false;
-    }
-  });
-
-  pollsList?.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-poll-action]");
-    if (!button) return;
-    button.disabled = true;
-    try {
-      await adminRequest(`/admin-polls?action=${button.dataset.pollAction}&poll_id=${button.dataset.pollId}`, {
-        method: "POST"
-      });
-      showToast("Balsojums atjaunināts.");
-      await loadAdminPolls();
-    } catch (error) {
-      showToast(error.message || "Balsojumu neizdevās atjaunināt.");
-      button.disabled = false;
-    }
-  });
-
-  loadStatsButton?.addEventListener("click", async () => {
-    if (!statsBox) return;
-    statsBox.innerHTML = `<article class="card"><p class="fine">Ielādē...</p></article>`;
-    try {
-      const data = await fetchResults();
-      statsBox.innerHTML = `
-        <article class="card"><span class="eyebrow">Dalībnieki</span><h2>${data.summary?.participant_count || 0}</h2></article>
-        <article class="card"><span class="eyebrow">Uzņēmumi</span><h2>${data.summary?.represented_companies || 0}</h2></article>
-        <article class="card"><span class="eyebrow">MI izmanto/testē</span><h2>${data.summary?.using_ai_percent || 0}%</h2></article>
-        <article class="card"><span class="eyebrow">Publicēti balsojumi</span><h2>${(data.polls || []).length}</h2></article>
-      `;
-    } catch (error) {
-      statsBox.innerHTML = `<article class="card"><p class="fine">${error.message || "Statistiku neizdevās ielādēt."}</p></article>`;
-    }
-  });
+  setActiveTab(availableViews.includes(requestedView) ? requestedView : "program");
 }
 
 function initResults() {
-  const target = document.getElementById("publicResults");
   fetchResults()
-    .then((data) => renderPublicResults(data, target))
+    .then((data) => renderResultsSection(data))
     .catch((error) => {
-      if (target) target.innerHTML = `<article class="card"><h2>Rezultātus neizdevās ielādēt.</h2><p class="fine">${error.message}</p></article>`;
+      const pollList = document.getElementById("resultsPollList");
+      if (pollList) pollList.innerHTML = `<article class="results-empty"><span>Rezultāti</span><h2>Rezultātus neizdevās ielādēt.</h2><p class="fine">${error.message}</p></article>`;
     });
 }
 
@@ -1918,7 +1536,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (page === "registration") initRegistration();
   if (page === "pass") initPass();
   if (page === "live") initLive();
-  if (page === "admin") initAdmin();
   if (page === "checkin") initCheckin();
   if (page === "results") initResults();
   if (page === "archive") initArchive();

@@ -15,7 +15,7 @@
 </head>
 <body data-page="live">
   <header class="live-topbar">
-    <button class="live-brand" type="button" data-live-tab="now" aria-label="Atvērt pašreizējo notikumu">
+    <button class="live-brand" type="button" data-live-tab="program" aria-label="Atvērt programmu">
       <span class="live-brand-mark">AI</span>
       <span class="live-brand-copy">
         <strong>Reality Check</strong>
@@ -24,75 +24,19 @@
     </button>
 
     <nav class="live-primary-nav" aria-label="Live portāla sadaļas">
+      <a data-pass-link href="../pass/">Mans Profils</a>
       <button type="button" data-live-tab="program">Programma</button>
-      <button type="button" data-live-tab="questions">Jautājumi</button>
-      <button type="button" data-live-tab="polls">Balsojumi</button>
       <button type="button" data-live-tab="results">Rezultāti</button>
-      <button type="button" data-live-tab="networking">Kontakti</button>
+      <button type="button" data-live-tab="networking">Tīklošanās</button>
     </nav>
 
     <div class="live-header-actions">
       <span class="live-access"><i></i><span id="liveMode">Pamata pieeja</span></span>
-      <a class="live-pass-link" href="../pass/">Mans Pass</a>
     </div>
   </header>
 
   <main class="live-portal">
-    <section class="tab-panel live-view live-now-view" data-panel="now">
-      <article class="live-current-stage">
-        <header class="live-stage-status">
-          <span id="liveCurrentTime"><i></i> Live</span>
-          <span id="liveCurrentDuration">Šobrīd</span>
-        </header>
-        <div class="live-stage-content">
-          <div class="live-stage-copy">
-            <span class="live-kicker">AI Reality Check Live</span>
-            <h1 id="liveCurrentTitle">Ielādē programmu...</h1>
-            <p id="liveCurrentDescription">Live programma tiek sinhronizēta.</p>
-            <p class="live-sync" id="liveSyncStatus">Savienojas ar live datiem...</p>
-          </div>
-          <div class="live-stage-actions">
-            <button class="live-action is-primary" type="button" data-live-tab="questions">Uzdot jautājumu <span>→</span></button>
-            <button class="live-action" type="button" data-live-tab="polls">Atbildēt uz balsojumu <span>→</span></button>
-          </div>
-        </div>
-        <footer class="live-next" id="liveNextLine">Tālāk: ielādē programmu...</footer>
-        <p class="live-poll-notice" id="livePollNotice" hidden>Aktivizēts jauns balsojums.</p>
-      </article>
-
-      <div class="live-overview-grid">
-        <button class="live-overview-item" type="button" data-live-tab="polls">
-          <span>Aktīvais balsojums</span>
-          <strong id="liveNowPollTitle">Gaida aktīvo balsojumu</strong>
-          <small id="liveNowPollMeta">Rezultāti būs pieejami pēc balsojuma.</small>
-        </button>
-        <button class="live-overview-item" type="button" data-live-tab="questions">
-          <span>Auditorijas jautājumi</span>
-          <strong id="liveNowQuestionCount">0 jautājumi</strong>
-          <small id="liveNowQuestionMeta">Uzdod jautājumu pašreizējam runātājam.</small>
-        </button>
-      </div>
-    </section>
-
     <section class="tab-panel live-view" data-panel="program">
-      <article class="live-program-spotlight">
-        <header class="live-stage-status">
-          <span id="liveProgramCurrentTime"><i></i> Šobrīd</span>
-          <span id="liveProgramRemaining">Live</span>
-        </header>
-        <div class="live-program-spotlight-grid">
-          <div>
-            <span class="live-kicker">Pašreizējā prezentācija</span>
-            <h2 id="liveProgramCurrentTitle">Ielādē programmu...</h2>
-            <p id="liveProgramCurrentMeta">Programmas dati tiek sinhronizēti.</p>
-          </div>
-          <div class="live-stage-actions">
-            <button class="live-action is-primary" type="button" data-live-tab="questions">Uzdot jautājumu <span>→</span></button>
-            <button class="live-action" type="button" data-live-tab="polls">Atbildēt uz balsojumu <span>→</span></button>
-          </div>
-        </div>
-      </article>
-
       <header class="live-page-heading">
         <span>30. septembris 2026</span>
         <h1>Konferences<br>programma</h1>
@@ -102,126 +46,44 @@
       </div>
     </section>
 
-    <section class="tab-panel live-view agenda-detail-view" data-panel="agenda-detail">
-      <button class="live-back-link" type="button" data-live-tab="program">← Atpakaļ uz programmu</button>
+    <section class="tab-panel live-view" data-panel="results">
+      <section class="results-hero">
+        <span class="live-kicker">Reāllaika auditorijas dati</span>
+        <div class="results-hero-row">
+          <h1>Rezultāti</h1>
+          <span class="results-hero-badge">AI Reality Check</span>
+        </div>
+        <p class="lead" id="resultsIntro">Ielādē rezultātus...</p>
+      </section>
 
-      <article class="agenda-detail-hero">
-        <div class="agenda-detail-copy">
-          <div class="agenda-detail-meta">
-            <span id="agendaDetailType">Programmas punkts</span>
-            <span id="agendaDetailTime">—</span>
-          </div>
-          <h1 id="agendaDetailTitle">Programmas punkts</h1>
-          <p id="agendaDetailDescription"></p>
-          <div class="agenda-speaker">
-            <div class="agenda-speaker-portrait" id="agendaDetailPortrait" aria-hidden="true"></div>
-            <div>
-              <strong id="agendaDetailSpeaker">Runātājs tiks precizēts</strong>
-              <span id="agendaDetailSpeakerMeta"></span>
-            </div>
+      <section class="results-score">
+        <div class="results-score-ring" id="resultsScoreRing">
+          <div class="results-score-inner">
+            <strong id="resultsScoreValue">--</strong>
+            <span>/100</span>
           </div>
         </div>
-        <span class="agenda-detail-number" id="agendaDetailNumber" aria-hidden="true">01</span>
-      </article>
-
-      <div class="agenda-detail-grid">
-        <article class="live-question-form agenda-detail-question-form">
-          <span class="live-kicker">Jautā par šo tēmu</span>
-          <h2>Ko Tu vēlies uzzināt?</h2>
-          <p>Jautājums automātiski tiks piesaistīts šim programmas punktam.</p>
-          <label for="agendaQuestionText">Tavs jautājums</label>
-          <textarea id="agendaQuestionText" maxlength="280" placeholder="Ieraksti savu jautājumu..."></textarea>
-          <div class="live-question-meta">
-            <span id="agendaQuestionCount">280 rakstzīmes</span>
-            <label><input id="agendaQuestionAnonymous" type="checkbox" checked> Iesniegt anonīmi</label>
-          </div>
-          <button class="live-submit" id="sendAgendaQuestion" type="button">Iesniegt jautājumu <span>→</span></button>
-        </article>
-
-        <section class="live-audience-questions agenda-detail-questions">
-          <span class="live-kicker">Auditorijas jautājumi</span>
-          <h2>Populārākie</h2>
-          <div id="agendaDetailQuestions">
-            <p class="live-empty">Ielādē jautājumus...</p>
-          </div>
-        </section>
-      </div>
-
-      <section class="agenda-detail-polls">
-        <header>
-          <span class="live-kicker">Tēmas balsojumi</span>
-          <h2>Balsojumi un rezultāti</h2>
-        </header>
-        <div id="agendaDetailPolls">
-          <p class="live-empty">Ielādē balsojumus...</p>
+        <div class="results-score-copy">
+          <span class="live-kicker">Auditorijas MI gatavība</span>
+          <strong id="resultsScoreLabel">Ielādē...</strong>
         </div>
       </section>
-    </section>
 
-    <section class="tab-panel live-view" data-panel="questions">
-      <button class="live-back-link" type="button" data-live-tab="program">← Atpakaļ uz programmu</button>
-      <header class="live-page-heading live-page-heading-compact">
-        <span>Jautā runātājam</span>
-        <h1>Ko Tu vēlies<br>uzzināt?</h1>
-        <p id="liveQuestionAgenda">Jautājums tiks piesaistīts pašreizējai prezentācijai.</p>
-      </header>
+      <section class="results-highlights" id="resultsHighlights" hidden></section>
 
-      <div class="live-question-layout">
-        <article class="live-question-form">
-          <label for="questionText">Tavs jautājums</label>
-          <textarea id="questionText" maxlength="280" placeholder="Ieraksti savu jautājumu..."></textarea>
-          <div class="live-question-meta">
-            <span id="questionCount">280 rakstzīmes</span>
-            <label><input id="questionAnonymous" type="checkbox" checked> Iesniegt anonīmi</label>
-          </div>
-          <button class="live-submit" id="sendQuestion" type="button">Iesniegt jautājumu <span>→</span></button>
-        </article>
-
-        <section class="live-audience-questions">
-          <span class="live-kicker">Auditorijas jautājumi</span>
-          <h2>Populārākie</h2>
-          <div data-live-questions>
-            <p class="live-empty">Ielādē jautājumus...</p>
-          </div>
-        </section>
-      </div>
-    </section>
-
-    <section class="tab-panel live-view live-poll-view" data-panel="polls">
-      <div class="live-poll-layout">
-        <header class="live-poll-intro">
-          <span class="live-status-label"><i></i> Aktīvs balsojums</span>
-          <span class="live-kicker" id="livePollAgenda">Pašreizējā prezentācija</span>
-          <h1 id="livePollQuestionMirror">Gaida aktīvo balsojumu...</h1>
-          <p id="livePollSpeaker">Atbildi anonīmi un redzi kopējo auditorijas viedokli.</p>
-        </header>
-        <article class="live-poll-card" id="liveActivePoll">
-          <span class="live-kicker">Balsojumi</span>
-          <h2>Ielādē aktīvo balsojumu...</h2>
-        </article>
-      </div>
-      <article class="live-poll-results" id="livePollResults"></article>
-    </section>
-
-    <section class="tab-panel live-view" data-panel="results">
-      <header class="live-results-heading">
-        <div>
-          <span>Reāllaika auditorijas dati</span>
-          <h1>AI Reality<br><em>Check.</em></h1>
-          <p>Ko par MI domā konferences dalībnieki un pārstāvētie uzņēmumi.</p>
-        </div>
-        <div class="live-score">
-          <strong id="liveResultScore">--</strong>
-          <span>Auditorijas MI gatavība</span>
-          <small>Reāllaika kopsavilkums</small>
-        </div>
-      </header>
-      <div class="live-results-list" id="liveResultsList">
-        <article class="live-result-empty">
+      <section class="results-poll-list" id="resultsPollList">
+        <article class="results-empty">
           <span>Rezultāti</span>
-          <h2>Ielādē publicētos rezultātus...</h2>
+          <h2>Ielādē balsojumus...</h2>
         </article>
-      </div>
+      </section>
+
+      <section class="card results-segments-card">
+        <span class="eyebrow">Company360 griezumi</span>
+        <h2>Agregēti segmenti</h2>
+        <p class="fine">Segmenti tiek rādīti tikai grupām ar vismaz 3 uzņēmumiem.</p>
+        <div class="grid three results-segments-grid" id="resultsSegments"></div>
+      </section>
     </section>
 
     <section class="tab-panel live-view" data-panel="networking">
@@ -243,13 +105,23 @@
     </section>
   </main>
 
-  <nav class="bottom-tabs live-bottom-tabs" aria-label="Mobilā Live navigācija">
-    <button type="button" data-live-tab="now">Šobrīd</button>
-    <button type="button" data-live-tab="program">Programma</button>
-    <button type="button" data-live-tab="questions">Jautājumi</button>
-    <button type="button" data-live-tab="polls">Balsojumi</button>
-    <button type="button" data-live-tab="results">Rezultāti</button>
-    <button type="button" data-live-tab="networking">Kontakti</button>
+  <nav class="bottom-tabs live-bottom-tabs" aria-label="Mobilā navigācija">
+    <button type="button" data-live-tab="program">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 8.2a6 6 0 0 0 0 7.6M16.2 8.2a6 6 0 0 1 0 7.6M4.9 5.3a10 10 0 0 0 0 13.4M19.1 5.3a10 10 0 0 1 0 13.4"/></svg>
+      <span>Live</span>
+    </button>
+    <button type="button" data-live-tab="results">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
+      <span>Rezultāti</span>
+    </button>
+    <a data-pass-link href="../pass/">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><circle cx="9" cy="12" r="1.8"/><path d="M13 10h4M13 14h4"/></svg>
+      <span>Pass</span>
+    </a>
+    <button type="button" data-live-tab="networking">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7.6 8.4 10.6 16M16.4 8.4 13.4 16M8 7h8"/></svg>
+      <span>Networking</span>
+    </button>
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

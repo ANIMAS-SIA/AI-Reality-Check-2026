@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin | AI Reality Check 2026</title>
-  <meta name="description" content="AI Reality Check 2026 reģistrāciju administrēšana.">
+  <meta name="description" content="AI Reality Check 2026 vadības panelis organizatoriem un moderatoriem.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,227 +14,408 @@
   <script src="../site-chrome.js" defer></script>
 </head>
 <body data-page="admin">
-  <main class="portal-shell">
-    <header class="topbar">
-      <a class="brand" href="../">
-        <span class="brand-mark">AI</span>
-        <span class="brand-text">
-          <span class="brand-title">Reality Check</span>
-          <span class="brand-subtitle">2026</span>
+
+  <section id="adminLoginScreen" class="admin-login-shell">
+    <div class="admin-login-copy">
+      <div class="live-brand admin-login-brand">
+        <span class="live-brand-mark">AI</span>
+        <span class="live-brand-copy">
+          <strong>Reality Check</strong>
+          <span>2026</span>
         </span>
-      </a>
-      <div class="top-actions">
-        <span class="mode-chip">Organizators</span>
-        <a class="btn secondary" href="../">Sākumlapa</a>
       </div>
-    </header>
+      <h1 class="admin-login-title">Vadi pasākumu.<br><em>Reāllaikā.</em></h1>
+      <p class="admin-login-lead">Programma, auditorijas jautājumi un balsojumi vienā vadības vidē.</p>
+    </div>
 
-    <section class="hero-panel registration-hero">
-      <div>
-        <div class="eyebrow">AI Reality Check 2026</div>
-        <h1 class="registration-title">Reģistrācijas</h1>
-      </div>
-    </section>
+    <div class="admin-login-panel">
+      <form id="adminLoginForm" class="admin-login-card">
+        <span class="admin-login-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.4 7-6.4s7 2.8 7 6.4"/></svg>
+        </span>
+        <span class="live-kicker">Organizatora panelis</span>
+        <h2>Pieslēgties</h2>
+        <p class="admin-login-sub">Izmanto organizatora kontu, lai turpinātu.</p>
 
-    <section class="card registration-card" style="margin-top:20px">
-      <div class="grid two">
-        <div class="field">
-          <label for="adminKey">Admin atslēga</label>
-          <input id="adminKey" type="password" autocomplete="off">
+        <label class="admin-field">
+          <span>E-pasts</span>
+          <input type="email" id="loginEmail" required autocomplete="username">
+        </label>
+        <label class="admin-field">
+          <span>Parole</span>
+          <input type="password" id="loginPassword" required autocomplete="current-password">
+        </label>
+
+        <div class="admin-login-row">
+          <label class="admin-remember"><input type="checkbox" id="loginRemember" checked> Atcerēties mani</label>
+          <button type="button" id="adminForgotPassword" class="admin-link">Aizmirsu paroli</button>
         </div>
-        <div class="btn-row" style="align-items:end;margin-top:0">
-          <button class="btn" type="button" id="loadRegistrations">Ielādēt</button>
-          <button class="btn secondary" type="button" id="clearAdminKey">Notīrīt</button>
+
+        <button type="submit" class="live-submit admin-login-submit" id="adminLoginSubmit">Atvērt vadības paneli <span>→</span></button>
+        <p class="admin-login-note" id="adminLoginStatus" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <div id="adminApp" class="admin-shell" hidden>
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-brand">
+        <span class="live-brand-mark">AI</span>
+        <div>
+          <strong>Reality Check 2026</strong>
+          <span class="admin-event-status"><i></i><span id="adminEventStatus">Ielādē...</span></span>
         </div>
       </div>
-      <div class="grid two" style="margin-top:12px">
-        <div class="field">
-          <label for="registrationStatusFilter">Statuss</label>
-          <select id="registrationStatusFilter">
+      <nav class="admin-nav">
+        <button type="button" class="is-active" data-admin-nav="dashboard">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
+          Vadības pults
+        </button>
+        <button type="button" data-admin-nav="moderation">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 1.9-2.4 3.7" stroke-linecap="round"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg>
+          Moderācija <span class="admin-nav-badge" id="adminPendingBadge" hidden>0</span>
+        </button>
+        <button type="button" data-admin-nav="polls">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 8.2a6 6 0 0 0 0 7.6M16.2 8.2a6 6 0 0 1 0 7.6M4.9 5.3a10 10 0 0 0 0 13.4M19.1 5.3a10 10 0 0 1 0 13.4"/></svg>
+          Balsojumi
+        </button>
+        <button type="button" data-admin-nav="participants">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.4 7-6.4s7 2.8 7 6.4"/></svg>
+          Dalībnieki
+        </button>
+      </nav>
+      <div class="admin-sidebar-footer">
+        <a class="admin-sidebar-link" href="../present/" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
+          Prezentācijas skats
+        </a>
+        <button type="button" class="admin-sidebar-link" id="adminLogout">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          Iziet
+        </button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-breadcrumb">AI Reality Check 2026 / <span id="adminBreadcrumbSection">Vadības pults</span></div>
+        <div class="admin-topbar-actions">
+          <a class="admin-present-btn" href="../present/" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
+            Atvērt prezentācijas skatu
+          </a>
+          <div class="admin-avatar-menu">
+            <button type="button" id="adminAvatarButton" class="admin-avatar"><span id="adminAvatarInitials">--</span></button>
+            <div class="admin-avatar-dropdown" id="adminAvatarDropdown" hidden>
+              <p class="admin-avatar-email" id="adminActorEmail"></p>
+              <p class="admin-role-chip" id="adminActorRole"></p>
+              <button type="button" id="adminOpenUsers" hidden>Lietotāji</button>
+              <button type="button" id="adminOpenAudit">Audita žurnāls</button>
+              <button type="button" id="adminSignOut">Izrakstīties</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Vadības pults -->
+      <section class="admin-panel is-active" data-admin-panel="dashboard">
+        <div class="admin-status-bar">
+          <span class="admin-status-live"><i></i> <span id="dashEventState">Pasākums notiek</span></span>
+          <span id="dashOnlineCount">-- dalībnieki tiešsaistē</span>
+          <span class="admin-status-sync" id="dashSyncTime">Sinhronizē...</span>
+        </div>
+
+        <div class="admin-dashboard-grid">
+          <article class="admin-card admin-card-agenda">
+            <button type="button" class="admin-card-open" id="dashOpenProgram" aria-label="Atvērt programmas pārvaldību">
+              <span class="admin-card-label">Šobrīd programmā</span>
+              <span class="admin-chip" id="dashAgendaCategory">—</span>
+              <strong id="dashAgendaTitle">Ielādē...</strong>
+              <span class="admin-card-meta" id="dashAgendaSpeaker"></span>
+              <div class="admin-progress"><span id="dashAgendaProgress" style="width:0%"></span></div>
+              <div class="admin-progress-labels">
+                <span id="dashAgendaStart">--:--</span>
+                <span id="dashAgendaRemaining">—</span>
+                <span id="dashAgendaEnd">--:--</span>
+              </div>
+            </button>
+            <div class="admin-card-actions">
+              <button type="button" class="btn secondary" id="dashExtend">+5 min</button>
+              <button type="button" class="live-submit" id="dashNextAgenda">Nākamais punkts <span>→</span></button>
+            </div>
+          </article>
+
+          <article class="admin-card admin-card-poll">
+            <span class="admin-card-label">Aktīvais balsojums</span>
+            <span class="admin-chip" id="dashPollCount">0 atbildes</span>
+            <strong id="dashPollTitle">Nav aktīva balsojuma</strong>
+            <div class="admin-mini-meter" id="dashPollMeter"></div>
+            <div class="admin-card-actions">
+              <button type="button" class="btn secondary" id="dashPollPresent">Rādīt uz ekrāna</button>
+              <button type="button" class="live-submit is-pink" id="dashPollClose">Noslēgt balsojumu</button>
+            </div>
+          </article>
+
+          <article class="admin-card">
+            <div class="admin-card-title-row">
+              <span class="admin-card-label">Jautājumi</span>
+              <button type="button" class="admin-link" data-admin-nav="moderation">Skatīt visus →</button>
+            </div>
+            <h3>Gaida moderāciju</h3>
+            <div id="dashPendingQuestions" class="admin-question-preview-list"><p class="live-empty">Ielādē...</p></div>
+          </article>
+
+          <article class="admin-card">
+            <span class="admin-card-label">Šodien</span>
+            <h3>Aktivitāte</h3>
+            <div class="admin-activity-grid">
+              <div><strong id="dashArrivedCount">--</strong><span>Ieradušies</span></div>
+              <div><strong id="dashQuestionCount">--</strong><span>Jautājumi</span></div>
+              <div><strong id="dashAnswerCount">--</strong><span>Atbildes</span></div>
+            </div>
+          </article>
+        </div>
+
+        <article class="admin-card admin-remote-card">
+          <div class="admin-card-title-row">
+            <div>
+              <span class="admin-card-label">Prezentācijas tālvadība</span>
+              <h3>Ekrāna režīms</h3>
+            </div>
+            <span class="admin-fine">Taustiņi: ← → nākamais/iepriekšējais · R rezultāti · Q jautājumi · W gaidīšana</span>
+          </div>
+          <div class="admin-remote-modes" id="presentModeButtons"></div>
+          <div class="admin-remote-row">
+            <label class="admin-remember"><input type="checkbox" id="presentResultsVisible"> Rādīt rezultātus</label>
+            <label class="admin-remember"><input type="checkbox" id="presentQrVisible" checked> Rādīt QR kodu</label>
+            <div class="admin-announcement-row">
+              <input type="text" id="presentAnnouncementText" placeholder="Rīkotāja ziņa ekrānam...">
+              <button type="button" class="btn secondary" id="presentSendAnnouncement">Nosūtīt</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-title-row">
+            <div>
+              <span class="admin-card-label">Rezultāti</span>
+              <h3>Eksports</h3>
+            </div>
+          </div>
+          <div class="admin-export-row">
+            <a class="btn secondary" id="exportRegistrationsCsv" href="#">Dalībnieki CSV</a>
+            <a class="btn secondary" id="exportQuestionsCsv" href="#">Jautājumi CSV</a>
+            <a class="btn secondary" href="../rezultati/print.html" target="_blank" rel="noopener">Kopsavilkums (PDF)</a>
+          </div>
+        </article>
+      </section>
+
+      <!-- Moderācija -->
+      <section class="admin-panel" data-admin-panel="moderation">
+        <div class="admin-panel-heading">
+          <h1>Jautājumu moderācija</h1>
+        </div>
+        <div class="admin-moderation-layout">
+          <div>
+            <div class="admin-tabs" id="moderationTabs">
+              <button type="button" class="is-active" data-status="pending">Gaida <span id="tabCountPending">0</span></button>
+              <button type="button" data-status="approved">Publicēti</button>
+              <button type="button" data-status="answered">Atbildēti</button>
+              <button type="button" data-status="rejected">Paslēpti</button>
+            </div>
+            <div class="admin-moderation-toolbar">
+              <input type="search" id="moderationSearch" placeholder="Meklēt pēc teksta vai autora...">
+              <select id="moderationAgendaFilter"><option value="all">Visi programmas punkti</option></select>
+            </div>
+            <div id="moderationList" class="admin-question-list"><p class="live-empty">Ielādē...</p></div>
+          </div>
+          <aside class="admin-card admin-preview-card">
+            <span class="live-kicker">Prezentācijas priekšskatījums</span>
+            <div id="moderationPreview">
+              <p class="live-empty">Nav izcelta jautājuma.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Balsojumi -->
+      <section class="admin-panel" data-admin-panel="polls">
+        <div class="admin-panel-heading">
+          <h1>Balsojumi</h1>
+          <button type="button" class="live-submit" id="pollsOpenWizard">+ Jauns balsojums</button>
+        </div>
+        <div class="admin-tabs" id="pollsTabs">
+          <button type="button" class="is-active" data-filter="all">Visi</button>
+          <button type="button" data-filter="active">Aktīvie</button>
+          <button type="button" data-filter="ready">Plānotie</button>
+          <button type="button" data-filter="draft">Melnraksti</button>
+        </div>
+        <div id="pollsList" class="admin-poll-list"><p class="live-empty">Ielādē...</p></div>
+      </section>
+
+      <!-- Dalībnieki -->
+      <section class="admin-panel" data-admin-panel="participants">
+        <div class="admin-panel-heading">
+          <h1 id="participantsHeading">Dalībnieki</h1>
+          <div class="admin-panel-actions">
+            <a class="admin-link" id="participantsExportCsv" href="#">Eksportēt CSV</a>
+          </div>
+        </div>
+        <div class="admin-moderation-toolbar">
+          <select id="participantsStatusFilter">
             <option value="all">Visi</option>
             <option value="application_received">Saņemts</option>
             <option value="approved">Apstiprināts</option>
             <option value="waitlisted">Gaidīšanas saraksts</option>
             <option value="rejected">Atteikts</option>
-            <option value="reconfirm_required">Jāapstiprina ierašanās</option>
             <option value="arrived">Ieradies</option>
           </select>
         </div>
-        <div class="btn-row" style="align-items:end;margin-top:0">
-          <button class="btn secondary" type="button" id="exportRegistrations">CSV</button>
-          <button class="btn secondary" type="button" id="loadCheckinStats">Check-in</button>
+        <div id="participantsList" class="admin-participant-list"><p class="live-empty">Ielādē...</p></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Program management modal -->
+  <div class="admin-modal" id="programModal" hidden>
+    <div class="admin-modal-panel admin-modal-wide">
+      <header class="admin-modal-header">
+        <h2>Programma</h2>
+        <button type="button" class="admin-modal-close" data-close-modal="programModal">✕</button>
+      </header>
+      <div class="admin-modal-body">
+        <div class="admin-program-list" id="programEditorList"></div>
+        <form id="programItemForm" class="admin-program-form">
+          <input type="hidden" id="agendaId">
+          <div class="admin-form-grid">
+            <label class="admin-field"><span>Nosaukums</span><input type="text" id="agendaTitle" required></label>
+            <label class="admin-field"><span>Kategorija</span><input type="text" id="agendaCategory" placeholder="Keynote, Panelis..."></label>
+            <label class="admin-field"><span>Sākums</span><input type="datetime-local" id="agendaStarts" required></label>
+            <label class="admin-field"><span>Beigas</span><input type="datetime-local" id="agendaEnds" required></label>
+            <label class="admin-field"><span>Runātājs</span><input type="text" id="agendaSpeaker"></label>
+            <label class="admin-field"><span>Runātāja amats</span><input type="text" id="agendaSpeakerRole"></label>
+            <label class="admin-field"><span>Runātāja uzņēmums</span><input type="text" id="agendaSpeakerCompany"></label>
+            <label class="admin-field"><span>Runātāja attēla URL</span><input type="url" id="agendaSpeakerImageUrl"></label>
+          </div>
+          <label class="admin-field"><span>Apraksts</span><textarea id="agendaDescription"></textarea></label>
+          <div class="admin-form-grid">
+            <label class="admin-field"><span>Materiāli (URL)</span><input type="url" id="agendaMaterialsUrl"></label>
+            <label class="admin-field"><span>Video (URL)</span><input type="url" id="agendaVideoUrl"></label>
+          </div>
+          <div class="admin-form-row">
+            <label class="admin-remember"><input type="checkbox" id="agendaIsBreak"> Šī ir pauze</label>
+            <label class="admin-remember"><input type="checkbox" id="agendaQuestionsEnabled" checked> Atļaut jautājumus</label>
+          </div>
+          <div class="admin-form-actions">
+            <button type="button" class="btn secondary" id="programFormReset">Notīrīt formu</button>
+            <button type="submit" class="live-submit">Saglabāt <span>→</span></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Poll wizard modal -->
+  <div class="admin-modal" id="pollWizardModal" hidden>
+    <div class="admin-modal-panel">
+      <header class="admin-modal-header">
+        <h2>Jauns balsojums</h2>
+        <button type="button" class="admin-modal-close" data-close-modal="pollWizardModal">✕</button>
+      </header>
+      <div class="admin-wizard-steps">
+        <span class="is-active" data-step="1">1. Veids</span>
+        <span data-step="2">2. Saturs</span>
+        <span data-step="3">3. Iestatījumi</span>
+        <span data-step="4">4. Priekšskatījums</span>
+      </div>
+      <div class="admin-modal-body">
+        <div class="admin-wizard-step is-active" data-wizard-step="1">
+          <div class="admin-poll-type-grid" id="pollTypeGrid"></div>
+        </div>
+        <div class="admin-wizard-step" data-wizard-step="2">
+          <label class="admin-field"><span>Balsojuma jautājums</span><input type="text" id="wizardTitle" required></label>
+          <label class="admin-field"><span>Programmas punkts</span><select id="wizardAgendaItem"><option value="">Nav piesaistīts</option></select></label>
+          <div id="wizardOptionsBox">
+            <span class="admin-field-label">Atbilžu varianti</span>
+            <div id="wizardOptionsList"></div>
+            <button type="button" class="btn secondary" id="wizardAddOption">+ Variants</button>
+          </div>
+          <div id="wizardScaleBox" hidden class="admin-form-grid">
+            <label class="admin-field"><span>Skala no</span><input type="number" id="wizardScaleMin" value="1"></label>
+            <label class="admin-field"><span>Skala līdz</span><input type="number" id="wizardScaleMax" value="5"></label>
+          </div>
+        </div>
+        <div class="admin-wizard-step" data-wizard-step="3">
+          <div class="admin-settings-grid">
+            <label class="admin-remember"><input type="checkbox" id="wizardAnonymous" checked> Balsošana anonīma</label>
+            <label class="admin-remember"><input type="checkbox" id="wizardAllowChange"> Atļaut mainīt atbildi</label>
+            <label class="admin-remember"><input type="checkbox" id="wizardResultsLive" checked> Rezultāti redzami uzreiz</label>
+            <label class="admin-remember"><input type="checkbox" id="wizardShowCount" checked> Rādīt respondentu skaitu</label>
+            <label class="admin-remember"><input type="checkbox" id="wizardShuffle"> Sajaukt atbilžu secību</label>
+            <label class="admin-field"><span>Rezultātu formāts</span>
+              <select id="wizardResultsFormat">
+                <option value="percent">Procenti</option>
+                <option value="count">Skaits</option>
+                <option value="both">Abi</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="admin-wizard-step" data-wizard-step="4">
+          <div id="wizardPreview" class="admin-wizard-preview"></div>
         </div>
       </div>
-      <p class="fine" id="adminStatus">Ievadi admin atslēgu, lai ielādētu pieteikumus.</p>
-      <div class="card" style="margin:14px 0">
-        <div class="card-title-row">
-          <div>
-            <span class="eyebrow">Apstiprināšana</span>
-            <h2>Auto režīms</h2>
-          </div>
-          <label class="choice" style="margin:0">
-            <input type="checkbox" id="autoApproveEnabled">
-            <span>Auto</span>
+      <footer class="admin-modal-footer">
+        <button type="button" class="btn secondary" id="wizardBack">← Atpakaļ</button>
+        <button type="button" class="live-submit" id="wizardNext">Tālāk <span>→</span></button>
+        <button type="button" class="live-submit" id="wizardSubmit" hidden>Izveidot balsojumu <span>→</span></button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Users modal -->
+  <div class="admin-modal" id="usersModal" hidden>
+    <div class="admin-modal-panel">
+      <header class="admin-modal-header">
+        <h2>Lietotāji</h2>
+        <button type="button" class="admin-modal-close" data-close-modal="usersModal">✕</button>
+      </header>
+      <div class="admin-modal-body">
+        <form id="inviteUserForm" class="admin-form-grid">
+          <label class="admin-field"><span>E-pasts</span><input type="email" id="inviteEmail" required></label>
+          <label class="admin-field"><span>Vārds</span><input type="text" id="inviteDisplayName"></label>
+          <label class="admin-field"><span>Loma</span>
+            <select id="inviteRole">
+              <option value="organizer">Organizators</option>
+              <option value="moderator">Moderators</option>
+              <option value="viewer">Skatītājs</option>
+              <option value="screen">Prezentācijas ekrāns</option>
+              <option value="superadmin">Superadministrators</option>
+            </select>
           </label>
-        </div>
-        <div class="grid two" style="margin-top:12px">
-          <div class="field">
-            <label for="autoApproveLimit">Automātiski apstiprināt pirmos</label>
-            <input id="autoApproveLimit" type="number" min="0" step="1" value="0">
-          </div>
-          <div class="field">
-            <label for="graphCalendarUser">Kalendāra organizators</label>
-            <input id="graphCalendarUser" type="email" value="konference@animas.lv">
-          </div>
-          <div class="field">
-            <label for="microsoftGraphEventId">Microsoft Graph eventId</label>
-            <input id="microsoftGraphEventId" type="text" placeholder="AAMk...">
-          </div>
-          <div class="btn-row" style="align-items:end;margin-top:0">
-            <button class="btn secondary" type="button" id="loadApprovalSettings">Ielādēt</button>
-            <button class="btn" type="button" id="saveApprovalSettings">Saglabāt</button>
-          </div>
-        </div>
-        <p class="fine" id="approvalSettingsStatus">Auto režīms nav ielādēts.</p>
+          <button type="submit" class="live-submit">Uzaicināt <span>→</span></button>
+        </form>
+        <div id="usersList" class="admin-user-list"></div>
       </div>
-      <div class="grid two" id="checkinStats" style="margin:14px 0"></div>
-      <div class="admin-list" id="adminRegistrations"></div>
-    </section>
+    </div>
+  </div>
 
-    <section class="card registration-card" style="margin-top:20px">
-      <div class="card-title-row">
-        <div>
-          <span class="eyebrow">Live programma</span>
-          <h2>Šobrīd</h2>
-        </div>
-        <button class="btn secondary" type="button" id="loadLiveAdmin">Ielādēt programmu</button>
+  <!-- Audit log modal -->
+  <div class="admin-modal" id="auditModal" hidden>
+    <div class="admin-modal-panel admin-modal-wide">
+      <header class="admin-modal-header">
+        <h2>Audita žurnāls</h2>
+        <button type="button" class="admin-modal-close" data-close-modal="auditModal">✕</button>
+      </header>
+      <div class="admin-modal-body">
+        <div id="auditList" class="admin-audit-list"><p class="live-empty">Ielādē...</p></div>
       </div>
-      <p class="fine" id="adminLiveStatus">Programmas pārslēgšanai izmanto to pašu admin atslēgu.</p>
-      <div class="grid two" style="margin-top:16px">
-        <div class="field">
-          <label for="agendaTitle">Programmas punkts</label>
-          <input id="agendaTitle" type="text" placeholder="Nosaukums">
-        </div>
-        <div class="field">
-          <label for="agendaSpeaker">Runātājs</label>
-          <input id="agendaSpeaker" type="text" placeholder="Nav obligāts">
-        </div>
-        <div class="field">
-          <label for="agendaSpeakerRole">Runātāja amats</label>
-          <input id="agendaSpeakerRole" type="text" placeholder="Nav obligāts">
-        </div>
-        <div class="field">
-          <label for="agendaSpeakerCompany">Runātāja uzņēmums</label>
-          <input id="agendaSpeakerCompany" type="text" placeholder="Nav obligāts">
-        </div>
-        <div class="field">
-          <label for="agendaStarts">Sākums</label>
-          <input id="agendaStarts" type="datetime-local">
-        </div>
-        <div class="field">
-          <label for="agendaEnds">Beigas</label>
-          <input id="agendaEnds" type="datetime-local">
-        </div>
-      </div>
-      <div class="grid two" style="margin-top:12px">
-        <div class="field">
-          <label for="agendaDescription">Apraksts</label>
-          <textarea id="agendaDescription" placeholder="Plašāka informācija par tēmu"></textarea>
-        </div>
-        <div class="field">
-          <label for="agendaSpeakerImageUrl">Runātāja attēla URL</label>
-          <input id="agendaSpeakerImageUrl" type="url" placeholder="https://...">
-        </div>
-      </div>
-      <div class="grid two" style="margin-top:12px">
-        <div class="field">
-          <label for="agendaMaterialsUrl">Materiāli</label>
-          <input id="agendaMaterialsUrl" type="url" placeholder="https://...">
-        </div>
-        <div class="field">
-          <label for="agendaVideoUrl">Video</label>
-          <input id="agendaVideoUrl" type="url" placeholder="https://...">
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn secondary" type="button" id="saveAgendaItem">Pievienot punktu</button>
-      </div>
-      <div class="admin-list" id="adminLiveAgenda"></div>
-    </section>
+    </div>
+  </div>
 
-    <section class="card registration-card" style="margin-top:20px">
-      <div class="card-title-row">
-        <div>
-          <span class="eyebrow">Jautājumi</span>
-          <h2>Moderācija</h2>
-        </div>
-        <button class="btn secondary" type="button" id="loadAdminQuestions">Ielādēt jautājumus</button>
-      </div>
-      <p class="fine" id="adminQuestionsStatus">Jautājumi, kas gaida moderāciju un apstiprinātie jautājumi.</p>
-      <div class="grid two" style="margin-top:12px">
-        <div class="field">
-          <label for="questionStatusFilter">Statuss</label>
-          <select id="questionStatusFilter">
-            <option value="all">Visi</option>
-            <option value="pending">Gaida</option>
-            <option value="approved">Apstiprināti</option>
-            <option value="answered">Atbildēti</option>
-            <option value="hidden">Paslēpti</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="questionAgendaFilter">Programmas punkts</label>
-          <select id="questionAgendaFilter">
-            <option value="all">Visi</option>
-          </select>
-        </div>
-      </div>
-      <div class="admin-list" id="adminQuestions"></div>
-    </section>
-
-    <section class="card registration-card" style="margin-top:20px">
-      <div class="card-title-row">
-        <div>
-          <span class="eyebrow">Balsojumi</span>
-          <h2>Vadība</h2>
-        </div>
-        <button class="btn secondary" type="button" id="loadAdminPolls">Ielādēt balsojumus</button>
-      </div>
-      <p class="fine" id="adminPollsStatus">Aktivizē, slēdz un publicē balsojumus.</p>
-      <div class="grid two" style="margin-top:16px">
-        <div class="field">
-          <label for="pollTitle">Balsojuma jautājums</label>
-          <input id="pollTitle" type="text" placeholder="Piemēram: Cik gatavs ir tavs uzņēmums MI ieviešanai?">
-        </div>
-        <div class="field">
-          <label for="pollAgendaItemId">Programmas punkts</label>
-          <select id="pollAgendaItemId">
-            <option value="">Nav piesaistīts</option>
-          </select>
-        </div>
-      </div>
-      <div class="field" style="margin-top:12px">
-        <label for="pollOptions">Atbilžu varianti</label>
-        <textarea id="pollOptions" rows="4" placeholder="Viens variants katrā rindā"></textarea>
-      </div>
-      <div class="btn-row">
-        <button class="btn" type="button" id="createAdminPoll">Izveidot balsojumu</button>
-      </div>
-      <div class="admin-list" id="adminPolls"></div>
-    </section>
-
-    <section class="card registration-card" style="margin-top:20px">
-      <div class="card-title-row">
-        <div>
-          <span class="eyebrow">Statistika</span>
-          <h2>Kopsavilkums</h2>
-        </div>
-        <button class="btn secondary" type="button" id="loadAdminStats">Ielādēt statistiku</button>
-      </div>
-      <div class="grid two" id="adminStats" style="margin-top:16px"></div>
-    </section>
-  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../config.js"></script>
   <script src="../portal.js"></script>
+  <script src="../admin.js"></script>
 </body>
 </html>

@@ -53,6 +53,15 @@ export class SupabaseRest {
     return await response.json() as T[];
   }
 
+  async delete<T>(table: string, query: Record<string, QueryValue>): Promise<T[]> {
+    const response = await this.request(table, {
+      method: "DELETE",
+      query,
+      headers: { Prefer: "return=representation" },
+    });
+    return await response.json() as T[];
+  }
+
   private async request(table: string, options: {
     method: string;
     query?: Record<string, QueryValue>;

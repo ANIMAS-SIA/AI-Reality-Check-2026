@@ -1,8 +1,18 @@
 import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } from "../_shared/http.ts";
 import { addParticipantToCalendarInvite, logCalendarInvite } from "../_shared/calendar-invite.ts";
+import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, logAudit } from "../_shared/auth.ts";
 import { logEmail, sendEmail } from "../_shared/email.ts";
+import { syncApplePassIfExists } from "../_shared/perkpass.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { addDays, createToken, hashToken } from "../_shared/tokens.ts";
+
+type CompanyRow = { id: string; name: string };
+
+async function resolveCompanyName(db: SupabaseRest, companyId: string | null): Promise<string> {
+  if (!companyId) return "";
+  const company = (await db.select<CompanyRow>("companies", { id: `eq.${companyId}`, limit: 1 }))[0];
+  return company?.name || "";
+}
 
 type ParticipantRow = {
   id: string;
@@ -59,14 +69,6 @@ type SettingsPayload = Partial<{
 
 function clean(value?: string | null): string {
   return (value || "").trim();
-}
-
-function requireAdmin(request: Request): Response | null {
-  const expected = Deno.env.get("ADMIN_API_KEY");
-  if (!expected) return errorResponse("ADMIN_API_KEY is not configured", 500);
-  const actual = request.headers.get("x-admin-key") || "";
-  if (actual !== expected) return errorResponse("Unauthorized", 401);
-  return null;
 }
 
 function approvedEmailHtml(firstName: string, passLink: string, checkinLink: string, appleWalletLink: string, googleWalletLink: string): string {
@@ -188,6 +190,20 @@ async function exportRegistrations(db: SupabaseRest, url: URL): Promise<Response
   });
 }
 
+type AuditLogRow = {
+  id: string;
+  action: string;
+  target_table: string | null;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+async function listAuditLog(db: SupabaseRest): Promise<Response> {
+  const logs = await db.select<AuditLogRow>("admin_audit_logs", { order: "created_at.desc", limit: 200 });
+  return jsonResponse({ logs });
+}
+
 async function checkinStats(db: SupabaseRest): Promise<Response> {
   const participants = await db.select<ParticipantRow>("participants", { limit: 1000 });
   const checkins = await db.select<{ id: string; scan_result: string }>("checkins", { limit: 2000 });
@@ -205,17 +221,8 @@ async function checkinStats(db: SupabaseRest): Promise<Response> {
   });
 }
 
-async function audit(db: SupabaseRest, request: Request, action: string, targetId?: string, metadata: Record<string, unknown> = {}) {
-  const key = request.headers.get("x-admin-key") || "";
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
-  const hash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  await db.insert("admin_audit_logs", [{
-    actor_key_hash: hash,
-    action,
-    target_table: targetId ? "participants" : null,
-    target_id: targetId || null,
-    metadata,
-  }]);
+async function audit(db: SupabaseRest, actor: AdminActor, action: string, targetId?: string, metadata: Record<string, unknown> = {}) {
+  await logAudit(db, actor, action, targetId ? "participants" : undefined, targetId, metadata);
 }
 
 async function eventSettings(db: SupabaseRest): Promise<EventRow> {
@@ -245,7 +252,7 @@ async function getSettings(db: SupabaseRest): Promise<Response> {
   });
 }
 
-async function updateSettings(db: SupabaseRest, request: Request, payload: SettingsPayload): Promise<Response> {
+async function updateSettings(db: SupabaseRest, actor: AdminActor, payload: SettingsPayload): Promise<Response> {
   const event = await eventSettings(db);
   const row = {
     auto_approve_enabled: Boolean(payload.autoApproveEnabled),
@@ -254,11 +261,11 @@ async function updateSettings(db: SupabaseRest, request: Request, payload: Setti
     microsoft_graph_event_id: clean(payload.microsoftGraphEventId) || null,
   };
   const updated = (await db.update<EventRow>("events", row, { id: `eq.${event.id}` }))[0];
-  await audit(db, request, "event_auto_approval_settings_update", event.id, row);
+  await logAudit(db, actor, "event_auto_approval_settings_update", "events", event.id, row);
   return jsonResponse({ settings: updated });
 }
 
-async function approveRegistration(db: SupabaseRest, participantId: string): Promise<Response> {
+async function approveRegistration(db: SupabaseRest, actor: AdminActor, participantId: string): Promise<Response> {
   const participants = await db.select<ParticipantRow>("participants", {
     id: `eq.${participantId}`,
     limit: 1,
@@ -283,6 +290,7 @@ async function approveRegistration(db: SupabaseRest, participantId: string): Pro
     approved_at: new Date().toISOString(),
   }, { id: `eq.${participantId}` });
   const approvedParticipant = updated[0] || participant;
+  await logAudit(db, actor, "participant_approved", "participants", participantId);
 
   const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
   const magicToken = await findOrCreateMagicToken(db, participantId);
@@ -292,6 +300,12 @@ async function approveRegistration(db: SupabaseRest, participantId: string): Pro
   const functionsUrl = `${(Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "")}/functions/v1`;
   const appleWalletLink = `${functionsUrl}/wallet?provider=apple&token=${magicToken}`;
   const googleWalletLink = `${functionsUrl}/wallet?provider=google&token=${magicToken}`;
+
+  await syncApplePassIfExists(db, participantId, {
+    attendeeName: `${approvedParticipant.first_name} ${approvedParticipant.last_name}`.trim(),
+    companyName: await resolveCompanyName(db, approvedParticipant.company_id),
+  });
+
   const calendarResult = await addParticipantToCalendarInvite(event, {
     id: participant.id,
     first_name: participant.first_name,
@@ -350,7 +364,7 @@ async function participantLinks(db: SupabaseRest, participantId: string) {
   return { passLink: `${siteUrl}/pass/?token=${magicToken}` };
 }
 
-async function setParticipantStatus(db: SupabaseRest, request: Request, participantId: string, status: string): Promise<Response> {
+async function setParticipantStatus(db: SupabaseRest, actor: AdminActor, participantId: string, status: string): Promise<Response> {
   if (!["waitlisted", "rejected", "cancelled", "reconfirm_required"].includes(status)) {
     return errorResponse("Unsupported status", 400);
   }
@@ -367,11 +381,11 @@ async function setParticipantStatus(db: SupabaseRest, request: Request, particip
   const { passLink } = await participantLinks(db, participantId);
   const result = await sendEmail(participant.email, templateKey, { firstName: participant.first_name, passLink });
   await logEmail(db, participantId, templateKey, participant.email, result, { pass_link: passLink });
-  await audit(db, request, `participant_${status}`, participantId);
+  await audit(db, actor, `participant_${status}`, participantId);
   return jsonResponse({ participant: updated, email: result });
 }
 
-async function sendTemplateToParticipant(db: SupabaseRest, request: Request, participantId: string, templateKey: string): Promise<Response> {
+async function sendTemplateToParticipant(db: SupabaseRest, actor: AdminActor, participantId: string, templateKey: string): Promise<Response> {
   const allowed = ["reminder", "reconfirm_7_days", "post_event_materials", "waitlist", "rejected"];
   if (!allowed.includes(templateKey)) return errorResponse("Unsupported template", 400);
   const participant = (await db.select<ParticipantRow>("participants", { id: `eq.${participantId}`, limit: 1 }))[0];
@@ -384,11 +398,11 @@ async function sendTemplateToParticipant(db: SupabaseRest, request: Request, par
     resultsLink: `${siteUrl}/rezultati/`,
   });
   await logEmail(db, participantId, templateKey, participant.email, result, { pass_link: passLink });
-  await audit(db, request, `email_${templateKey}`, participantId);
+  await audit(db, actor, `email_${templateKey}`, participantId);
   return jsonResponse({ email: result });
 }
 
-async function updateParticipant(db: SupabaseRest, request: Request, participantId: string, payload: UpdatePayload): Promise<Response> {
+async function updateParticipant(db: SupabaseRest, actor: AdminActor, participantId: string, payload: UpdatePayload): Promise<Response> {
   const row: Record<string, unknown> = {};
   if (payload.firstName !== undefined) row.first_name = payload.firstName.trim();
   if (payload.lastName !== undefined) row.last_name = payload.lastName.trim();
@@ -400,65 +414,76 @@ async function updateParticipant(db: SupabaseRest, request: Request, participant
   if (payload.networkingAllowed !== undefined) row.networking_allowed = payload.networkingAllowed;
   if (payload.newsletterAllowed !== undefined) row.newsletter_allowed = payload.newsletterAllowed;
   const updated = await db.update<ParticipantRow>("participants", row, { id: `eq.${participantId}` });
-  await audit(db, request, "participant_update", participantId, { fields: Object.keys(row) });
-  return jsonResponse({ participant: updated[0] });
+  await audit(db, actor, "participant_update", participantId, { fields: Object.keys(row) });
+  const participant = updated[0];
+  if (participant && (payload.firstName !== undefined || payload.lastName !== undefined || payload.status !== undefined)) {
+    await syncApplePassIfExists(db, participantId, {
+      attendeeName: `${participant.first_name} ${participant.last_name}`.trim(),
+      companyName: await resolveCompanyName(db, participant.company_id),
+    });
+  }
+  return jsonResponse({ participant });
 }
 
-async function revokeTokens(db: SupabaseRest, request: Request, participantId: string, purpose: string): Promise<Response> {
+async function revokeTokens(db: SupabaseRest, actor: AdminActor, participantId: string, purpose: string): Promise<Response> {
   const query: Record<string, string> = { participant_id: `eq.${participantId}`, revoked_at: "is.null" };
   if (purpose !== "all") query.purpose = `eq.${purpose}`;
   await db.update("participant_tokens", { revoked_at: new Date().toISOString() }, query);
-  await audit(db, request, "tokens_revoked", participantId, { purpose });
+  await audit(db, actor, "tokens_revoked", participantId, { purpose });
   return jsonResponse({ ok: true });
 }
+
+const READ_ROLES = ["superadmin", "organizer", "viewer"] as const;
+const WRITE_ROLES = ["superadmin", "organizer"] as const;
 
 Deno.serve(async (request) => {
   const options = handleOptions(request);
   if (options) return options;
-
-  const adminError = requireAdmin(request);
-  if (adminError) return adminError;
 
   try {
     const db = new SupabaseRest();
     const url = new URL(request.url);
 
     if (request.method === "GET") {
+      await authenticateAdmin(request, db, [...READ_ROLES]);
       const action = url.searchParams.get("action");
       if (action === "settings") return await getSettings(db);
       if (action === "export") return await exportRegistrations(db, url);
       if (action === "stats") return await checkinStats(db);
+      if (action === "audit-log") return await listAuditLog(db);
       const rows = await queryRegistrations(db, url);
       return jsonResponse({ registrations: rows });
     }
 
     if (request.method === "POST") {
+      const actor = await authenticateAdmin(request, db, [...WRITE_ROLES]);
       const action = url.searchParams.get("action");
       const participantId = url.searchParams.get("participant_id");
       if (action === "approve" && participantId) {
-        return await approveRegistration(db, participantId);
+        return await approveRegistration(db, actor, participantId);
       }
       if (participantId && ["waitlist", "reject", "cancel", "reconfirm"].includes(action || "")) {
         const status = action === "waitlist" ? "waitlisted" : action === "reject" ? "rejected" : action === "reconfirm" ? "reconfirm_required" : "cancelled";
-        return await setParticipantStatus(db, request, participantId, status);
+        return await setParticipantStatus(db, actor, participantId, status);
       }
       if (action === "send-email" && participantId) {
-        return await sendTemplateToParticipant(db, request, participantId, url.searchParams.get("template") || "");
+        return await sendTemplateToParticipant(db, actor, participantId, url.searchParams.get("template") || "");
       }
       if (action === "revoke-tokens" && participantId) {
-        return await revokeTokens(db, request, participantId, url.searchParams.get("purpose") || "all");
+        return await revokeTokens(db, actor, participantId, url.searchParams.get("purpose") || "all");
       }
       if (action === "update" && participantId) {
-        return await updateParticipant(db, request, participantId, await request.json());
+        return await updateParticipant(db, actor, participantId, await request.json());
       }
       if (action === "settings") {
-        return await updateSettings(db, request, await readJson<SettingsPayload>(request));
+        return await updateSettings(db, actor, await readJson<SettingsPayload>(request));
       }
       return errorResponse("Unsupported admin action", 400);
     }
 
     return errorResponse("Method not allowed", 405);
   } catch (error) {
+    if (error instanceof AdminAuthError) return adminAuthErrorResponse(error);
     return errorResponse("Admin registrations failed", 500, String(error));
   }
 });
