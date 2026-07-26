@@ -18,6 +18,8 @@ type ParticipantRow = {
   status: string;
   access_mode: string;
   ai_stage: string | null;
+  ai_maturity_level: number | null;
+  ai_maturity_phase: string | null;
   public_company_allowed: boolean;
   networking_allowed: boolean;
   newsletter_allowed: boolean;
@@ -103,7 +105,9 @@ Deno.serve(async (request) => {
         role: participant.role || "Dalībnieks",
         status: statusLabel(participant.status),
         access: accessLabel(participant.access_mode),
-        aiStage: participant.ai_stage || "",
+        aiStage: participant.ai_maturity_level
+          ? `${participant.ai_maturity_phase || ""} · ${participant.ai_maturity_level}/10`.replace(/^ · /, "")
+          : (participant.ai_stage || ""),
         publicCompany: participant.public_company_allowed,
         networking: participant.networking_allowed,
         newsletter: participant.newsletter_allowed,

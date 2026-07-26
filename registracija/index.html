@@ -73,7 +73,7 @@
               <span class="field-error" data-error-for="lastName"></span>
             </div>
             <div class="field">
-              <label for="email">Darba e-pasts <span class="required-mark" aria-hidden="true">*</span></label>
+              <label for="email">E-pasts <span class="required-mark" aria-hidden="true">*</span></label>
               <input id="email" type="email" autocomplete="email">
               <span class="field-error" data-error-for="email"></span>
             </div>
@@ -108,17 +108,61 @@
         </div>
 
         <div class="form-step" data-step="2">
-          <p class="form-step-label">2. solis no 3</p>
-          <h2>Uzņēmuma AI briedums</h2>
-          <p class="question-line">Izvēlies vienu atbildi. To varēsi mainīt pasākuma laikā.</p>
-          <div class="choice-list maturity-list">
-            <label class="choice"><span class="choice-number">01</span><span><strong>Vēl tikai interesējamies</strong></span><input type="radio" name="aiStage" value="Vēl neizmantojam"></label>
-            <label class="choice"><span class="choice-number">02</span><span><strong>Eksperimentējam</strong></span><input type="radio" name="aiStage" value="Izmēģinām atsevišķus rīkus"></label>
-            <label class="choice"><span class="choice-number">03</span><span><strong>Izmantojam ikdienā</strong></span><input type="radio" name="aiStage" value="Izmantojam vairākos procesos"></label>
-            <label class="choice"><span class="choice-number">04</span><span><strong>Mērogojam uzņēmumā</strong></span><input type="radio" name="aiStage" value="MI ir daļa no uzņēmuma stratēģijas"></label>
+          <div class="maturity-header-row">
+            <p class="maturity-kicker">MI brieduma līmenis</p>
+            <p class="form-step-label">2. solis no 3</p>
           </div>
+          <h2>Kur šobrīd atrodas jūsu uzņēmums?</h2>
+
+          <div class="maturity-gauge">
+            <div class="maturity-gauge-visual">
+              <svg class="maturity-gauge-ring" viewBox="0 0 240 240" aria-hidden="true">
+                <path class="maturity-gauge-track" d="M 34.8 179.7 A 104 104 0 1 1 205.2 179.7"></path>
+                <path class="maturity-gauge-fill" id="maturityFillArc" d="M 34.8 179.7 A 104 104 0 1 1 205.2 179.7"></path>
+              </svg>
+              <div class="maturity-gauge-numbers" id="maturityNumbers"></div>
+              <button type="button" class="maturity-gauge-active" id="maturityActiveDot" tabindex="-1" aria-hidden="true">
+                <span id="maturityActiveNumber">5</span>
+              </button>
+              <div class="maturity-gauge-image" id="maturityImageBox">
+                <img id="maturityImage" alt="" width="240" height="240">
+                <span class="maturity-gauge-placeholder" id="maturityPlaceholder" aria-hidden="true">5</span>
+              </div>
+            </div>
+
+            <input
+              id="maturitySlider"
+              class="maturity-gauge-input"
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value="5"
+              aria-label="Uzņēmuma MI brieduma līmenis no 1 līdz 10.">
+          </div>
+
+          <div class="maturity-phase-track" aria-hidden="true">
+            <span data-phase="Izpēte">Izpēte</span>
+            <span data-phase="Eksperimenti">Eksperimenti</span>
+            <span data-phase="Ieviešana">Ieviešana</span>
+            <span data-phase="Līderis">Līderis</span>
+          </div>
+
+          <div class="maturity-card" aria-live="polite">
+            <span class="maturity-card-level" id="maturityCardLevel">5</span>
+            <div class="maturity-card-copy">
+              <span class="maturity-card-phase" id="maturityCardPhase">Eksperimenti</span>
+              <strong id="maturityCardTitle">Veidojam sistēmu</strong>
+              <p id="maturityCardDescription">Vairākas komandas izmanto MI, bet risinājumi vēl nav pilnībā savienoti un pārvaldīti vienoti.</p>
+            </div>
+          </div>
+
+          <label class="maturity-anonymous">
+            <input id="aiAnonymous" type="checkbox" checked>
+            <span>Šo atbildi vēlos iesniegt anonīmi</span>
+          </label>
+
           <p class="form-footnote">Atbildes tiks rādītas tikai apkopotā veidā.</p>
-          <input id="aiAnonymous" type="checkbox" checked hidden>
         </div>
 
         <div class="form-step" data-step="3">
@@ -160,6 +204,7 @@
           <button class="btn" type="button" data-next>Turpināt</button>
           <button class="btn" type="button" data-submit hidden>Pabeigt reģistrāciju</button>
         </div>
+        <p class="maturity-hint" id="maturityHint" hidden>Pabīdi skalu, lai apstiprinātu savu izvēli.</p>
       </div>
 
       <div class="confirmation">
@@ -168,7 +213,7 @@
         </div>
         <p class="confirmation-eyebrow">Reģistrācija pabeigta</p>
         <h2 id="confirmationName" class="confirmation-title">Paldies, tavs pieteikums ir saņemts.</h2>
-        <p class="confirmation-lead">Uz darba e-pastu nosūtīsim dalības apstiprinājumu un tavu unikālo AI Pass saiti.</p>
+        <p class="confirmation-lead">Uz e-pastu nosūtīsim dalības apstiprinājumu un tavu unikālo AI Pass saiti.</p>
 
         <div class="confirmation-details">
           <div class="confirmation-detail">
@@ -201,6 +246,7 @@
     </section>
   </main>
   <script src="../config.js"></script>
+  <script src="../maturity-levels.js"></script>
   <script src="../portal.js"></script>
 </body>
 </html>

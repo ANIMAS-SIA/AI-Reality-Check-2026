@@ -2582,6 +2582,21 @@ body[data-page="live"] .poll-option[data-multi="true"] > i {
   margin-bottom: 24px;
 }
 
+.results-maturity-card {
+  margin-bottom: 24px;
+}
+
+.maturity-stats-grid {
+  margin: 18px 0;
+}
+
+.maturity-stats-grid strong {
+  display: block;
+  color: var(--pink);
+  font-size: 24px;
+  font-weight: 800;
+}
+
 body[data-page="live"] .meter {
   gap: 14px;
 }
@@ -3103,40 +3118,286 @@ body[data-page="registration"] .choice-list {
   gap: 10px;
 }
 
-body[data-page="registration"] .maturity-list .choice {
-  grid-template-columns: 44px minmax(0, 1fr) 22px;
-  align-items: center;
-  min-height: 56px;
-  padding: 0 14px;
-  background: transparent;
-}
-
-body[data-page="registration"] .maturity-list .choice:has(input:checked) {
-  border-color: var(--violet);
-  background: rgba(121, 100, 242, .08);
-}
-
-.choice-number {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-body[data-page="registration"] .maturity-list .choice:has(input:checked) .choice-number {
-  color: var(--violet);
-}
-
-body[data-page="registration"] .maturity-list strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-body[data-page="registration"] .maturity-list input,
 .participation-choice input {
   width: 14px;
   height: 14px;
   margin: 0;
   accent-color: var(--violet);
+}
+
+.maturity-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.maturity-kicker {
+  margin: 0;
+  color: var(--pink);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.maturity-gauge {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  margin: 22px 0 20px;
+}
+
+.maturity-gauge-visual {
+  position: relative;
+  width: 240px;
+  height: 240px;
+}
+
+.maturity-gauge-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.maturity-gauge-track,
+.maturity-gauge-fill {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.maturity-gauge-track {
+  stroke: var(--line);
+  stroke-width: 6;
+}
+
+.maturity-gauge-fill {
+  stroke: var(--pink);
+  stroke-width: 6;
+  transition: stroke-dashoffset .3s ease;
+}
+
+.maturity-gauge-numbers {
+  position: absolute;
+  inset: 0;
+}
+
+.maturity-gauge-number {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: -13px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease, background .2s ease;
+}
+
+.maturity-gauge-number:hover {
+  border-color: var(--violet);
+  color: var(--text);
+}
+
+.maturity-gauge-number.is-active {
+  border-color: var(--pink);
+  background: var(--pink);
+  color: var(--bg);
+}
+
+.maturity-gauge-active {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  pointer-events: none;
+}
+
+.maturity-gauge-active span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -17px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--pink) 60%, transparent);
+  transition: left .3s ease, top .3s ease;
+}
+
+.maturity-gauge-image {
+  position: absolute;
+  inset: 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--panel-2);
+}
+
+.maturity-gauge-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  animation: maturity-fade-in .3s ease forwards;
+}
+
+.maturity-gauge-image img[hidden] {
+  display: none;
+}
+
+@keyframes maturity-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.maturity-gauge-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--muted);
+  font-size: 48px;
+  font-weight: 800;
+}
+
+.maturity-gauge-input {
+  width: min(100%, 320px);
+  accent-color: var(--pink);
+}
+
+.maturity-phase-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.maturity-phase-track span {
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--line);
+  transition: border-color .2s ease, color .2s ease;
+}
+
+.maturity-phase-track span.is-active {
+  border-color: var(--pink);
+  color: var(--text);
+}
+
+.maturity-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.maturity-card-level {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 0, 140, .12);
+  color: var(--pink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.maturity-card-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.maturity-card-phase {
+  color: var(--pink);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.maturity-card-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.maturity-card-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.maturity-anonymous {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.maturity-anonymous input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--violet);
+}
+
+.maturity-hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  body[data-page="registration"] .registration-context:has(~ .registration-card .form-step[data-step="2"].is-active) {
+    display: none;
+  }
+
+  .maturity-gauge-visual {
+    width: 200px;
+    height: 200px;
+  }
+
+  .maturity-gauge-image {
+    inset: 28px;
+  }
+
+  .maturity-gauge-number {
+    width: 30px;
+    height: 30px;
+  }
+
+  .maturity-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
 }
 
 .form-footnote {

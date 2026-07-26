@@ -6,7 +6,13 @@ type PollRow = { id: string; event_id: string; title: string; status: string; re
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string; company_snapshot: Record<string, unknown> };
 type CompanyRow = { id: string; industry: string | null; company_size_badge: string | null; region: string | null };
-type ParticipantRow = { id: string; company_id: string | null; ai_stage: string | null };
+type ParticipantRow = {
+  id: string;
+  company_id: string | null;
+  ai_stage: string | null;
+  ai_maturity_level: number | null;
+  ai_maturity_phase: string | null;
+};
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
   const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
@@ -39,6 +45,13 @@ function groupedCounts(values: string[]) {
     .sort((a, b) => b.count - a.count);
 }
 
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
 Deno.serve(async (request) => {
   const options = handleOptions(request);
   if (options) return options;
@@ -60,24 +73,49 @@ Deno.serve(async (request) => {
       status: "in.(approved,arrived,reconfirm_required)",
     });
     const companyIds = [...new Set(participants.map((p) => p.company_id).filter(Boolean))];
-    const companies: CompanyRow[] = [];
+    const companyById = new Map<string, CompanyRow>();
     for (const id of companyIds) {
       const company = (await db.select<CompanyRow>("companies", { id: `eq.${id}`, limit: 1 }))[0];
-      if (company) companies.push(company);
+      if (company) companyById.set(id as string, company);
     }
+    const companies = [...companyById.values()];
 
-    const usingAiCount = participants.filter((p) => p.ai_stage && p.ai_stage !== "Vēl neizmantojam").length;
-    const usingAiPercent = participants.length ? Math.round((usingAiCount / participants.length) * 100) : 0;
+    const levels = participants.map((p) => p.ai_maturity_level).filter((level): level is number => Number.isInteger(level));
+    const averageLevel = levels.length ? levels.reduce((sum, level) => sum + level, 0) / levels.length : 0;
+
+    // "Using AI" = level 3+ (beyond pure exploration) on the new scale, or any
+    // non-"not yet" answer on the old scale for rows that predate it.
+    const usingAiCount = participants.filter((p) => (
+      p.ai_maturity_level ? p.ai_maturity_level >= 3 : Boolean(p.ai_stage && p.ai_stage !== "Vēl neizmantojam")
+    )).length;
+    const usingAiPercentRounded = participants.length ? Math.round((usingAiCount / participants.length) * 100) : 0;
+
+    const byLevel = Array.from({ length: 10 }, (_, index) => ({
+      level: index + 1,
+      count: levels.filter((level) => level === index + 1).length,
+    }));
+    const byPhase = groupedCounts(participants.map((p) => p.ai_maturity_phase || ""));
+    const byIndustry = groupedCounts(participants.map((p) => (p.company_id ? companyById.get(p.company_id)?.industry || "" : "")));
+    const bySize = groupedCounts(participants.map((p) => (p.company_id ? companyById.get(p.company_id)?.company_size_badge || "" : "")));
 
     return jsonResponse({
       event,
       summary: {
         participant_count: participants.length,
         represented_companies: companyIds.length,
-        using_ai_percent: usingAiPercent,
+        using_ai_percent: usingAiPercentRounded,
         headline: participants.length
-          ? `${usingAiPercent}% reģistrēto dalībnieku pārstāvēto uzņēmumu MI jau izmanto vai testē.`
+          ? `${usingAiPercentRounded}% reģistrēto dalībnieku pārstāvēto uzņēmumu MI jau izmanto vai testē.`
           : "Rezultāti tiks publicēti pēc pirmajām atbildēm.",
+      },
+      maturity: {
+        average: Math.round(averageLevel * 10) / 10,
+        median: median(levels),
+        answered_count: levels.length,
+        by_level: byLevel,
+        by_phase: byPhase,
+        by_industry: byIndustry,
+        by_size: bySize,
       },
       polls: pollResults,
       company_segments: {

@@ -463,9 +463,146 @@ function localPassHref(passHref) {
   }
 }
 
+function trackMaturityEvent(eventName, overrides = {}) {
+  if (!API_BASE) return;
+  const slider = document.getElementById("maturitySlider");
+  const level = overrides.maturityLevel ?? Number(slider?.value || 0);
+  const levelInfo = window.maturityLevelByNumber ? window.maturityLevelByNumber(level) : null;
+  const properties = {
+    registrationStep: 2,
+    maturityLevel: level,
+    maturityPhase: overrides.maturityPhase ?? (levelInfo?.phase || ""),
+    anonymous: overrides.anonymous ?? (document.getElementById("aiAnonymous")?.checked !== false),
+  };
+  try {
+    fetch(`${API_BASE}/analytics-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventName, properties }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // best-effort analytics only
+  }
+}
+
+function initMaturityGauge(onChange) {
+  const slider = document.getElementById("maturitySlider");
+  const levels = window.MATURITY_LEVELS;
+  if (!slider || !levels) return;
+
+  const numbersBox = document.getElementById("maturityNumbers");
+  const activeDot = document.getElementById("maturityActiveDot");
+  const activeNumber = document.getElementById("maturityActiveNumber");
+  const fillArc = document.getElementById("maturityFillArc");
+  const image = document.getElementById("maturityImage");
+  const placeholder = document.getElementById("maturityPlaceholder");
+  const cardLevel = document.getElementById("maturityCardLevel");
+  const cardPhase = document.getElementById("maturityCardPhase");
+  const cardTitle = document.getElementById("maturityCardTitle");
+  const cardDescription = document.getElementById("maturityCardDescription");
+  const phaseTrack = document.querySelector(".maturity-phase-track");
+
+  const count = levels.length;
+  const cx = 120;
+  const cy = 120;
+  const r = 104;
+  const startDeg = 145;
+  const sweepDeg = 250;
+  const arcLength = fillArc ? fillArc.getTotalLength() : 0;
+
+  function pointForIndex(index) {
+    const deg = startDeg + (sweepDeg * index) / (count - 1);
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  if (numbersBox && !numbersBox.dataset.built) {
+    numbersBox.innerHTML = levels
+      .map((item, index) => {
+        const { x, y } = pointForIndex(index);
+        return `<button type="button" class="maturity-gauge-number" data-level="${item.level}" style="left:${x}px;top:${y}px">${item.level}</button>`;
+      })
+      .join("");
+    numbersBox.dataset.built = "true";
+  }
+
+  function applyLevel(level, { silent = false } = {}) {
+    const info = window.maturityLevelByNumber(level) || levels[0];
+    const index = levels.indexOf(info);
+    const { x, y } = pointForIndex(index);
+
+    if (activeDot) {
+      activeDot.style.left = `${x}px`;
+      activeDot.style.top = `${y}px`;
+    }
+    if (activeNumber) activeNumber.textContent = String(info.level);
+
+    if (fillArc && arcLength) {
+      const fraction = index / (count - 1);
+      fillArc.style.strokeDasharray = String(arcLength);
+      fillArc.style.strokeDashoffset = String(arcLength * (1 - fraction));
+    }
+
+    if (image) {
+      image.onerror = () => {
+        image.hidden = true;
+        if (placeholder) placeholder.hidden = false;
+      };
+      image.onload = () => {
+        image.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+      };
+      image.alt = info.title;
+      image.src = info.imageUrl;
+    }
+    if (placeholder) placeholder.textContent = String(info.level);
+
+    if (cardLevel) cardLevel.textContent = String(info.level);
+    if (cardPhase) cardPhase.textContent = info.phase;
+    if (cardTitle) cardTitle.textContent = info.title;
+    if (cardDescription) cardDescription.textContent = info.description;
+
+    numbersBox?.querySelectorAll("[data-level]").forEach((button) => {
+      button.classList.toggle("is-active", Number(button.dataset.level) === info.level);
+    });
+
+    if (phaseTrack) {
+      phaseTrack.querySelectorAll("span").forEach((span) => {
+        span.classList.toggle("is-active", span.dataset.phase === info.phase);
+      });
+    }
+
+    if (!silent && onChange) onChange(info.level);
+  }
+
+  let sliderDebounce = null;
+  slider.addEventListener("input", () => {
+    applyLevel(Number(slider.value));
+    window.clearTimeout(sliderDebounce);
+    sliderDebounce = window.setTimeout(() => trackMaturityEvent("maturity_slider_changed"), 200);
+  });
+  slider.addEventListener("change", () => {
+    trackMaturityEvent("maturity_level_selected");
+  });
+
+  numbersBox?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-level]");
+    if (!button) return;
+    slider.value = button.dataset.level;
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    slider.dispatchEvent(new Event("change", { bubbles: true }));
+    slider.focus();
+  });
+
+  applyLevel(Number(slider.value), { silent: true });
+}
+
 function initRegistration() {
   let step = 1;
   let selectedCompany = null;
+  let maturityTouched = false;
+  let maturityStepSeen = false;
   const state = {};
   const steps = [...document.querySelectorAll(".form-step")];
   const pills = [...document.querySelectorAll(".step-pill")];
@@ -539,6 +676,13 @@ function initRegistration() {
     back.hidden = step === 1;
     next.hidden = step === 3;
     submit.hidden = step !== 3;
+    next.textContent = step === 2 ? "Apstiprināt līmeni" : "Turpināt";
+    const maturityHint = document.getElementById("maturityHint");
+    if (maturityHint) maturityHint.hidden = !(step === 2 && !maturityTouched);
+    if (step === 2 && !maturityStepSeen) {
+      maturityStepSeen = true;
+      trackMaturityEvent("maturity_step_viewed");
+    }
     if (contextTitle) contextTitle.innerHTML = contextByStep[step].title;
     if (contextDescription) contextDescription.textContent = contextByStep[step].description;
     validate();
@@ -565,7 +709,7 @@ function initRegistration() {
         }
       });
       if (fieldValue("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fieldValue("email"))) {
-        errorFor("email", "Ievadiet derīgu darba e-pastu.");
+        errorFor("email", "Ievadiet derīgu e-pastu.");
         ok = false;
       }
       if (!noCompany.checked && !selectedCompany && !fieldValue("company")) {
@@ -574,7 +718,7 @@ function initRegistration() {
       }
     }
 
-    if (step === 2 && !document.querySelector("input[name='aiStage']:checked")) {
+    if (step === 2 && !maturityTouched) {
       ok = false;
     }
 
@@ -595,7 +739,7 @@ function initRegistration() {
     state.companyName = noCompany.checked ? "Nepārstāv uzņēmumu" : (selectedCompany?.name || fieldValue("company"));
     state.company = selectedCompany;
     state.noCompany = noCompany.checked;
-    state.aiStage = document.querySelector("input[name='aiStage']:checked")?.value || "";
+    state.aiMaturityLevel = Number(document.getElementById("maturitySlider")?.value || 0);
     state.aiAnonymous = document.getElementById("aiAnonymous").checked;
     state.publicCompany = document.getElementById("publicCompany").checked;
     state.fullPortal = document.getElementById("fullPortal").checked;
@@ -658,11 +802,15 @@ function initRegistration() {
   next?.addEventListener("click", () => {
     if (!validate()) return;
     collect();
+    if (step === 2) {
+      trackMaturityEvent(state.aiAnonymous ? "maturity_answer_submitted_anonymously" : "maturity_answer_submitted");
+    }
     step = Math.min(3, step + 1);
     updateStep();
   });
 
   back?.addEventListener("click", () => {
+    if (step === 2) trackMaturityEvent("maturity_step_abandoned");
     step = Math.max(1, step - 1);
     updateStep();
   });
@@ -706,6 +854,15 @@ function initRegistration() {
       submit.disabled = false;
       submit.textContent = "Pabeigt reģistrāciju";
     }
+  });
+
+  initMaturityGauge(() => {
+    if (!maturityTouched) {
+      maturityTouched = true;
+      const hint = document.getElementById("maturityHint");
+      if (hint) hint.hidden = true;
+    }
+    validate();
   });
 
   updateStep();
@@ -896,9 +1053,11 @@ function renderResultsSection(data) {
   const highlights = document.getElementById("resultsHighlights");
   const pollList = document.getElementById("resultsPollList");
   const segmentsBox = document.getElementById("resultsSegments");
+  const maturityBox = document.getElementById("resultsMaturity");
 
   const summary = data?.summary || {};
   const segments = data?.company_segments || {};
+  const maturity = data?.maturity || {};
   const polls = data?.polls || [];
   const hasData = Boolean(summary.participant_count);
   const score = Number(summary.using_ai_percent || 0);
@@ -951,6 +1110,40 @@ function renderResultsSection(data) {
       <div><strong>Lielums</strong><p class="fine">${(segments.sizes || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
       <div><strong>Reģioni</strong><p class="fine">${(segments.regions || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
     `;
+  }
+
+  if (maturityBox) {
+    const answeredCount = Number(maturity.answered_count || 0);
+    maturityBox.hidden = !answeredCount;
+    if (answeredCount) {
+      const byLevel = maturity.by_level || [];
+      maturityBox.innerHTML = `
+        <span class="eyebrow">MI brieduma līmenis</span>
+        <h2>Kur atrodas konferences dalībnieki</h2>
+        <div class="grid two maturity-stats-grid">
+          <div><strong>${maturity.average ?? "--"}/10</strong><p class="fine">Vidējais līmenis</p></div>
+          <div><strong>${maturity.median ?? "--"}/10</strong><p class="fine">Mediāna</p></div>
+        </div>
+        <div class="meter">
+          ${byLevel.map((row) => {
+            const info = window.maturityLevelByNumber ? window.maturityLevelByNumber(row.level) : null;
+            const percent = answeredCount ? Math.round((row.count / answeredCount) * 100) : 0;
+            return `
+              <div class="meter-row">
+                <span>${row.level} · ${info?.title || ""}</span>
+                <span class="meter-track"><span class="meter-fill" style="--value:${percent}%"></span></span>
+                <strong>${row.count}</strong>
+              </div>
+            `;
+          }).join("")}
+        </div>
+        <div class="grid three results-segments-grid">
+          <div><strong>Posmi</strong><p class="fine">${(maturity.by_phase || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+          <div><strong>Nozares</strong><p class="fine">${(maturity.by_industry || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+          <div><strong>Lielums</strong><p class="fine">${(maturity.by_size || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+        </div>
+      `;
+    }
   }
 }
 

@@ -30,7 +30,7 @@ type RegistrationPayload = {
     sector?: string;
   } | null;
   noCompany?: boolean;
-  aiStage?: string;
+  aiMaturityLevel?: number;
   aiAnonymous?: boolean;
   publicCompany?: boolean;
   fullPortal?: boolean;
@@ -68,6 +68,14 @@ function clean(value?: string): string {
 
 function validEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** Mirrors the phase boundaries in maturity-levels.js — never trust a client-sent phase. */
+function maturityPhase(level: number): string {
+  if (level <= 2) return "Izpēte";
+  if (level <= 5) return "Eksperimenti";
+  if (level <= 8) return "Ieviešana";
+  return "Līderis";
 }
 
 function companyRow(payload: RegistrationPayload) {
@@ -190,15 +198,17 @@ Deno.serve(async (request) => {
     const firstName = clean(payload.firstName);
     const lastName = clean(payload.lastName);
     const email = clean(payload.email).toLowerCase();
-    const aiStage = clean(payload.aiStage);
+    const maturityLevel = Number(payload.aiMaturityLevel);
 
     if (!firstName) return errorResponse("Vārds ir obligāts.");
     if (!lastName) return errorResponse("Uzvārds ir obligāts.");
-    if (!validEmail(email)) return errorResponse("Darba e-pasts nav derīgs.");
+    if (!validEmail(email)) return errorResponse("E-pasts nav derīgs.");
     if (!payload.noCompany && !clean(payload.companyName) && !payload.company?.name) {
       return errorResponse("Uzņēmums ir obligāts vai jāatzīmē, ka uzņēmums nav atrasts.");
     }
-    if (!aiStage) return errorResponse("AI Reality Check atbilde ir obligāta.");
+    if (!Number.isInteger(maturityLevel) || maturityLevel < 1 || maturityLevel > 10) {
+      return errorResponse("MI brieduma līmenis ir obligāts (1-10).");
+    }
 
     const event = await getEvent(db);
     const companyId = await saveCompany(db, payload);
@@ -220,8 +230,11 @@ Deno.serve(async (request) => {
       status: nextStatus,
       approved_at: autoApprove ? new Date().toISOString() : undefined,
       access_mode: payload.fullPortal ? "full" : "basic",
-      ai_stage: aiStage,
-      ai_stage_is_anonymous: Boolean(payload.aiAnonymous),
+      ai_maturity_level: maturityLevel,
+      ai_maturity_phase: maturityPhase(maturityLevel),
+      ai_maturity_anonymous: Boolean(payload.aiAnonymous),
+      ai_maturity_answered_at: new Date().toISOString(),
+      ai_maturity_version: 1,
       public_company_allowed: Boolean(payload.publicCompany),
       networking_allowed: Boolean(payload.networking),
       newsletter_allowed: Boolean(payload.newsletter),

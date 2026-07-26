@@ -951,12 +951,16 @@
 
   function participantRowMarkup(participant) {
     const initials = `${(participant.first_name || "?")[0]}${(participant.last_name || "?")[0]}`.toUpperCase();
+    const maturity = participant.ai_maturity_level
+      ? `MI: ${participant.ai_maturity_level}/10 · ${participant.ai_maturity_phase || ""} · ${participant.ai_maturity_anonymous ? "anonīmi" : "publiski"}${participant.ai_maturity_answered_at ? ` · ${new Date(participant.ai_maturity_answered_at).toLocaleDateString("lv-LV")}` : ""}`
+      : "";
     return `
       <article class="admin-participant-row">
         <span class="admin-avatar-sm">${initials}</span>
         <div class="admin-participant-body">
           <strong>${participant.first_name} ${participant.last_name}</strong>
           <span class="admin-fine">${participant.role || ""}</span>
+          ${maturity ? `<span class="admin-fine">${maturity}</span>` : ""}
         </div>
         <span class="admin-status-pill admin-status-${participant.status}">${participant.status}</span>
         <span class="admin-fine">${participant.access_mode}</span>
