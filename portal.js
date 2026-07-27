@@ -491,6 +491,7 @@ function initMaturityGauge(onChange) {
   const levels = window.MATURITY_LEVELS;
   if (!slider || !levels) return;
 
+  const visual = document.querySelector(".maturity-gauge-visual");
   const numbersBox = document.getElementById("maturityNumbers");
   const activeDot = document.getElementById("maturityActiveDot");
   const activeNumber = document.getElementById("maturityActiveNumber");
@@ -521,6 +522,20 @@ function initMaturityGauge(onChange) {
       xPct: ((cx + r * Math.cos(rad)) / viewBoxSize) * 100,
       yPct: ((cy + r * Math.sin(rad)) / viewBoxSize) * 100,
     };
+  }
+
+  function levelFromAngle(clientX, clientY) {
+    if (!visual) return Number(slider.value);
+    const rect = visual.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+    let angle = (Math.atan2(clientY - originY, clientX - originX) * 180) / Math.PI;
+    if (angle < 0) angle += 360;
+    if (angle > 35 && angle < 145) angle = angle <= 90 ? 35 : 145;
+    const normalized = angle < 145 ? angle + 360 : angle;
+    const fraction = Math.min(1, Math.max(0, (normalized - startDeg) / sweepDeg));
+    const index = Math.round(fraction * (count - 1));
+    return levels[index].level;
   }
 
   if (numbersBox && !numbersBox.dataset.built) {
@@ -611,6 +626,39 @@ function initMaturityGauge(onChange) {
     slider.dispatchEvent(new Event("change", { bubbles: true }));
     slider.focus();
   });
+
+  let dragPointerId = null;
+
+  function applyPointerLevel(clientX, clientY) {
+    const level = levelFromAngle(clientX, clientY);
+    if (String(level) !== slider.value) {
+      slider.value = String(level);
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+
+  visual?.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-level]")) return;
+    dragPointerId = event.pointerId;
+    visual.setPointerCapture(event.pointerId);
+    slider.focus({ preventScroll: true });
+    applyPointerLevel(event.clientX, event.clientY);
+    event.preventDefault();
+  });
+
+  visual?.addEventListener("pointermove", (event) => {
+    if (dragPointerId !== event.pointerId) return;
+    applyPointerLevel(event.clientX, event.clientY);
+  });
+
+  function endGaugeDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    dragPointerId = null;
+    slider.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  visual?.addEventListener("pointerup", endGaugeDrag);
+  visual?.addEventListener("pointercancel", endGaugeDrag);
 
   applyLevel(Number(slider.value), { silent: true });
 }
