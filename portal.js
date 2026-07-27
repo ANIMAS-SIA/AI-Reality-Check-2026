@@ -683,6 +683,7 @@ function initRegistration() {
   });
 
   function updateStep() {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     steps.forEach((el) => el.classList.toggle("is-active", Number(el.dataset.step) === step));
     pills.forEach((el) => {
       const n = Number(el.dataset.step);
@@ -703,6 +704,11 @@ function initRegistration() {
     if (contextTitle) contextTitle.innerHTML = contextByStep[step].title;
     if (contextDescription) contextDescription.textContent = contextByStep[step].description;
     validate();
+    const card = document.querySelector(".registration-card");
+    if (card) {
+      const top = window.scrollY + card.getBoundingClientRect().top - 24;
+      window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    }
   }
 
   function errorFor(id, message = "") {
