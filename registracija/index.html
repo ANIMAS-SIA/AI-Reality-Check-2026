@@ -170,43 +170,48 @@
 
         <div class="form-step" data-step="3">
           <p class="form-step-label">3. solis no 3</p>
-          <h2>Kā vēlies piedalīties?</h2>
-          <div class="choice-list participation-list">
-            <label class="participation-choice">
-              <input id="fullPortal" type="radio" name="participationMode" value="full" checked>
-              <span class="participation-copy">
-                <em>Ieteicams</em>
-                <strong>Pilna konferences pieredze</strong>
-                <small>Profils · jautājumi · balsojumi · rezultāti · networking</small>
-              </span>
-            </label>
-            <label class="participation-choice">
-              <input id="anonymousPortal" type="radio" name="participationMode" value="anonymous">
-              <span class="participation-copy">
-                <em>Bez profila</em>
-                <strong>Anonīma dalība</strong>
-                <small>Programma, anonīmi jautājumi un balsošana</small>
-              </span>
+          <h2>Izvēlies savu pieredzi</h2>
+          <p class="form-step-intro">Biļeti saņemsi jebkurā gadījumā. Papildu iespējas vari aktivizēt arī vēlāk.</p>
+
+          <div class="experience-toggle">
+            <span class="experience-toggle-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.6"/><path d="M8.2 8.2a5.4 5.4 0 0 0 0 7.6M15.8 8.2a5.4 5.4 0 0 1 0 7.6M5.3 5.3a9.6 9.6 0 0 0 0 13.4M18.7 5.3a9.6 9.6 0 0 1 0 13.4"/></svg>
+            </span>
+            <div class="experience-toggle-copy">
+              <strong>Pilnā konferences pieredze</strong>
+              <p>Programma, jautājumi, balsojumi, personalizēti rezultāti un networking.</p>
+            </div>
+            <label class="switch">
+              <input id="fullPortal" type="checkbox" checked>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
             </label>
           </div>
+
           <div class="consent-list">
             <label class="plain-check">
-              <input id="requiredConsent" type="checkbox">
-              <span>Piekrītu noteikumiem un privātuma politikai</span>
+              <input id="requiredConsent" type="checkbox" checked>
+              <span>Piekrītu manu datu apstrādei reģistrācijas, dalības un pasākuma informācijas nodrošināšanai. <a href="#" target="_blank">Privātuma informācija</a></span>
             </label>
             <label class="plain-check">
-              <input id="newsletter" type="checkbox">
-              <span>Vēlos saņemt ANIMAS jaunumus</span>
+              <input id="publicCompany" type="checkbox">
+              <span>Atļauju publiski parādīt mana uzņēmuma nosaukumu un logotipu</span>
+            </label>
+            <label class="plain-check">
+              <input id="networking" type="checkbox">
+              <span>Vēlos būt redzams citiem dalībniekiem networking sadaļā</span>
+            </label>
+            <label class="plain-check">
+              <input id="newsletter" type="checkbox" checked>
+              <span>Vēlos saņemt ANIMAS jaunumus pēc konferences</span>
             </label>
           </div>
-          <input id="publicCompany" type="checkbox" hidden>
-          <input id="networking" type="checkbox" hidden>
         </div>
 
         <div class="btn-row">
           <button class="btn" type="button" data-next>Turpināt</button>
-          <button class="btn" type="button" data-submit hidden>Pabeigt reģistrāciju</button>
+          <button class="btn" type="button" data-submit hidden>Iesniegt reģistrāciju</button>
         </div>
+        <p class="form-footnote" id="submitFootnote" hidden>Tavi dati netiks publiskoti bez atsevišķas piekrišanas.</p>
       </div>
 
       <div class="confirmation">

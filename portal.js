@@ -694,6 +694,8 @@ function initRegistration() {
     next.hidden = step === 3;
     submit.hidden = step !== 3;
     next.textContent = step === 2 ? "Apstiprināt līmeni" : "Turpināt";
+    const submitFootnote = document.getElementById("submitFootnote");
+    if (submitFootnote) submitFootnote.hidden = step !== 3;
     if (step === 2 && !maturityStepSeen) {
       maturityStepSeen = true;
       trackMaturityEvent("maturity_step_viewed");
