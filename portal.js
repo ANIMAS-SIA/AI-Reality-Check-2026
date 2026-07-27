@@ -504,47 +504,40 @@ function initMaturityGauge(onChange) {
   const phaseTrack = document.querySelector(".maturity-phase-track");
 
   const count = levels.length;
-  const cx = 120;
-  const cy = 120;
-  const r = 104;
+  const viewBoxSize = 520;
+  const cx = 260;
+  const cy = 260;
+  const r = 210;
   const startDeg = 145;
   const sweepDeg = 250;
   const arcLength = fillArc ? fillArc.getTotalLength() : 0;
+  let currentLevel = Number(slider.value);
+  let imageSwapTimer = null;
 
   function pointForIndex(index) {
     const deg = startDeg + (sweepDeg * index) / (count - 1);
     const rad = (deg * Math.PI) / 180;
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+    return {
+      xPct: ((cx + r * Math.cos(rad)) / viewBoxSize) * 100,
+      yPct: ((cy + r * Math.sin(rad)) / viewBoxSize) * 100,
+    };
   }
 
   if (numbersBox && !numbersBox.dataset.built) {
     numbersBox.innerHTML = levels
       .map((item, index) => {
-        const { x, y } = pointForIndex(index);
-        return `<button type="button" class="maturity-gauge-number" data-level="${item.level}" style="left:${x}px;top:${y}px">${item.level}</button>`;
+        const { xPct, yPct } = pointForIndex(index);
+        return `<button type="button" class="maturity-gauge-number" data-level="${item.level}" style="left:${xPct}%;top:${yPct}%">${item.level}</button>`;
       })
       .join("");
     numbersBox.dataset.built = "true";
   }
 
-  function applyLevel(level, { silent = false } = {}) {
-    const info = window.maturityLevelByNumber(level) || levels[0];
-    const index = levels.indexOf(info);
-    const { x, y } = pointForIndex(index);
-
-    if (activeDot) {
-      activeDot.style.left = `${x}px`;
-      activeDot.style.top = `${y}px`;
-    }
-    if (activeNumber) activeNumber.textContent = String(info.level);
-
-    if (fillArc && arcLength) {
-      const fraction = index / (count - 1);
-      fillArc.style.strokeDasharray = String(arcLength);
-      fillArc.style.strokeDashoffset = String(arcLength * (1 - fraction));
-    }
-
-    if (image) {
+  function setImage(info) {
+    if (!image) return;
+    window.clearTimeout(imageSwapTimer);
+    image.classList.add("is-leaving");
+    imageSwapTimer = window.setTimeout(() => {
       image.onerror = () => {
         image.hidden = true;
         if (placeholder) placeholder.hidden = false;
@@ -555,7 +548,29 @@ function initMaturityGauge(onChange) {
       };
       image.alt = info.title;
       image.src = info.imageUrl;
+      image.classList.remove("is-leaving");
+    }, 120);
+  }
+
+  function applyLevel(level, { silent = false } = {}) {
+    const info = window.maturityLevelByNumber(level) || levels[0];
+    const index = levels.indexOf(info);
+    const { xPct, yPct } = pointForIndex(index);
+
+    if (activeDot) {
+      activeDot.style.left = `${xPct}%`;
+      activeDot.style.top = `${yPct}%`;
     }
+    if (activeNumber) activeNumber.textContent = String(info.level);
+
+    if (fillArc && arcLength) {
+      const fraction = index / (count - 1);
+      fillArc.style.strokeDasharray = String(arcLength);
+      fillArc.style.strokeDashoffset = String(arcLength * (1 - fraction));
+    }
+
+    if (info.level !== currentLevel || silent) setImage(info);
+    currentLevel = info.level;
     if (placeholder) placeholder.textContent = String(info.level);
 
     if (cardLevel) cardLevel.textContent = String(info.level);
@@ -564,12 +579,14 @@ function initMaturityGauge(onChange) {
     if (cardDescription) cardDescription.textContent = info.description;
 
     numbersBox?.querySelectorAll("[data-level]").forEach((button) => {
-      button.classList.toggle("is-active", Number(button.dataset.level) === info.level);
+      const buttonLevel = Number(button.dataset.level);
+      button.classList.toggle("is-current", buttonLevel === info.level);
+      button.classList.toggle("is-passed", buttonLevel < info.level);
     });
 
     if (phaseTrack) {
-      phaseTrack.querySelectorAll("span").forEach((span) => {
-        span.classList.toggle("is-active", span.dataset.phase === info.phase);
+      phaseTrack.querySelectorAll(".maturity-tick").forEach((tick) => {
+        tick.classList.toggle("is-active", tick.dataset.phase === info.phase);
       });
     }
 
@@ -677,8 +694,6 @@ function initRegistration() {
     next.hidden = step === 3;
     submit.hidden = step !== 3;
     next.textContent = step === 2 ? "Apstiprināt līmeni" : "Turpināt";
-    const maturityHint = document.getElementById("maturityHint");
-    if (maturityHint) maturityHint.hidden = !(step === 2 && !maturityTouched);
     if (step === 2 && !maturityStepSeen) {
       maturityStepSeen = true;
       trackMaturityEvent("maturity_step_viewed");
@@ -857,11 +872,7 @@ function initRegistration() {
   });
 
   initMaturityGauge(() => {
-    if (!maturityTouched) {
-      maturityTouched = true;
-      const hint = document.getElementById("maturityHint");
-      if (hint) hint.hidden = true;
-    }
+    maturityTouched = true;
     validate();
   });
 

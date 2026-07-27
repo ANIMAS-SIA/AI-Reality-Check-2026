@@ -3142,16 +3142,21 @@ body[data-page="registration"] .choice-list {
 }
 
 .maturity-gauge {
+  --mg-track: #24242c;
+  --mg-violet: #7a67ee;
+  --mg-pink: #ff008a;
+  --mg-pink-glow: rgba(255, 0, 138, .35);
   display: grid;
   justify-items: center;
-  gap: 18px;
-  margin: 22px 0 20px;
+  gap: 4px;
+  margin: 22px 0 4px;
 }
 
 .maturity-gauge-visual {
   position: relative;
-  width: 240px;
-  height: 240px;
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 1 / 1;
 }
 
 .maturity-gauge-ring {
@@ -3166,102 +3171,48 @@ body[data-page="registration"] .choice-list {
 }
 
 .maturity-gauge-track {
-  stroke: var(--line);
-  stroke-width: 6;
+  stroke: var(--mg-track);
+  stroke-width: 14;
 }
 
 .maturity-gauge-fill {
-  stroke: var(--pink);
-  stroke-width: 6;
+  stroke: var(--mg-violet);
+  stroke-width: 14;
   transition: stroke-dashoffset .3s ease;
 }
 
-.maturity-gauge-numbers {
+.maturity-gauge-glow {
   position: absolute;
-  inset: 0;
-}
-
-.maturity-gauge-number {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  margin: -13px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--panel-2);
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color .2s ease, color .2s ease, background .2s ease;
-}
-
-.maturity-gauge-number:hover {
-  border-color: var(--violet);
-  color: var(--text);
-}
-
-.maturity-gauge-number.is-active {
-  border-color: var(--pink);
-  background: var(--pink);
-  color: var(--bg);
-}
-
-.maturity-gauge-active {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 0;
-  height: 0;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
+  inset: 6%;
+  background: radial-gradient(circle, rgba(122, 103, 238, .14), transparent 70%);
   pointer-events: none;
-}
-
-.maturity-gauge-active span {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  margin: -17px;
-  border-radius: 50%;
-  background: var(--pink);
-  color: var(--bg);
-  font-size: 13px;
-  font-weight: 800;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--pink) 60%, transparent);
-  transition: left .3s ease, top .3s ease;
 }
 
 .maturity-gauge-image {
   position: absolute;
-  inset: 34px;
+  inset: 17%;
   display: grid;
   place-items: center;
-  overflow: hidden;
-  border-radius: 50%;
-  background: var(--panel-2);
 }
 
 .maturity-gauge-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  opacity: 1;
+  transform: scale(1);
+  -webkit-mask-image: radial-gradient(circle, black 60%, transparent 100%);
+  mask-image: radial-gradient(circle, black 60%, transparent 100%);
+  transition: opacity .2s ease, transform .24s ease;
+}
+
+.maturity-gauge-image img.is-leaving {
   opacity: 0;
-  animation: maturity-fade-in .3s ease forwards;
+  transform: scale(.94);
 }
 
 .maturity-gauge-image img[hidden] {
   display: none;
-}
-
-@keyframes maturity-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .maturity-gauge-placeholder {
@@ -3274,31 +3225,127 @@ body[data-page="registration"] .choice-list {
   font-weight: 800;
 }
 
+.maturity-gauge-numbers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.maturity-gauge-number {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 4px;
+  border: none;
+  background: none;
+  transform: translate(-50%, -50%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color .2s ease;
+}
+
+.maturity-gauge-number:hover {
+  color: var(--text);
+}
+
+.maturity-gauge-number.is-passed {
+  color: color-mix(in srgb, var(--mg-violet) 70%, var(--text));
+}
+
+.maturity-gauge-number.is-current {
+  visibility: hidden;
+}
+
+.maturity-gauge-active {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left .26s ease, top .26s ease;
+}
+
+.maturity-gauge-active span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--mg-pink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 0 20px var(--mg-pink-glow);
+}
+
 .maturity-gauge-input {
-  width: min(100%, 320px);
-  accent-color: var(--pink);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: grab;
+}
+
+.maturity-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .maturity-phase-track {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  max-width: 620px;
+  margin-top: 14px;
   color: var(--muted);
+}
+
+.maturity-tick {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.maturity-tick i {
+  display: block;
+  width: 2px;
+  height: 18px;
+  background: var(--line);
+  transition: background .2s ease;
+}
+
+.maturity-tick span {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .6px;
-  text-align: center;
   text-transform: uppercase;
+  transition: color .2s ease;
 }
 
-.maturity-phase-track span {
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--line);
-  transition: border-color .2s ease, color .2s ease;
+.maturity-tick.is-active i {
+  background: var(--mg-violet);
 }
 
-.maturity-phase-track span.is-active {
-  border-color: var(--pink);
+.maturity-tick.is-active span {
   color: var(--text);
 }
 
@@ -3307,10 +3354,12 @@ body[data-page="registration"] .choice-list {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 16px;
   align-items: center;
+  width: 100%;
+  max-width: 620px;
   margin-top: 18px;
   padding: 16px;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
+  border: 1px solid rgba(122, 103, 238, .55);
+  background: linear-gradient(135deg, rgba(122, 103, 238, .1), rgba(3, 3, 3, .4));
 }
 
 .maturity-card-level {
@@ -3319,8 +3368,8 @@ body[data-page="registration"] .choice-list {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255, 0, 140, .12);
-  color: var(--pink);
+  background: rgba(255, 0, 138, .12);
+  color: var(--mg-pink, var(--pink));
   font-size: 15px;
   font-weight: 800;
 }
@@ -3331,7 +3380,7 @@ body[data-page="registration"] .choice-list {
 }
 
 .maturity-card-phase {
-  color: var(--pink);
+  color: var(--mg-violet, var(--violet));
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -3367,36 +3416,24 @@ body[data-page="registration"] .choice-list {
   accent-color: var(--violet);
 }
 
-.maturity-hint {
-  margin: 12px 0 0;
-  color: var(--muted);
-  font-size: 10px;
-  text-align: center;
-}
-
 @media (max-width: 620px) {
   body[data-page="registration"] .registration-context:has(~ .registration-card .form-step[data-step="2"].is-active) {
     display: none;
   }
 
-  .maturity-gauge-visual {
-    width: 200px;
-    height: 200px;
-  }
-
-  .maturity-gauge-image {
-    inset: 28px;
+  .maturity-gauge-active {
+    width: 50px;
+    height: 50px;
   }
 
   .maturity-gauge-number {
-    width: 30px;
-    height: 30px;
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 11px;
   }
 
-  .maturity-card {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
+  .maturity-tick span {
+    font-size: 8px;
   }
 }
 
