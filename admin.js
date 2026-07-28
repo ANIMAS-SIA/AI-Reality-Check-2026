@@ -740,6 +740,7 @@
 
   function pollRowMarkup(poll) {
     const isActive = poll.status === "active";
+    const isTextPoll = poll.poll_type === "open_text" || poll.poll_type === "word_cloud";
     const statusLabel = { draft: "Melnraksts", ready: "Plānots", active: "Aktīvs", paused: "Apturēts", closed: "Pabeigts", archived: "Arhivēts" }[poll.status] || poll.status;
     const typeLabel = POLL_TYPES.find((type) => type.id === poll.poll_type)?.label || poll.poll_type;
     const actions = isActive
@@ -764,10 +765,51 @@
           <strong>${poll.title}</strong>
           <span class="admin-fine">${typeLabel}</span>
         </div>
-        <strong class="admin-poll-count">${poll.response_count || 0}<span>atbildes</span></strong>
+        ${isTextPoll
+          ? `<button type="button" class="admin-poll-count admin-poll-count-btn" data-poll-responses="${poll.id}">${poll.response_count || 0}<span>atbildes ▾</span></button>`
+          : `<strong class="admin-poll-count">${poll.response_count || 0}<span>atbildes</span></strong>`}
         <div class="admin-poll-row-actions">${actions}</div>
+        ${isTextPoll ? `<div class="admin-poll-responses" data-poll-responses-panel="${poll.id}" hidden></div>` : ""}
       </article>
     `;
+  }
+
+  function pollResponseMarkup(response) {
+    return `
+      <article class="admin-poll-response-row ${response.hidden ? "is-hidden" : ""}">
+        <p>${response.response_text}</p>
+        ${response.hidden
+          ? `<button type="button" data-response-show="${response.id}" data-response-poll="${response.poll_id}">Rādīt</button>`
+          : `<button type="button" data-response-hide="${response.id}" data-response-poll="${response.poll_id}">Paslēpt</button>`}
+      </article>
+    `;
+  }
+
+  async function loadResponsesPanel(pollId) {
+    const panel = document.querySelector(`[data-poll-responses-panel="${pollId}"]`);
+    if (!panel) return;
+    panel.innerHTML = `<p class="live-empty">Ielādē atbildes...</p>`;
+    try {
+      const data = await adminFetch(`/admin-polls?action=responses&poll_id=${pollId}`);
+      const responses = data.responses || [];
+      panel.innerHTML = responses.length
+        ? responses.map(pollResponseMarkup).join("")
+        : `<p class="live-empty">Nav atbilžu.</p>`;
+    } catch (error) {
+      panel.innerHTML = `<p class="live-empty">${error.message}</p>`;
+    }
+  }
+
+  async function toggleResponsesPanel(pollId) {
+    const panel = document.querySelector(`[data-poll-responses-panel="${pollId}"]`);
+    if (!panel) return;
+    if (!panel.hidden) {
+      panel.hidden = true;
+      return;
+    }
+    document.querySelectorAll(".admin-poll-responses").forEach((node) => { node.hidden = true; });
+    panel.hidden = false;
+    await loadResponsesPanel(pollId);
   }
 
   function renderPollsList() {
@@ -832,6 +874,27 @@
     const exportBtn = event.target.closest("[data-poll-export]");
     if (exportBtn) {
       downloadCsv(`/admin-polls?action=export&poll_id=${exportBtn.dataset.pollExport}`, `poll-${exportBtn.dataset.pollExport}-results.csv`);
+      return;
+    }
+    const responsesBtn = event.target.closest("[data-poll-responses]");
+    if (responsesBtn) {
+      await toggleResponsesPanel(responsesBtn.dataset.pollResponses);
+      return;
+    }
+    const hideBtn = event.target.closest("[data-response-hide]");
+    if (hideBtn) {
+      try {
+        await adminFetch(`/admin-polls?action=hide-response&poll_id=${hideBtn.dataset.responsePoll}&response_id=${hideBtn.dataset.responseHide}`, { method: "POST" });
+        await loadResponsesPanel(hideBtn.dataset.responsePoll);
+      } catch (error) { showToast(error.message); }
+      return;
+    }
+    const showBtn = event.target.closest("[data-response-show]");
+    if (showBtn) {
+      try {
+        await adminFetch(`/admin-polls?action=show-response&poll_id=${showBtn.dataset.responsePoll}&response_id=${showBtn.dataset.responseShow}`, { method: "POST" });
+        await loadResponsesPanel(showBtn.dataset.responsePoll);
+      } catch (error) { showToast(error.message); }
     }
   });
 

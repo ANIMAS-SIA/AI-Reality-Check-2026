@@ -108,7 +108,7 @@ async function createPoll(db: SupabaseRest, actor: AdminActor, event: EventRow, 
     poll_type: pollType,
     status: "draft",
     allow_anonymous: settings.anonymous !== false,
-    results_public: false,
+    results_public: settings.resultsVisibleLive === true,
     settings,
   }]))[0];
 
@@ -145,6 +145,7 @@ async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, p
     poll_type: pollType,
     agenda_item_id: payload.agendaItemId !== undefined ? (clean(payload.agendaItemId) || null) : poll.agenda_item_id,
     allow_anonymous: settings.anonymous !== false,
+    results_public: settings.resultsVisibleLive === true,
     settings,
   }, { id: `eq.${pollId}` }))[0];
 
@@ -211,6 +212,24 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
   await logAudit(db, actor, `poll_${action}`, "polls", pollId);
   await broadcast(TOPIC, "poll_changed", { poll_id: pollId, action });
   return jsonResponse({ poll: updated });
+}
+
+async function listTextResponses(db: SupabaseRest, pollId: string): Promise<Response> {
+  const poll = (await db.select<PollRow>("polls", { id: `eq.${pollId}`, limit: 1 }))[0];
+  if (!poll) return errorResponse("Poll not found", 404);
+  const responses = await db.select<TextResponseRow>("poll_text_responses", {
+    poll_id: `eq.${pollId}`,
+    order: "created_at.desc",
+  });
+  return jsonResponse({ responses });
+}
+
+async function setResponseHidden(db: SupabaseRest, actor: AdminActor, responseId: string, hidden: boolean): Promise<Response> {
+  const updated = await db.update<TextResponseRow>("poll_text_responses", { hidden }, { id: `eq.${responseId}` });
+  if (!updated[0]) return errorResponse("Response not found", 404);
+  await logAudit(db, actor, hidden ? "poll_response_hide" : "poll_response_show", "poll_text_responses", responseId);
+  await broadcast(TOPIC, "poll_changed", { poll_id: updated[0].poll_id, action: "response-visibility" });
+  return jsonResponse({ response: updated[0] });
 }
 
 async function clearResponses(db: SupabaseRest, actor: AdminActor, pollId: string): Promise<Response> {
@@ -281,6 +300,10 @@ Deno.serve(async (request) => {
         await authenticateAdmin(request, db, [...READ_ROLES]);
         return await exportPoll(db, pollId);
       }
+      if (action === "responses" && pollId) {
+        await authenticateAdmin(request, db, [...READ_ROLES]);
+        return await listTextResponses(db, pollId);
+      }
       await authenticateAdmin(request, db, [...READ_ROLES]);
       return await listPolls(db, event.id);
     }
@@ -309,6 +332,12 @@ Deno.serve(async (request) => {
       if (action === "clear-responses") {
         const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);
         return await clearResponses(db, actor, pollId);
+      }
+      if (action === "hide-response" || action === "show-response") {
+        const actor = await authenticateAdmin(request, db, [...CONTROL_ROLES]);
+        const responseId = url.searchParams.get("response_id") || "";
+        if (!responseId) return errorResponse("Response ID is required", 400);
+        return await setResponseHidden(db, actor, responseId, action === "hide-response");
       }
       return errorResponse("Unsupported poll action", 400);
     }

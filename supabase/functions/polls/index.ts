@@ -13,6 +13,7 @@ type PollRow = {
   poll_type: string;
   allow_anonymous: boolean;
   results_public: boolean;
+  settings: Record<string, unknown>;
 };
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string };
@@ -82,7 +83,7 @@ async function listPolls(db: SupabaseRest, eventId: string): Promise<Response> {
     order: "created_at.asc",
   });
   const activePolls = polls.filter((poll) => poll.status === "active");
-  const published = polls.filter((poll) => poll.results_public || ["published", "closed"].includes(poll.status));
+  const published = polls.filter((poll) => poll.results_public || poll.settings?.resultsVisibleLive === true || ["published", "closed"].includes(poll.status));
   const activeResults = [];
   for (const poll of activePolls) activeResults.push(await resultsForPoll(db, poll));
   const resultSets = [];
@@ -119,9 +120,18 @@ async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Respo
     ? (payload.optionIds || []).map(clean).filter(Boolean)
     : [clean(payload.optionId)].filter(Boolean);
   if (!optionIds.length) return errorResponse("At least one option is required", 400);
+  const uniqueOptionIds = [...new Set(optionIds)];
+  if (poll.poll_type !== "multiple_choice" && uniqueOptionIds.length !== 1) {
+    return errorResponse("Exactly one option is required", 422);
+  }
+  const validOptions = await db.select<PollOptionRow>("poll_options", { poll_id: `eq.${pollId}` });
+  const validOptionIds = new Set(validOptions.map((option) => option.id));
+  if (uniqueOptionIds.some((optionId) => !validOptionIds.has(optionId))) {
+    return errorResponse("Invalid option for this poll", 422);
+  }
 
   try {
-    await db.insert("poll_votes", optionIds.map((optionId) => ({
+    await db.insert("poll_votes", uniqueOptionIds.map((optionId) => ({
       poll_id: pollId,
       option_id: optionId,
       participant_id: participantId || null,

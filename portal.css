@@ -4968,6 +4968,62 @@ body[data-page="registration"] .confirmation-pass .btn {
   gap: 8px;
 }
 
+.admin-poll-count-btn {
+  border: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.admin-poll-count-btn:hover {
+  color: var(--violet);
+}
+
+.admin-poll-responses {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.admin-poll-response-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.admin-poll-response-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-poll-response-row p {
+  margin: 0;
+  color: var(--text);
+}
+
+.admin-poll-response-row.is-hidden p {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.admin-poll-response-row button {
+  flex: 0 0 auto;
+  border: 0;
+  background: none;
+  color: var(--violet);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
 /* ---- participants ---- */
 
 .admin-participant-row {

@@ -1077,13 +1077,22 @@ function wordCloudMarkup(responses) {
   const words = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40);
   return `<div class="word-cloud">${words.map(([word, count]) => {
     const size = 12 + Math.round((count / max) * 28);
-    return `<span style="font-size:${size}px">${word}</span>`;
+    return `<span style="font-size:${size}px">${escapePollHtml(word)}</span>`;
   }).join(" ")}</div>`;
 }
 
 function textResponseListMarkup(responses) {
   if (!responses.length) return `<p class="live-empty">Vēl nav atbilžu.</p>`;
-  return `<ul class="poll-text-list">${responses.map((text) => `<li>${text}</li>`).join("")}</ul>`;
+  return `<ul class="poll-text-list">${responses.map((text) => `<li>${escapePollHtml(text)}</li>`).join("")}</ul>`;
+}
+
+function escapePollHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function renderPollResultSet(result, container) {
@@ -1319,11 +1328,15 @@ function initLive() {
           <label class="poll-anonymous"><input type="checkbox" checked disabled> Atbilde vienmēr anonīma</label>
           <button class="live-submit" type="button" disabled data-role="poll-option-submit">Iesniegt atbildi <span>→</span></button>
         `;
+      const liveResults = active.poll.results_public || active.poll.settings?.resultsVisibleLive
+        ? `<div class="poll-live-results" data-active-result="${active.poll.id}"></div>`
+        : "";
       cards.push(`
         <article class="agenda-poll-card">
           <span class="live-status-label"><i></i> Aktīvs balsojums</span>
           <h3>${active.poll.title}</h3>
           ${body}
+          ${liveResults}
         </article>
       `);
     });
@@ -1340,6 +1353,12 @@ function initLive() {
       .filter((result) => result.poll?.agenda_item_id === itemId)
       .forEach((result) => {
         const target = container.querySelector(`[data-agenda-result="${result.poll.id}"]`);
+        if (target) renderPollResultSet(result, target);
+      });
+    (latestPollState?.activePolls || [])
+      .filter((result) => result.poll?.agenda_item_id === itemId && (result.poll.results_public || result.poll.settings?.resultsVisibleLive))
+      .forEach((result) => {
+        const target = container.querySelector(`[data-active-result="${result.poll.id}"]`);
         if (target) renderPollResultSet(result, target);
       });
   }
@@ -1586,10 +1605,11 @@ function initLive() {
     const pollId = selected[0].dataset.pollId;
     const optionIds = selected.map((item) => item.dataset.optionId);
     submit.disabled = true;
-    submitPollVote(pollId, optionIds.length > 1 ? { optionIds } : { optionId: optionIds[0] })
-      .then(() => {
+    const isMultipleChoice = selected[0].dataset.multi === "true";
+    submitPollVote(pollId, isMultipleChoice ? { optionIds } : { optionId: optionIds[0] })
+      .then(async () => {
         showToast("Balsojums iesniegts.");
-        refreshPolls();
+        await refreshPolls();
         if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
       })
       .catch((error) => {
@@ -1610,10 +1630,10 @@ function initLive() {
     }
     submit.disabled = true;
     submitPollVote(submit.dataset.pollId, { responseText: text })
-      .then(() => {
+      .then(async () => {
         textarea.value = "";
         showToast("Atbilde iesniegta.");
-        refreshPolls();
+        await refreshPolls();
         if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
       })
       .catch((error) => showToast(error.message || "Atbildi neizdevās iesniegt."))
