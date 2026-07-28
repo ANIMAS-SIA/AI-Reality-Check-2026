@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prezentācija | AI Reality Check 2026</title>
+  <meta name="description" content="AI Reality Check 2026 pilnekrāna prezentācijas skats pasākuma ekrānam.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="stylesheet" href="../portal.css">
+</head>
+<body data-page="present">
+  <main class="present-shell">
+    <div class="present-connection" id="presentConnection" hidden>Savienojums pārtraukts — rāda pēdējo zināmo stāvokli...</div>
+
+    <section class="present-view is-active" data-present-mode="waiting">
+      <div class="present-waiting">
+        <div class="present-brand">
+          <span class="live-brand-mark">AI</span>
+          <span>Reality Check 2026</span>
+        </div>
+        <h1>Pievienojies<br><em>balsojumam.</em></h1>
+        <p id="presentWaitingNext">Programma sāksies drīz.</p>
+        <div class="present-qr-block" id="presentWaitingQr">
+          <img id="presentWaitingQrImg" alt="QR kods dalībnieku portālam">
+          <span id="presentWaitingUrl">airealitycheck.lv/live</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="agenda">
+      <div class="present-agenda">
+        <span class="live-kicker">Notiek tagad</span>
+        <h1 id="presentAgendaTitle">Ielādē...</h1>
+        <p class="present-agenda-speaker" id="presentAgendaSpeaker"></p>
+        <p class="present-agenda-time" id="presentAgendaTime"></p>
+        <div class="present-qr-block present-qr-inline" id="presentAgendaQr">
+          <img id="presentAgendaQrImg" alt="QR kods jautājumu iesniegšanai">
+          <span>Uzdod jautājumu — <strong id="presentAgendaQuestionCount">0</strong> jautājumi jau iesniegti</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="poll_question">
+      <div class="present-poll">
+        <span class="live-status-label"><i></i> Balsojums ir atvērts</span>
+        <h1 id="presentPollQuestionTitle">Ielādē...</h1>
+        <div class="present-poll-options" id="presentPollQuestionOptions"></div>
+        <div class="present-qr-block present-qr-inline" id="presentPollQr">
+          <img id="presentPollQrImg" alt="QR kods balsošanai">
+          <span><strong id="presentPollVoteCount">0</strong> atbildes līdz šim</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="poll_results">
+      <div class="present-poll">
+        <span class="live-kicker">Rezultāti</span>
+        <h1 id="presentPollResultsTitle">Ielādē...</h1>
+        <div id="presentPollResultsBody"></div>
+        <p class="present-respondents"><strong id="presentPollResultsCount">0</strong> atbildes</p>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="questions">
+      <div class="present-questions">
+        <span class="live-kicker">Auditorijas jautājums</span>
+        <div id="presentQuestionSingle" hidden>
+          <h1 id="presentQuestionBody"></h1>
+          <p id="presentQuestionMeta"></p>
+        </div>
+        <div id="presentQuestionList"></div>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="announcement">
+      <div class="present-announcement">
+        <span class="live-kicker">Paziņojums</span>
+        <h1 id="presentAnnouncementText">—</h1>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="results">
+      <div class="present-results">
+        <span class="live-kicker">Reāllaika auditorijas dati</span>
+        <h1>AI Reality<br><em>Check.</em></h1>
+        <p id="presentResultsSummary"></p>
+      </div>
+    </section>
+
+    <section class="present-view" data-present-mode="closing">
+      <div class="present-closing">
+        <div class="present-brand">
+          <span class="live-brand-mark">AI</span>
+          <span>Reality Check 2026</span>
+        </div>
+        <h1>Paldies<br><em>par dalību!</em></h1>
+        <p>Rezultātus un secinājumus atrodi tiešsaistē.</p>
+        <div class="present-qr-block" id="presentClosingQr">
+          <img id="presentClosingQrImg" alt="QR kods rezultātu apskatei">
+          <span id="presentClosingUrl">airealitycheck.lv/rezultati</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config.js"></script>
+  <script src="../portal.js"></script>
+  <script src="../present.js"></script>
+</body>
+</html>

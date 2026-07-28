@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rezultāti | AI Reality Check 2026</title>
+  <meta name="description" content="AI Reality Check 2026 kopējie rezultāti.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="stylesheet" href="../portal.css">
+  <link rel="stylesheet" href="../site-chrome.css">
+  <script src="../site-chrome.js" defer></script>
+</head>
+<body data-page="results">
+  <main class="portal-shell results-shell">
+    <header class="topbar">
+      <a class="brand" href="../">
+        <span class="brand-mark">AI</span>
+        <span class="brand-text">
+          <span class="brand-title">Reality Check</span>
+          <span class="brand-subtitle">2026</span>
+        </span>
+      </a>
+      <div class="top-actions">
+        <a class="btn secondary" href="../live/">Live</a>
+      </div>
+    </header>
+
+    <section class="results-hero">
+      <span class="live-kicker">Reāllaika auditorijas dati</span>
+      <div class="results-hero-row">
+        <h1>Rezultāti</h1>
+        <span class="results-hero-badge">AI Reality Check</span>
+      </div>
+      <p class="lead" id="resultsIntro">Ielādē rezultātus...</p>
+    </section>
+
+    <section class="results-score" id="resultsScoreSection">
+      <div class="results-score-ring" id="resultsScoreRing">
+        <div class="results-score-inner">
+          <strong id="resultsScoreValue">--</strong>
+          <span>/100</span>
+        </div>
+      </div>
+      <div class="results-score-copy">
+        <span class="live-kicker">Auditorijas MI gatavība</span>
+        <strong id="resultsScoreLabel">Ielādē...</strong>
+      </div>
+    </section>
+
+    <section class="results-highlights" id="resultsHighlights" hidden></section>
+
+    <section class="results-poll-list" id="resultsPollList">
+      <article class="results-empty">
+        <span>Rezultāti</span>
+        <h2>Ielādē balsojumus...</h2>
+      </article>
+    </section>
+
+    <section class="card results-maturity-card" id="resultsMaturity" hidden></section>
+
+    <section class="card results-segments-card">
+      <span class="eyebrow">Company360 griezumi</span>
+      <h2>Agregēti segmenti</h2>
+      <p class="fine">Segmenti tiek rādīti tikai grupām ar vismaz 3 uzņēmumiem.</p>
+      <div class="grid three results-segments-grid" id="resultsSegments"></div>
+    </section>
+  </main>
+
+  <nav class="bottom-tabs live-bottom-tabs" aria-label="Mobilā navigācija">
+    <a href="../live/?view=program">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><path d="M7.8 8.2a6 6 0 0 0 0 7.6M16.2 8.2a6 6 0 0 1 0 7.6M4.9 5.3a10 10 0 0 0 0 13.4M19.1 5.3a10 10 0 0 1 0 13.4"/></svg>
+      <span>Live</span>
+    </a>
+    <a class="is-active" href="../rezultati/">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
+      <span>Rezultāti</span>
+    </a>
+    <a href="../pass/">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><circle cx="9" cy="12" r="1.8"/><path d="M13 10h4M13 14h4"/></svg>
+      <span>Pass</span>
+    </a>
+    <a href="../live/?view=networking">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7.6 8.4 10.6 16M16.4 8.4 13.4 16M8 7h8"/></svg>
+      <span>Networking</span>
+    </a>
+  </nav>
+
+  <script src="../config.js"></script>
+  <script src="../maturity-levels.js"></script>
+  <script src="../portal.js"></script>
+</body>
+</html>
