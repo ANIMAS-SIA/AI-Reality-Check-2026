@@ -17,7 +17,7 @@ type VotePayload = {
   anonymousSessionId?: string;
 };
 
-type EventRow = { id: string; slug: string; current_agenda_item_id: string | null };
+type EventRow = { id: string; slug: string; current_agenda_item_id: string | null; auto_approve_enabled: boolean };
 type AgendaRow = { id: string; title: string; speaker_name: string | null };
 type QuestionRow = {
   id: string;
@@ -70,7 +70,7 @@ async function createQuestion(db: SupabaseRest, event: EventRow, payload: Questi
     anonymous_session_id: isAnonymous ? anonymousSessionId : null,
     body,
     is_anonymous: isAnonymous,
-    status: "pending",
+    status: event.auto_approve_enabled ? "approved" : "pending",
   }]);
   const question = inserted[0];
   await broadcast("live:ai-reality-check-2026", "question_created", { question_id: question.id });

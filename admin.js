@@ -617,6 +617,7 @@
               <button type="button" data-question-action="archived">Arhivēt</button>
               <button type="button" data-question-present="${question.id}">Rādīt uz ekrāna</button>
               <button type="button" data-question-edit="${question.id}">Rediģēt tekstu</button>
+              <button type="button" data-question-delete="${question.id}">Dzēst</button>
             </div>
           </div>
         </div>
@@ -702,6 +703,20 @@
         });
         showToast("Jautājums rediģēts.");
         await refreshModeration();
+      } catch (error) {
+        showToast(error.message);
+      }
+      return;
+    }
+
+    const deleteBtn = event.target.closest("[data-question-delete]");
+    if (deleteBtn) {
+      if (!window.confirm("Dzēst šo jautājumu? Šo darbību nevar atsaukt.")) return;
+      try {
+        await adminFetch(`/admin-questions?question_id=${deleteBtn.dataset.questionDelete}&action=delete`, { method: "POST" });
+        showToast("Jautājums dzēsts.");
+        await refreshModeration();
+        await refreshDashboard();
       } catch (error) {
         showToast(error.message);
       }

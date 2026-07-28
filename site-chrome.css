@@ -164,8 +164,7 @@ body[data-page="registration"] .brand-mark,
 }
 
 .registration-nav a,
-.pass-nav a,
-.live-primary-nav button {
+.pass-nav a {
   color: rgba(242, 237, 230, .45);
   font-size: .7rem;
   font-weight: 600;
@@ -175,9 +174,7 @@ body[data-page="registration"] .brand-mark,
 }
 
 .registration-nav a:hover,
-.pass-nav a:hover,
-.live-primary-nav button:hover,
-.live-primary-nav button.is-active {
+.pass-nav a:hover {
   color: var(--V);
 }
 
