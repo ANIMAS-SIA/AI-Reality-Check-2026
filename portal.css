@@ -2863,17 +2863,25 @@ body[data-page="registration"] .brand-mark {
 .registration-nav-cta {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  width: 132px;
+  justify-content: center;
+  gap: 8px;
   min-height: 48px;
-  padding: 0 16px;
-  border: 1px solid var(--violet);
+  padding: 0.55rem 1.6rem;
+  border: none;
   background: var(--violet);
-  color: var(--text);
-  font-size: 13px;
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
   font-weight: 600;
+  letter-spacing: 0.1em;
   text-decoration: none;
+  border-radius: 100px;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.registration-nav-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 36px rgba(123, 111, 232, 0.5);
+  background: #6457d0;
 }
 
 .registration-workspace {
