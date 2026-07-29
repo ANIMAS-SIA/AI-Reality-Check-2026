@@ -32,6 +32,7 @@ type RegistrationPayload = {
   noCompany?: boolean;
   aiMaturityLevel?: number;
   aiAnonymous?: boolean;
+  privacyNoticeAcknowledged?: boolean;
   publicCompany?: boolean;
   fullPortal?: boolean;
   networking?: boolean;
@@ -209,6 +210,9 @@ Deno.serve(async (request) => {
     if (!Number.isInteger(maturityLevel) || maturityLevel < 1 || maturityLevel > 10) {
       return errorResponse("MI brieduma līmenis ir obligāts (1-10).");
     }
+    if (payload.privacyNoticeAcknowledged !== true) {
+      return errorResponse("Jāapliecina, ka privātuma politika ir izlasīta.");
+    }
 
     const event = await getEvent(db);
     const companyId = await saveCompany(db, payload);
@@ -244,7 +248,7 @@ Deno.serve(async (request) => {
     if (!participant?.id) throw new Error("Participant was not saved");
 
     await db.upsert("consents", [
-      { participant_id: participant.id, consent_key: "required_participation", granted: true, source: "registration" },
+      { participant_id: participant.id, consent_key: "privacy_notice_acknowledged", granted: true, source: "registration" },
       { participant_id: participant.id, consent_key: "public_company", granted: Boolean(payload.publicCompany), source: "registration" },
       { participant_id: participant.id, consent_key: "full_portal", granted: Boolean(payload.fullPortal), source: "registration" },
       { participant_id: participant.id, consent_key: "networking", granted: Boolean(payload.networking), source: "registration" },

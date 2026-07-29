@@ -817,6 +817,7 @@ function initRegistration() {
     state.noCompany = noCompany.checked;
     state.aiMaturityLevel = Number(document.getElementById("maturitySlider")?.value || 0);
     state.aiAnonymous = document.getElementById("aiAnonymous").checked;
+    state.privacyNoticeAcknowledged = document.getElementById("requiredConsent").checked;
     state.publicCompany = document.getElementById("publicCompany").checked;
     state.fullPortal = document.getElementById("fullPortal").checked;
     state.networking = document.getElementById("networking").checked;
