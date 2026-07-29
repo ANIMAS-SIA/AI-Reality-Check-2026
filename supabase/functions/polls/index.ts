@@ -81,12 +81,13 @@ async function listPolls(db: SupabaseRest, eventId: string): Promise<Response> {
     event_id: `eq.${eventId}`,
     order: "created_at.asc",
   });
-  const active = polls.find((poll) => poll.status === "active") || null;
+  const activePolls = polls.filter((poll) => poll.status === "active");
   const published = polls.filter((poll) => poll.results_public || ["published", "closed"].includes(poll.status));
-  const activeResult = active ? await resultsForPoll(db, active) : null;
+  const activeResults = [];
+  for (const poll of activePolls) activeResults.push(await resultsForPoll(db, poll));
   const resultSets = [];
   for (const poll of published) resultSets.push(await resultsForPoll(db, poll));
-  return jsonResponse({ active: activeResult, results: resultSets, polls });
+  return jsonResponse({ active: activeResults[0] || null, activePolls: activeResults, results: resultSets, polls });
 }
 
 async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Response> {

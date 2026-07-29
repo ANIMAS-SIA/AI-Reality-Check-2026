@@ -107,6 +107,15 @@ async function mergeQuestions(db: SupabaseRest, actor: AdminActor, sourceId: str
   return jsonResponse({ question: updated });
 }
 
+async function deleteQuestion(db: SupabaseRest, actor: AdminActor, questionId: string): Promise<Response> {
+  const existing = (await db.select<QuestionRow>("questions", { id: `eq.${questionId}`, limit: 1 }))[0];
+  if (!existing) return errorResponse("Question not found", 404);
+  await db.delete("questions", { id: `eq.${questionId}` });
+  await logAudit(db, actor, "question_delete", "questions", questionId, { body: existing.body });
+  await broadcast(TOPIC, "question_moderated", { question_id: questionId, status: "deleted" });
+  return jsonResponse({ ok: true });
+}
+
 async function exportQuestions(db: SupabaseRest): Promise<Response> {
   const questions = await db.select<QuestionRow>("questions", { order: "created_at.desc", limit: 1000 });
   const header = ["body", "status", "vote_count", "is_anonymous", "created_at"];
@@ -157,6 +166,9 @@ Deno.serve(async (request) => {
       if (action === "merge") {
         const payload = await readJson<{ targetId?: string }>(request);
         return await mergeQuestions(db, actor, questionId, payload.targetId || "");
+      }
+      if (action === "delete") {
+        return await deleteQuestion(db, actor, questionId);
       }
       return errorResponse("Unsupported question action", 400);
     }

@@ -166,6 +166,8 @@ function initNetworkingPass(token) {
   if (!networkingPanel || !token) return;
 
   const visible = document.getElementById("networkingVisible");
+  const role = document.getElementById("networkingRole");
+  const phone = document.getElementById("networkingPhone");
   const discuss = document.getElementById("networkingDiscuss");
   const looking = document.getElementById("networkingLooking");
   const offer = document.getElementById("networkingOffer");
@@ -174,6 +176,8 @@ function initNetworkingPass(token) {
 
   function renderNetworking(data) {
     if (visible) visible.checked = Boolean(data.profile?.is_visible);
+    if (role) role.value = data.participant?.role || "";
+    if (phone) phone.value = data.profile?.phone || "";
     if (discuss) discuss.value = data.profile?.wants_to_discuss || "";
     if (looking) looking.value = data.profile?.looking_for || "";
     if (offer) offer.value = data.profile?.can_offer || "";
@@ -187,14 +191,13 @@ function initNetworkingPass(token) {
             data.profile.wants_to_discuss && `Vēlos apspriest: ${data.profile.wants_to_discuss}`,
             data.profile.looking_for && `Meklēju: ${data.profile.looking_for}`,
             data.profile.can_offer && `Varu piedāvāt: ${data.profile.can_offer}`,
-          ].filter(Boolean).join(" · ") || "Papildini profilu, lai citi dalībnieki vieglāk atrastu kopīgas tēmas."}</p>
-          <a class="btn secondary live-pass-link" href="../pass/">Rediģēt manu profilu</a>
+          ].filter(Boolean).join(" · ") || "Papildini profilu augšā, lai citi dalībnieki vieglāk atrastu kopīgas tēmas."}</p>
         </article>
       ` : "";
       const otherProfiles = profiles.map((profile) => `
         <article class="card">
           <strong>${profile.name}</strong>
-          <p class="fine">${[profile.role, profile.company, profile.email].filter(Boolean).join(" · ")}</p>
+          <p class="fine">${[profile.role, profile.company, profile.email, profile.phone].filter(Boolean).join(" · ")}</p>
           <p class="fine">${profile.wants_to_discuss || profile.looking_for || ""}</p>
           <button class="btn secondary" type="button" data-contact-recipient="${profile.id}">Nosūtīt kontaktpieprasījumu</button>
         </article>
@@ -232,6 +235,8 @@ function initNetworkingPass(token) {
     try {
       await saveNetworking(token, {
         isVisible: Boolean(visible?.checked),
+        role: role?.value || "",
+        phone: phone?.value || "",
         wantsToDiscuss: discuss?.value || "",
         lookingFor: looking?.value || "",
         canOffer: offer?.value || "",
@@ -320,7 +325,7 @@ async function voteQuestion(questionId) {
 }
 
 async function fetchPollState() {
-  if (!API_BASE) return { active: null, results: [] };
+  if (!API_BASE) return { active: null, activePolls: [], results: [] };
   const response = await fetch(`${API_BASE}/polls`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Balsojumus neizdevās ielādēt.");
@@ -1284,16 +1289,17 @@ function initLive() {
   }
 
   function agendaPollMarkup(itemId, pollState) {
-    const active = pollState?.active?.poll?.agenda_item_id === itemId ? pollState.active : null;
+    const activeForItem = (pollState?.activePolls || []).filter((result) => result.poll?.agenda_item_id === itemId);
+    const activeIds = new Set(activeForItem.map((result) => result.poll.id));
     const published = (pollState?.results || [])
-      .filter((result) => result.poll?.agenda_item_id === itemId && (!active || result.poll.id !== active.poll.id));
+      .filter((result) => result.poll?.agenda_item_id === itemId && !activeIds.has(result.poll.id));
 
-    if (!active && !published.length) {
+    if (!activeForItem.length && !published.length) {
       return `<p class="live-empty">Šai tēmai pašlaik nav aktīvu vai publicētu balsojumu.</p>`;
     }
 
     const cards = [];
-    if (active) {
+    activeForItem.forEach((active) => {
       const pollType = active.poll.poll_type;
       const isText = pollType === "open_text" || pollType === "word_cloud";
       const isMulti = pollType === "multiple_choice";
@@ -1320,7 +1326,7 @@ function initLive() {
           ${body}
         </article>
       `);
-    }
+    });
     published.forEach((result) => {
       cards.push(`<article class="agenda-poll-card" data-agenda-result="${result.poll.id}"></article>`);
     });
@@ -1430,7 +1436,7 @@ function initLive() {
       el.textContent = String((questionsByItem.get(el.dataset.questionCount) || []).length);
     });
     document.querySelectorAll("[data-poll-live]").forEach((el) => {
-      el.hidden = latestPollState?.active?.poll?.agenda_item_id !== el.dataset.pollLive;
+      el.hidden = !(latestPollState?.activePolls || []).some((result) => result.poll?.agenda_item_id === el.dataset.pollLive);
     });
   }
 

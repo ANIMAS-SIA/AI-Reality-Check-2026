@@ -19,6 +19,7 @@ type ProfileRow = {
   wants_to_discuss: string | null;
   can_offer: string | null;
   looking_for: string | null;
+  phone: string | null;
   accepts_contact_requests: boolean;
 };
 type ContactRow = {
@@ -52,6 +53,7 @@ function publicParticipant(participant: ParticipantRow, profile: ProfileRow, com
     role: participant.role || "",
     company: company?.name || "",
     email: revealEmail ? participant.email : undefined,
+    phone: revealEmail ? profile.phone || "" : undefined,
     wants_to_discuss: profile.wants_to_discuss || "",
     can_offer: profile.can_offer || "",
     looking_for: profile.looking_for || "",
@@ -85,7 +87,12 @@ async function listNetworking(db: SupabaseRest, participant: ParticipantRow): Pr
   const acceptedPairs = new Set(requests.filter((row) => row.status === "accepted").map((row) => [row.requester_id, row.recipient_id].sort().join(":")));
   const ownProfile = (await db.select<ProfileRow>("networking_profiles", { participant_id: `eq.${participant.id}`, limit: 1 }))[0] || null;
   return jsonResponse({
-    participant: { id: participant.id, name: `${participant.first_name} ${participant.last_name}`.trim(), email: participant.email },
+    participant: {
+      id: participant.id,
+      name: `${participant.first_name} ${participant.last_name}`.trim(),
+      email: participant.email,
+      role: participant.role || "",
+    },
     profile: ownProfile,
     profiles: profiles
       .map((profile) => {
@@ -101,13 +108,17 @@ async function listNetworking(db: SupabaseRest, participant: ParticipantRow): Pr
 
 async function saveProfile(db: SupabaseRest, participant: ParticipantRow, payload: Record<string, unknown>): Promise<Response> {
   const visible = Boolean(payload.isVisible);
-  await db.update("participants", { networking_allowed: visible }, { id: `eq.${participant.id}` });
+  const participantFields: Record<string, unknown> = { networking_allowed: visible };
+  const role = String(payload.role || "").trim();
+  if (role) participantFields.role = role;
+  await db.update("participants", participantFields, { id: `eq.${participant.id}` });
   const rows = await db.upsert<ProfileRow>("networking_profiles", [{
     participant_id: participant.id,
     is_visible: visible,
     wants_to_discuss: String(payload.wantsToDiscuss || "").trim() || null,
     can_offer: String(payload.canOffer || "").trim() || null,
     looking_for: String(payload.lookingFor || "").trim() || null,
+    phone: String(payload.phone || "").trim() || null,
     accepts_contact_requests: payload.acceptsContactRequests !== false,
   }], "participant_id");
   return jsonResponse({ profile: rows[0] });

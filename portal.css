@@ -1156,9 +1156,6 @@ body[data-page="pass"] .portal-shell {
   height: 28px;
   flex: 0 0 auto;
   color: var(--text);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .wallet-actions small {
@@ -1193,6 +1190,9 @@ body[data-page="pass"] .portal-shell {
 }
 
 .pass-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
   font-size: 18px;
 }

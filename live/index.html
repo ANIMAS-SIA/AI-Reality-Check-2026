@@ -95,6 +95,37 @@
         <p>Kontakti redzami tikai dalībniekiem, kuri devuši piekrišanu.</p>
       </header>
       <article id="networkingPanel" class="live-networking-panel">
+        <article class="card live-networking-editor" id="networkingEditor">
+          <span class="eyebrow">Mans networking profils</span>
+          <label class="check-choice">
+            <input id="networkingVisible" type="checkbox">
+            <span><strong>Profils redzams citiem dalībniekiem</strong></span>
+          </label>
+          <div class="grid two">
+            <div class="field">
+              <label for="networkingRole">Amats</label>
+              <input id="networkingRole" placeholder="Piem. CTO">
+            </div>
+            <div class="field">
+              <label for="networkingPhone">Tālrunis</label>
+              <input id="networkingPhone" type="tel" placeholder="+371 20000000">
+            </div>
+          </div>
+          <div class="field">
+            <label for="networkingDiscuss">Ko vēlos apspriest</label>
+            <textarea id="networkingDiscuss" maxlength="140" placeholder="Piem. MI ieviešana ražošanā"></textarea>
+          </div>
+          <div class="field">
+            <label for="networkingLooking">Ko meklēju</label>
+            <textarea id="networkingLooking" maxlength="140" placeholder="Piem. partnerus, investorus, padomu"></textarea>
+          </div>
+          <div class="field">
+            <label for="networkingOffer">Ko varu piedāvāt</label>
+            <textarea id="networkingOffer" maxlength="140" placeholder="Piem. konsultācijas, pieredzi"></textarea>
+          </div>
+          <button class="btn" type="button" id="saveNetworkingProfile">Saglabāt profilu</button>
+        </article>
+
         <div class="live-networking-toolbar">
           <span>⌕ &nbsp; Meklēt pēc uzņēmuma, lomas vai intereses</span>
           <strong>Visi · AI stratēģija · Automatizācija · Dati</strong>
