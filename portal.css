@@ -513,8 +513,8 @@ h3 {
 .field label,
 .choice-title {
   color: rgba(244, 240, 233, .9);
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 400;
 }
 
 .field input,
@@ -2970,7 +2970,7 @@ body[data-page="registration"] .brand-mark {
 .form-step-label {
   margin-bottom: 26px;
   color: var(--pink);
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 1.8px;
   text-transform: uppercase;
@@ -3052,7 +3052,7 @@ body[data-page="registration"] .step-pill {
   border-right: 1px solid var(--line);
   background: transparent;
   color: #55525b;
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 1px;
 }
 
