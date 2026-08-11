@@ -71,6 +71,10 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
           Vadības pults
         </button>
+        <button type="button" id="adminOpenProgramNav">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 5h14M5 12h14M5 19h14"/><circle cx="8" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/></svg>
+          Programma
+        </button>
         <button type="button" data-admin-nav="moderation">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 1.9-2.4 3.7" stroke-linecap="round"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg>
           Moderācija <span class="admin-nav-badge" id="adminPendingBadge" hidden>0</span>
@@ -82,6 +86,10 @@
         <button type="button" data-admin-nav="participants">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.4 7-6.4s7 2.8 7 6.4"/></svg>
           Dalībnieki
+        </button>
+        <button type="button" data-admin-nav="settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+          Iestatījumi
         </button>
       </nav>
       <div class="admin-sidebar-footer">
@@ -258,10 +266,12 @@
         <div class="admin-panel-heading">
           <h1 id="participantsHeading">Dalībnieki</h1>
           <div class="admin-panel-actions">
+            <button type="button" class="live-submit admin-email-open" id="participantsOpenEmail" disabled>E-pasts izvēlētajiem <span id="participantsSelectedCount">0</span></button>
             <a class="admin-link" id="participantsExportCsv" href="#">Eksportēt CSV</a>
           </div>
         </div>
-        <div class="admin-moderation-toolbar">
+        <div class="admin-participant-toolbar">
+          <input type="search" id="participantsSearch" placeholder="Meklēt pēc vārda, e-pasta vai amata...">
           <select id="participantsStatusFilter">
             <option value="all">Visi</option>
             <option value="application_received">Saņemts</option>
@@ -270,8 +280,53 @@
             <option value="rejected">Atteikts</option>
             <option value="arrived">Ieradies</option>
           </select>
+          <select id="participantsConsentFilter">
+            <option value="all">Visas piekrišanas</option>
+            <option value="required_participation">Datu apstrāde: piekrita</option>
+            <option value="public_company">Publisks uzņēmums: jā</option>
+            <option value="networking">Networking: jā</option>
+            <option value="newsletter">Jaunumi: jā</option>
+            <option value="newsletter_no">Jaunumi: nē</option>
+          </select>
+          <label class="admin-select-all"><input type="checkbox" id="participantsSelectAll"> Atlasīt visus redzamos</label>
         </div>
         <div id="participantsList" class="admin-participant-list"><p class="live-empty">Ielādē...</p></div>
+      </section>
+
+      <!-- Iestatījumi -->
+      <section class="admin-panel" data-admin-panel="settings">
+        <div class="admin-panel-heading">
+          <div>
+            <span class="admin-card-label">Pasākuma konfigurācija</span>
+            <h1>Iestatījumi</h1>
+          </div>
+        </div>
+        <form id="eventSettingsForm" class="admin-settings-layout">
+          <article class="admin-card admin-settings-approval">
+            <span class="admin-card-label">Reģistrācija</span>
+            <h3>Automātiska apstiprināšana</h3>
+            <p class="admin-fine">Ja ieslēgta, jaunās reģistrācijas automātiski saņems apstiprinājumu, līdz sasniegts norādītais limits.</p>
+            <label class="admin-settings-switch">
+              <input type="checkbox" id="autoApproveEnabled">
+              <span><strong>Auto approval</strong><small>Apstiprināt dalībniekus bez manuālas pārbaudes</small></span>
+            </label>
+            <label class="admin-field"><span>Automātiski apstiprināt līdz dalībnieku skaitam</span><input type="number" id="autoApproveLimit" min="0" value="0"></label>
+            <div class="admin-capacity-meter">
+              <div><span>Apstiprināti</span><strong id="settingsApprovedCount">0</strong></div>
+              <div><span>Kopējā kapacitāte</span><strong id="settingsCapacity">0</strong></div>
+            </div>
+          </article>
+          <article class="admin-card">
+            <span class="admin-card-label">Kalendārs</span>
+            <h3>Microsoft Graph uzaicinājums</h3>
+            <label class="admin-field"><span>Organizatora e-pasts</span><input type="email" id="settingsGraphCalendarUser" value="konference@animas.lv"></label>
+            <label class="admin-field"><span>Graph pasākuma ID</span><input type="text" id="settingsGraphEventId"></label>
+          </article>
+          <div class="admin-settings-savebar">
+            <span id="settingsStatus" class="admin-fine"></span>
+            <button type="submit" class="live-submit">Saglabāt iestatījumus <span>→</span></button>
+          </div>
+        </form>
       </section>
     </main>
   </div>
@@ -369,6 +424,44 @@
         <button type="button" class="btn secondary" id="wizardBack">← Atpakaļ</button>
         <button type="button" class="live-submit" id="wizardNext">Tālāk <span>→</span></button>
         <button type="button" class="live-submit" id="wizardSubmit" hidden>Izveidot balsojumu <span>→</span></button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Bulk email composer -->
+  <div class="admin-modal" id="bulkEmailModal" hidden>
+    <div class="admin-modal-panel admin-modal-email">
+      <header class="admin-modal-header">
+        <div>
+          <span class="admin-card-label">Centralizēta komunikācija</span>
+          <h2>Nosūtīt e-pastu <span id="bulkEmailRecipientCount">0</span> dalībniekiem</h2>
+        </div>
+        <button type="button" class="admin-modal-close" data-close-modal="bulkEmailModal">✕</button>
+      </header>
+      <div class="admin-email-composer">
+        <div class="admin-email-fields">
+          <label class="admin-field"><span>Sagatave</span>
+            <select id="bulkEmailPreset">
+              <option value="reminder">Atgādinājums par konferenci</option>
+              <option value="reconfirm">Lūgums apstiprināt ierašanos</option>
+              <option value="materials">Materiāli pēc konferences</option>
+              <option value="custom">Tukša veidne</option>
+            </select>
+          </label>
+          <label class="admin-field"><span>Temats</span><input type="text" id="bulkEmailSubject" maxlength="200"></label>
+          <label class="admin-field admin-html-upload"><span>HTML veidne</span><input type="file" id="bulkEmailFile" accept=".html,text/html"><small>Vari augšupielādēt savu .html failu vai rediģēt kodu zemāk.</small></label>
+          <label class="admin-field"><span>HTML kods</span><textarea id="bulkEmailHtml" rows="16" spellcheck="false"></textarea></label>
+          <p class="admin-template-help">Mainīgie: <code>{{firstName}}</code> <code>{{lastName}}</code> <code>{{participantName}}</code> <code>{{email}}</code> <code>{{passUrl}}</code> <code>{{eventName}}</code></p>
+        </div>
+        <div class="admin-email-preview-wrap">
+          <span class="admin-card-label">Priekšskatījums</span>
+          <iframe id="bulkEmailPreview" sandbox title="E-pasta priekšskatījums"></iframe>
+        </div>
+      </div>
+      <footer class="admin-modal-footer">
+        <span class="admin-fine" id="bulkEmailStatus"></span>
+        <button type="button" class="btn secondary" data-close-modal="bulkEmailModal">Atcelt</button>
+        <button type="button" class="live-submit" id="bulkEmailSend">Nosūtīt e-pastu <span>→</span></button>
       </footer>
     </div>
   </div>

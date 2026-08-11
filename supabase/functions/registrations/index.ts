@@ -211,16 +211,22 @@ Deno.serve(async (request) => {
     }
 
     const event = await getEvent(db);
-    const companyId = await saveCompany(db, payload);
     const existingParticipant = (await db.select<ParticipantRow>("participants", {
       event_id: `eq.${event.id}`,
       email: `eq.${email}`,
       limit: 1,
     }))[0] || null;
-    const autoApprove = await shouldAutoApprove(db, event, existingParticipant);
-    const nextStatus = autoApprove ? "approved" : existingParticipant?.status || "application_received";
+    if (existingParticipant) {
+      return errorResponse("Ar šo e-pasta adresi dalībnieks jau ir reģistrēts.", 409, {
+        code: "EMAIL_ALREADY_REGISTERED",
+        status: existingParticipant.status,
+      });
+    }
+    const companyId = await saveCompany(db, payload);
+    const autoApprove = await shouldAutoApprove(db, event);
+    const nextStatus = autoApprove ? "approved" : "application_received";
 
-    const participantRows = await db.upsert<ParticipantRow>("participants", [{
+    const participantRows = await db.insert<ParticipantRow>("participants", [{
       event_id: event.id,
       company_id: companyId,
       first_name: firstName,
@@ -238,7 +244,7 @@ Deno.serve(async (request) => {
       public_company_allowed: Boolean(payload.publicCompany),
       networking_allowed: Boolean(payload.networking),
       newsletter_allowed: Boolean(payload.newsletter),
-    }], "event_id,email");
+    }]);
 
     const participant = participantRows[0];
     if (!participant?.id) throw new Error("Participant was not saved");

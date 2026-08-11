@@ -1,7 +1,7 @@
 import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } from "../_shared/http.ts";
 import { addParticipantToCalendarInvite, logCalendarInvite } from "../_shared/calendar-invite.ts";
 import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, logAudit } from "../_shared/auth.ts";
-import { logEmail, sendEmail } from "../_shared/email.ts";
+import { logEmail, sendCustomEmail, sendEmail } from "../_shared/email.ts";
 import { formatWalletCompanyName, syncApplePassIfExists } from "../_shared/perkpass.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { addDays, createToken, hashToken } from "../_shared/tokens.ts";
@@ -29,6 +29,7 @@ type ParticipantRow = {
   ai_maturity_phase?: string | null;
   ai_maturity_anonymous?: boolean;
   ai_maturity_answered_at?: string | null;
+  public_company_allowed?: boolean;
   networking_allowed?: boolean;
   newsletter_allowed?: boolean;
   attendance_reconfirmed_at?: string | null;
@@ -70,6 +71,19 @@ type SettingsPayload = Partial<{
   graphCalendarUser: string;
   microsoftGraphEventId: string;
 }>;
+
+type ConsentRow = {
+  participant_id: string;
+  consent_key: string;
+  granted: boolean;
+};
+
+type BulkEmailPayload = {
+  participantIds?: string[];
+  subject?: string;
+  html?: string;
+  text?: string;
+};
 
 function clean(value?: string | null): string {
   return (value || "").trim();
@@ -163,7 +177,7 @@ async function listRegistrations(db: SupabaseRest): Promise<Response> {
   return jsonResponse({ registrations: await queryRegistrations(db, new URL("https://local/")) });
 }
 
-async function queryRegistrations(db: SupabaseRest, url: URL): Promise<ParticipantRow[]> {
+async function queryRegistrations(db: SupabaseRest, url: URL): Promise<Array<ParticipantRow & { consents: Record<string, boolean> }>> {
   const query: Record<string, string | number> = {
     order: "created_at.desc",
     limit: Number(url.searchParams.get("limit") || "250"),
@@ -173,7 +187,28 @@ async function queryRegistrations(db: SupabaseRest, url: URL): Promise<Participa
   const rows = await db.select<ParticipantRow>("participants", {
     ...query,
   });
-  return rows;
+  if (!rows.length) return [];
+  const ids = rows.map((row) => row.id);
+  const consents = await db.select<ConsentRow>("consents", {
+    participant_id: `in.(${ids.join(",")})`,
+    limit: Math.max(1000, ids.length * 8),
+  });
+  const byParticipant = new Map<string, Record<string, boolean>>();
+  consents.forEach((consent) => {
+    const values = byParticipant.get(consent.participant_id) || {};
+    values[consent.consent_key] = Boolean(consent.granted);
+    byParticipant.set(consent.participant_id, values);
+  });
+  return rows.map((row) => ({
+    ...row,
+    consents: {
+      required_participation: true,
+      public_company: Boolean(row.public_company_allowed),
+      networking: Boolean(row.networking_allowed),
+      newsletter: Boolean(row.newsletter_allowed),
+      ...(byParticipant.get(row.id) || {}),
+    },
+  }));
 }
 
 function csvCell(value: unknown) {
@@ -186,9 +221,19 @@ async function exportRegistrations(db: SupabaseRest, url: URL): Promise<Response
   const header = [
     "id", "first_name", "last_name", "email", "role", "status", "access_mode",
     "ai_maturity_level", "ai_maturity_phase", "ai_maturity_anonymous", "ai_maturity_answered_at",
-    "ai_stage", "created_at",
+    "ai_stage", "consent_required_participation", "consent_public_company", "consent_networking",
+    "consent_newsletter", "created_at",
   ];
-  const body = rows.map((row) => header.map((key) => csvCell((row as unknown as Record<string, unknown>)[key])).join(","));
+  const body = rows.map((row) => {
+    const flatRow: Record<string, unknown> = {
+      ...row,
+      consent_required_participation: row.consents.required_participation,
+      consent_public_company: row.consents.public_company,
+      consent_networking: row.consents.networking,
+      consent_newsletter: row.consents.newsletter,
+    };
+    return header.map((key) => csvCell(flatRow[key])).join(",");
+  });
   return new Response([header.join(","), ...body].join("\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
@@ -410,6 +455,97 @@ async function sendTemplateToParticipant(db: SupabaseRest, actor: AdminActor, pa
   return jsonResponse({ email: result });
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function personalize(value: string, participant: ParticipantRow, passLink: string, html = false): string {
+  const rawValues: Record<string, string> = {
+    firstName: participant.first_name,
+    lastName: participant.last_name,
+    participantName: `${participant.first_name} ${participant.last_name}`.trim(),
+    email: participant.email,
+    passUrl: passLink,
+    eventName: "AI Reality Check 2026",
+  };
+  return Object.entries(rawValues).reduce(
+    (result, [key, replacement]) => result.replaceAll(`{{${key}}}`, html ? escapeHtml(replacement) : replacement),
+    value,
+  );
+}
+
+async function sendBulkEmail(db: SupabaseRest, actor: AdminActor, payload: BulkEmailPayload): Promise<Response> {
+  const participantIds = [...new Set(payload.participantIds || [])]
+    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+    .slice(0, 250);
+  const subject = clean(payload.subject).slice(0, 200);
+  const html = clean(payload.html);
+  const text = clean(payload.text);
+  if (!participantIds.length) return errorResponse("Jāizvēlas vismaz viens saņēmējs.", 400);
+  if (!subject) return errorResponse("E-pasta temats ir obligāts.", 400);
+  if (!html) return errorResponse("HTML veidne ir obligāta.", 400);
+  if (html.length > 200_000) return errorResponse("HTML veidne ir pārāk liela.", 413);
+
+  const participants = await db.select<ParticipantRow>("participants", {
+    id: `in.(${participantIds.join(",")})`,
+    limit: participantIds.length,
+  });
+  const results: Array<{ participant_id: string; email: string; status: string; error?: string }> = [];
+
+  for (let offset = 0; offset < participants.length; offset += 5) {
+    const batch = participants.slice(offset, offset + 5);
+    const batchResults = await Promise.all(batch.map(async (participant) => {
+      try {
+        const { passLink } = await participantLinks(db, participant.id);
+        const personalizedSubject = personalize(subject, participant, passLink).replace(/[\r\n]+/g, " ");
+        const personalizedHtml = personalize(html, participant, passLink, true);
+        const personalizedText = text ? personalize(text, participant, passLink) : "";
+        const result = await sendCustomEmail(participant.email, personalizedSubject, personalizedHtml, personalizedText);
+        await logEmail(db, participant.id, "bulk_custom", participant.email, result, {
+          campaign_subject: subject,
+          pass_link: passLink,
+          actor_email: actor.email,
+        });
+        return {
+          participant_id: participant.id,
+          email: participant.email,
+          status: result.status,
+          error: result.error_message,
+        };
+      } catch (error) {
+        return {
+          participant_id: participant.id,
+          email: participant.email,
+          status: "failed",
+          error: String(error),
+        };
+      }
+    }));
+    results.push(...batchResults);
+  }
+
+  await logAudit(db, actor, "bulk_email_send", "participants", undefined, {
+    requested: participantIds.length,
+    delivered: results.filter((result) => result.status === "sent").length,
+    queued: results.filter((result) => result.status === "queued").length,
+    failed: results.filter((result) => result.status === "failed").length,
+    subject,
+  });
+  return jsonResponse({
+    requested: participantIds.length,
+    processed: results.length,
+    sent: results.filter((result) => result.status === "sent").length,
+    queued: results.filter((result) => result.status === "queued").length,
+    failed: results.filter((result) => result.status === "failed").length,
+    results,
+  });
+}
+
 async function updateParticipant(db: SupabaseRest, actor: AdminActor, participantId: string, payload: UpdatePayload): Promise<Response> {
   const row: Record<string, unknown> = {};
   if (payload.firstName !== undefined) row.first_name = payload.firstName.trim();
@@ -485,6 +621,9 @@ Deno.serve(async (request) => {
       }
       if (action === "settings") {
         return await updateSettings(db, actor, await readJson<SettingsPayload>(request));
+      }
+      if (action === "bulk-email") {
+        return await sendBulkEmail(db, actor, await readJson<BulkEmailPayload>(request));
       }
       return errorResponse("Unsupported admin action", 400);
     }

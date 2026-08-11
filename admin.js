@@ -34,8 +34,18 @@
   let pollsFilter = "all";
   let wizardStep = 1;
   let wizardOptions = ["", ""];
+  let currentParticipants = [];
+  const selectedParticipantIds = new Set();
 
   function el(id) { return document.getElementById(id); }
+  function esc(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
   async function getAccessToken() {
     if (!supabaseClient) return null;
@@ -139,6 +149,7 @@
     moderation: "Moderācija",
     polls: "Balsojumi",
     participants: "Dalībnieki",
+    settings: "Iestatījumi",
   };
 
   function setActivePanel(name) {
@@ -148,6 +159,7 @@
     if (name === "moderation") refreshModeration();
     if (name === "polls") refreshPollsPanel();
     if (name === "participants") refreshParticipants();
+    if (name === "settings") refreshSettings();
   }
 
   function openModal(id) { el(id).hidden = false; }
@@ -274,6 +286,7 @@
   }
 
   el("dashOpenProgram")?.addEventListener("click", () => { openModal("programModal"); renderProgramEditorList(); });
+  el("adminOpenProgramNav")?.addEventListener("click", () => { openModal("programModal"); renderProgramEditorList(); });
   el("dashNextAgenda")?.addEventListener("click", async () => {
     const next = nextAgendaItem();
     if (!next) { showToast("Nav nākamā programmas punkta."); return; }
@@ -960,27 +973,96 @@
     }
   });
 
+  // ----------------------------------------------------------- settings --
+
+  async function refreshSettings() {
+    setText("settingsStatus", "Ielādē...");
+    try {
+      const data = await adminFetch("/admin-registrations?action=settings");
+      const settings = data.settings || {};
+      el("autoApproveEnabled").checked = Boolean(settings.auto_approve_enabled);
+      el("autoApproveLimit").value = Number(settings.auto_approve_limit || 0);
+      el("autoApproveLimit").max = Number(settings.capacity || 0);
+      el("autoApproveLimit").disabled = !el("autoApproveEnabled").checked;
+      el("settingsGraphCalendarUser").value = settings.graph_calendar_user || "konference@animas.lv";
+      el("settingsGraphEventId").value = settings.microsoft_graph_event_id || "";
+      setText("settingsApprovedCount", String(settings.approved_count || 0));
+      setText("settingsCapacity", String(settings.capacity || 0));
+      setText("settingsStatus", "");
+    } catch (error) {
+      setText("settingsStatus", error.message);
+    }
+  }
+
+  el("autoApproveEnabled")?.addEventListener("change", () => {
+    el("autoApproveLimit").disabled = !el("autoApproveEnabled").checked;
+  });
+  el("eventSettingsForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submit = event.target.querySelector("button[type='submit']");
+    submit.disabled = true;
+    setText("settingsStatus", "Saglabā...");
+    try {
+      await adminFetch("/admin-registrations?action=settings", {
+        method: "POST",
+        body: JSON.stringify({
+          autoApproveEnabled: el("autoApproveEnabled").checked,
+          autoApproveLimit: Number(el("autoApproveLimit").value || 0),
+          graphCalendarUser: el("settingsGraphCalendarUser").value,
+          microsoftGraphEventId: el("settingsGraphEventId").value,
+        }),
+      });
+      setText("settingsStatus", "Iestatījumi saglabāti.");
+      showToast("Iestatījumi saglabāti.");
+      await refreshSettings();
+    } catch (error) {
+      setText("settingsStatus", error.message);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
   // -------------------------------------------------------- participants --
 
-  el("participantsStatusFilter")?.addEventListener("change", refreshParticipants);
+  const STATUS_LABELS = {
+    application_received: "Saņemts",
+    approved: "Apstiprināts",
+    waitlisted: "Gaidīšanas saraksts",
+    rejected: "Atteikts",
+    arrived: "Ieradies",
+    cancelled: "Atcelts",
+    reconfirm_required: "Jāapstiprina",
+  };
+
+  function consentChip(label, granted) {
+    return `<span class="admin-consent-chip ${granted ? "is-granted" : "is-declined"}"><i>${granted ? "✓" : "—"}</i>${label}</span>`;
+  }
 
   function participantRowMarkup(participant) {
     const initials = `${(participant.first_name || "?")[0]}${(participant.last_name || "?")[0]}`.toUpperCase();
     const maturity = participant.ai_maturity_level
-      ? `MI: ${participant.ai_maturity_level}/10 · ${participant.ai_maturity_phase || ""} · ${participant.ai_maturity_anonymous ? "anonīmi" : "publiski"}${participant.ai_maturity_answered_at ? ` · ${new Date(participant.ai_maturity_answered_at).toLocaleDateString("lv-LV")}` : ""}`
+      ? `MI ${participant.ai_maturity_level}/10 · ${participant.ai_maturity_phase || ""} · ${participant.ai_maturity_anonymous ? "anonīmi" : "publiski"}`
       : "";
+    const consents = participant.consents || {};
     return `
-      <article class="admin-participant-row">
-        <span class="admin-avatar-sm">${initials}</span>
+      <article class="admin-participant-row ${selectedParticipantIds.has(participant.id) ? "is-selected" : ""}" data-participant-row="${participant.id}">
+        <label class="admin-row-select" aria-label="Atlasīt ${esc(participant.first_name)} ${esc(participant.last_name)}"><input type="checkbox" data-participant-select="${participant.id}" ${selectedParticipantIds.has(participant.id) ? "checked" : ""}></label>
+        <span class="admin-avatar-sm">${esc(initials)}</span>
         <div class="admin-participant-body">
-          <strong>${participant.first_name} ${participant.last_name}</strong>
-          <span class="admin-fine">${participant.role || ""}</span>
-          ${maturity ? `<span class="admin-fine">${maturity}</span>` : ""}
+          <strong>${esc(participant.first_name)} ${esc(participant.last_name)}</strong>
+          <a class="admin-participant-email" href="mailto:${encodeURIComponent(participant.email || "")}">${esc(participant.email || "—")}</a>
+          <span class="admin-fine">${esc(participant.role || "Dalībnieks")}${maturity ? ` · ${esc(maturity)}` : ""}</span>
+          <div class="admin-consent-chips">
+            ${consentChip("Datu apstrāde", consents.required_participation !== false)}
+            ${consentChip("Publisks uzņēmums", Boolean(consents.public_company))}
+            ${consentChip("Networking", Boolean(consents.networking))}
+            ${consentChip("Jaunumi", Boolean(consents.newsletter))}
+          </div>
         </div>
-        <span class="admin-status-pill admin-status-${participant.status}">${participant.status}</span>
-        <span class="admin-fine">${participant.access_mode}</span>
+        <span class="admin-status-pill admin-status-${esc(participant.status)}">${esc(STATUS_LABELS[participant.status] || participant.status)}</span>
+        <span class="admin-fine">${participant.access_mode === "full" ? "Pilnā pieeja" : "Pamata pieeja"}</span>
         <div class="admin-more-menu">
-          <button type="button" class="admin-more-toggle">⋯</button>
+          <button type="button" class="admin-more-toggle" aria-label="Dalībnieka darbības">⋯</button>
           <div class="admin-more-dropdown" hidden>
             <button type="button" data-participant-approve="${participant.id}">Apstiprināt</button>
             <button type="button" data-participant-waitlist="${participant.id}">Gaidīšanas saraksts</button>
@@ -991,18 +1073,68 @@
     `;
   }
 
+  function visibleParticipants() {
+    const search = (el("participantsSearch")?.value || "").trim().toLocaleLowerCase("lv-LV");
+    const consent = el("participantsConsentFilter")?.value || "all";
+    return currentParticipants.filter((participant) => {
+      const haystack = [participant.first_name, participant.last_name, participant.email, participant.role]
+        .filter(Boolean).join(" ").toLocaleLowerCase("lv-LV");
+      if (search && !haystack.includes(search)) return false;
+      if (consent === "all") return true;
+      if (consent === "newsletter_no") return !participant.consents?.newsletter;
+      return Boolean(participant.consents?.[consent]);
+    });
+  }
+
+  function updateParticipantSelectionUi(rows = visibleParticipants()) {
+    const selectedCount = selectedParticipantIds.size;
+    setText("participantsSelectedCount", String(selectedCount));
+    el("participantsOpenEmail").disabled = selectedCount === 0;
+    const selectAll = el("participantsSelectAll");
+    const visibleSelected = rows.filter((row) => selectedParticipantIds.has(row.id)).length;
+    selectAll.checked = Boolean(rows.length) && visibleSelected === rows.length;
+    selectAll.indeterminate = visibleSelected > 0 && visibleSelected < rows.length;
+  }
+
+  function renderParticipants() {
+    const rows = visibleParticipants();
+    el("participantsList").innerHTML = rows.length
+      ? rows.map(participantRowMarkup).join("")
+      : `<p class="live-empty">Nav dalībnieku šajā skatā.</p>`;
+    setText("participantsHeading", `${rows.length} reģistrēti dalībnieki`);
+    updateParticipantSelectionUi(rows);
+  }
+
   async function refreshParticipants() {
     const container = el("participantsList");
     const status = el("participantsStatusFilter")?.value || "all";
     try {
       const data = await adminFetch(`/admin-registrations${status !== "all" ? `?status=${status}` : ""}`);
-      const rows = data.registrations || [];
-      container.innerHTML = rows.length ? rows.map(participantRowMarkup).join("") : `<p class="live-empty">Nav dalībnieku šajā skatā.</p>`;
-      setText("participantsHeading", `${rows.length} reģistrēti dalībnieki`);
+      currentParticipants = data.registrations || [];
+      selectedParticipantIds.clear();
+      renderParticipants();
     } catch (error) {
-      container.innerHTML = `<p class="live-empty">${error.message}</p>`;
+      container.innerHTML = `<p class="live-empty">${esc(error.message)}</p>`;
     }
   }
+
+  el("participantsStatusFilter")?.addEventListener("change", refreshParticipants);
+  el("participantsConsentFilter")?.addEventListener("change", renderParticipants);
+  el("participantsSearch")?.addEventListener("input", debounce(renderParticipants, 200));
+  el("participantsSelectAll")?.addEventListener("change", () => {
+    visibleParticipants().forEach((participant) => {
+      if (el("participantsSelectAll").checked) selectedParticipantIds.add(participant.id);
+      else selectedParticipantIds.delete(participant.id);
+    });
+    renderParticipants();
+  });
+  el("participantsList")?.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-participant-select]");
+    if (!checkbox) return;
+    if (checkbox.checked) selectedParticipantIds.add(checkbox.dataset.participantSelect);
+    else selectedParticipantIds.delete(checkbox.dataset.participantSelect);
+    renderParticipants();
+  });
 
   document.addEventListener("click", async (event) => {
     const approveBtn = event.target.closest("[data-participant-approve]");
@@ -1017,6 +1149,79 @@
     } else if (rejectBtn) {
       await adminFetch(`/admin-registrations?action=reject&participant_id=${rejectBtn.dataset.participantReject}`, { method: "POST" }).catch((error) => showToast(error.message));
       await refreshParticipants();
+    }
+  });
+
+  function emailShell(kicker, title, body, buttonLabel = "Atvērt manu AI Pass") {
+    return `<!doctype html><html lang="lv"><body style="margin:0;background:#050505;color:#f5f2ec;font-family:Arial,sans-serif"><table role="presentation" width="100%" style="background:#050505"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="620" style="max-width:620px;background:#0b0a10;border:1px solid #282530"><tr><td style="height:3px;background:#765ee9"></td></tr><tr><td style="padding:42px"><p style="margin:0 0 14px;color:#ff008f;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase">${kicker}</p><h1 style="margin:0 0 18px;color:#f5f2ec;font-size:34px;line-height:1.12">${title}</h1><div style="color:#b8b4be;font-size:16px;line-height:1.65">${body}</div><a href="{{passUrl}}" style="display:inline-block;margin-top:26px;padding:15px 20px;background:#765ee9;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">${buttonLabel} →</a><p style="margin:30px 0 0;color:#77737f;font-size:12px">30. septembris 2026 · Rīgas Motormuzejs</p></td></tr></table></td></tr></table></body></html>`;
+  }
+
+  const EMAIL_PRESETS = {
+    reminder: {
+      subject: "Atgādinājums: AI Reality Check 2026 tuvojas",
+      html: emailShell("Atgādinājums", "Tiekamies jau pavisam drīz", "<p>Sveiki, <strong style=\"color:#f5f2ec\">{{firstName}}</strong>!</p><p>Atgādinām par Tavu dalību {{eventName}}. AI Pass būs vajadzīgs pie ieejas.</p>"),
+    },
+    reconfirm: {
+      subject: "Lūdzu, apstiprini ierašanos AI Reality Check 2026",
+      html: emailShell("Ierašanās apstiprināšana", "Vai būsi klāt?", "<p>Sveiki, <strong style=\"color:#f5f2ec\">{{firstName}}</strong>!</p><p>Lūdzu, atver savu AI Pass un apstiprini ierašanos, lai varam precīzi plānot vietas.</p>", "Apstiprināt ierašanos"),
+    },
+    materials: {
+      subject: "AI Reality Check 2026 materiāli un rezultāti",
+      html: emailShell("Materiāli", "Paldies par dalību", "<p>Sveiki, <strong style=\"color:#f5f2ec\">{{firstName}}</strong>!</p><p>Konferences materiāli un rezultāti tagad ir pieejami Tavā AI Pass.</p>", "Skatīt materiālus"),
+    },
+    custom: { subject: "", html: "" },
+  };
+
+  function refreshEmailPreview() {
+    el("bulkEmailPreview").srcdoc = el("bulkEmailHtml").value || "<p style='font-family:sans-serif;padding:20px'>Pievieno HTML veidni.</p>";
+  }
+
+  function applyEmailPreset(key) {
+    const preset = EMAIL_PRESETS[key] || EMAIL_PRESETS.custom;
+    el("bulkEmailSubject").value = preset.subject;
+    el("bulkEmailHtml").value = preset.html;
+    refreshEmailPreview();
+  }
+
+  el("participantsOpenEmail")?.addEventListener("click", () => {
+    setText("bulkEmailRecipientCount", String(selectedParticipantIds.size));
+    setText("bulkEmailStatus", "");
+    applyEmailPreset(el("bulkEmailPreset").value || "reminder");
+    openModal("bulkEmailModal");
+  });
+  el("bulkEmailPreset")?.addEventListener("change", (event) => applyEmailPreset(event.target.value));
+  el("bulkEmailHtml")?.addEventListener("input", debounce(refreshEmailPreview, 150));
+  el("bulkEmailFile")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 200_000) { showToast("HTML fails ir pārāk liels."); return; }
+    el("bulkEmailHtml").value = await file.text();
+    el("bulkEmailPreset").value = "custom";
+    refreshEmailPreview();
+  });
+  el("bulkEmailSend")?.addEventListener("click", async () => {
+    const participantIds = [...selectedParticipantIds];
+    const subject = el("bulkEmailSubject").value.trim();
+    const html = el("bulkEmailHtml").value.trim();
+    if (!participantIds.length || !subject || !html) {
+      setText("bulkEmailStatus", "Izvēlies saņēmējus un aizpildi tematu un HTML veidni.");
+      return;
+    }
+    if (!window.confirm(`Nosūtīt e-pastu ${participantIds.length} dalībniekiem?`)) return;
+    const button = el("bulkEmailSend");
+    button.disabled = true;
+    setText("bulkEmailStatus", "Nosūta...");
+    try {
+      const result = await adminFetch("/admin-registrations?action=bulk-email", {
+        method: "POST",
+        body: JSON.stringify({ participantIds, subject, html }),
+      });
+      setText("bulkEmailStatus", `Apstrādāti ${result.processed}; nosūtīti ${result.sent}; rindā ${result.queued}; kļūdas ${result.failed}.`);
+      showToast("E-pastu izsūtīšana pabeigta.");
+    } catch (error) {
+      setText("bulkEmailStatus", error.message);
+    } finally {
+      button.disabled = false;
     }
   });
 

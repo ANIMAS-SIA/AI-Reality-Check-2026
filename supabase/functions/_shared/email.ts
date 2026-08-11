@@ -154,6 +154,37 @@ export async function sendEmail(to: string, templateKey: string, input: Template
   }
 }
 
+export async function sendCustomEmail(
+  to: string,
+  subject: string,
+  html: string,
+  text = "",
+): Promise<EmailResult & { subject: string }> {
+  const provider = Deno.env.get("EMAIL_PROVIDER") || "resend";
+  if (provider !== "resend") return { provider, status: "queued", subject };
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) return { provider, status: "queued", subject, error_message: "RESEND_API_KEY is not set" };
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: Deno.env.get("EMAIL_FROM") || "AI Reality Check <onboarding@resend.dev>",
+        to: [to],
+        subject,
+        html,
+        text: text || subject,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { provider, status: "failed", subject, error_message: data.message || `Resend failed: ${response.status}` };
+    return { provider, status: "sent", subject, provider_message_id: data.id };
+  } catch (error) {
+    return { provider, status: "failed", subject, error_message: String(error) };
+  }
+}
+
 export async function logEmail(db: SupabaseRest, participantId: string | null, templateKey: string, sentTo: string, result: EmailResult & { subject: string }, payload: Record<string, unknown> = {}) {
   await db.insert("email_deliveries", [{
     participant_id: participantId,
