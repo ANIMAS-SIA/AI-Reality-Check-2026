@@ -4,9 +4,11 @@ import { hashToken } from "../_shared/tokens.ts";
 import {
   buildApplePassBody,
   createApplePass,
+  formatWalletCompanyName,
   logPerkPassError,
   perkPassUserMessage,
   PerkPassApiError,
+  syncApplePassIfExists,
 } from "../_shared/perkpass.ts";
 
 type TokenRow = { participant_id: string; expires_at: string | null; revoked_at: string | null };
@@ -18,7 +20,7 @@ type ParticipantRow = {
   status: string;
   company_id: string | null;
 };
-type CompanyRow = { id: string; name: string };
+type CompanyRow = { id: string; name: string; legal_form: string | null };
 type WalletPassRow = {
   serial_number: string | null;
   payload: { share_url?: string; barcode_value?: string } | null;
@@ -49,7 +51,14 @@ async function resolveCompanyName(db: SupabaseRest, companyId: string | null): P
     id: `eq.${companyId}`,
     limit: 1,
   }))[0];
-  return company?.name || "";
+  return company ? formatWalletCompanyName(company.name, company.legal_form || "") : "";
+}
+
+function applePassResponse(request: Request, url: URL, shareUrl: string): Response {
+  const directNavigation = request.headers.get("accept")?.includes("text/html");
+  return url.searchParams.get("redirect") === "1" || directNavigation
+    ? Response.redirect(shareUrl, 302)
+    : jsonResponse({ shareUrl });
 }
 
 function base64Url(input: string | ArrayBuffer) {
@@ -169,7 +178,11 @@ Deno.serve(async (request) => {
         limit: 1,
       }))[0];
       if (existing?.serial_number && existing.payload?.share_url) {
-        return jsonResponse({ shareUrl: existing.payload.share_url });
+        await syncApplePassIfExists(db, participant.id, {
+          attendeeName: `${participant.first_name} ${participant.last_name}`.trim(),
+          companyName,
+        });
+        return applePassResponse(request, url, existing.payload.share_url);
       }
 
       const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
@@ -190,7 +203,7 @@ Deno.serve(async (request) => {
           status: "created",
           payload: { share_url: created.shareUrl, barcode_value: barcodeValue },
         }], "participant_id,provider");
-        return jsonResponse({ shareUrl: created.shareUrl });
+        return applePassResponse(request, url, created.shareUrl);
       } catch (error) {
         logPerkPassError({ participantId: participant.id, ticketId }, error);
         const status = error instanceof PerkPassApiError && error.status === 429 ? 429 : 502;
@@ -218,7 +231,7 @@ Deno.serve(async (request) => {
     }
 
     return jsonResponse({
-      apple: `${url.origin}${url.pathname}?provider=apple&token=${encodeURIComponent(token)}`,
+      apple: `${url.origin}${url.pathname}?provider=apple&redirect=1&token=${encodeURIComponent(token)}`,
       google: `${url.origin}${url.pathname}?provider=google&token=${encodeURIComponent(token)}`,
     });
   } catch (error) {

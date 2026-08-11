@@ -47,6 +47,46 @@ function apiKey(): string {
   return key;
 }
 
+const LEGAL_FORM_ALIASES: Array<[string, string]> = [
+  ["Pašvaldības sabiedrība ar ierobežotu atbildību", "PSIA"],
+  ["Sabiedrība ar ierobežotu atbildību", "SIA"],
+  ["Valsts akciju sabiedrība", "VAS"],
+  ["Akciju sabiedrība", "AS"],
+  ["Individuālais komersants", "IK"],
+  ["Zemnieku saimniecība", "ZS"],
+  ["Pilnsabiedrība", "PS"],
+  ["Komandītsabiedrība", "KS"],
+];
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Converts a Latvian legal company name to the compact Wallet form: Name, SIA. */
+export function formatWalletCompanyName(name: string, legalForm = ""): string {
+  let compactName = name.trim();
+  if (!compactName) return "";
+
+  const normalizedLegalForm = legalForm.trim();
+  let suffix = LEGAL_FORM_ALIASES.find(([full, short]) =>
+    full.toLocaleLowerCase("lv-LV") === normalizedLegalForm.toLocaleLowerCase("lv-LV")
+    || short.toLocaleLowerCase("lv-LV") === normalizedLegalForm.toLocaleLowerCase("lv-LV")
+  )?.[1] || "";
+
+  for (const [full, short] of LEGAL_FORM_ALIASES) {
+    const formPattern = `${escapeRegExp(full)}|${escapeRegExp(short)}`;
+    const prefix = new RegExp(`^(?:${formPattern})(?=\\s|[,.:–-]|[\"“”'«»])\\s*[,.:–-]?\\s*`, "i");
+    const postfix = new RegExp(`(?:\\s*,\\s*|\\s+)(?:${formPattern})$`, "i");
+    if (prefix.test(compactName) || postfix.test(compactName)) {
+      suffix ||= short;
+      compactName = compactName.replace(prefix, "").replace(postfix, "");
+    }
+  }
+
+  compactName = compactName.trim().replace(/^["“”'«»]+|["“”'«»]+$/g, "").trim();
+  return compactName && suffix ? `${compactName}, ${suffix}` : compactName;
+}
+
 /**
  * Static event details for AI Reality Check 2026 — only attendee name, company
  * and the check-in barcode value differ per participant.
@@ -70,7 +110,7 @@ export function buildApplePassBody(params: {
       { key: "attendee", label: "ATTENDEE", value: params.attendeeName },
     ],
     secondaryFields: [
-      { key: "company", label: "COMPANY", value: params.companyName || "—" },
+      { key: "company", label: "COMPANY", value: formatWalletCompanyName(params.companyName) || "—" },
       { key: "location", label: "LOCATION", value: "Rīgas Motormuzejs" },
       { key: "time", label: "TIME", value: "09:00" },
     ],

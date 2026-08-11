@@ -2,16 +2,16 @@ import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } fro
 import { addParticipantToCalendarInvite, logCalendarInvite } from "../_shared/calendar-invite.ts";
 import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, logAudit } from "../_shared/auth.ts";
 import { logEmail, sendEmail } from "../_shared/email.ts";
-import { syncApplePassIfExists } from "../_shared/perkpass.ts";
+import { formatWalletCompanyName, syncApplePassIfExists } from "../_shared/perkpass.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { addDays, createToken, hashToken } from "../_shared/tokens.ts";
 
-type CompanyRow = { id: string; name: string };
+type CompanyRow = { id: string; name: string; legal_form: string | null };
 
 async function resolveCompanyName(db: SupabaseRest, companyId: string | null): Promise<string> {
   if (!companyId) return "";
   const company = (await db.select<CompanyRow>("companies", { id: `eq.${companyId}`, limit: 1 }))[0];
-  return company?.name || "";
+  return company ? formatWalletCompanyName(company.name, company.legal_form || "") : "";
 }
 
 type ParticipantRow = {
@@ -306,7 +306,7 @@ async function approveRegistration(db: SupabaseRest, actor: AdminActor, particip
   const passLink = `${siteUrl}/pass/?token=${magicToken}`;
   const checkinLink = `${siteUrl}/checkin/?token=${qrToken}`;
   const functionsUrl = `${(Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "")}/functions/v1`;
-  const appleWalletLink = `${functionsUrl}/wallet?provider=apple&token=${magicToken}`;
+  const appleWalletLink = `${functionsUrl}/wallet?provider=apple&redirect=1&token=${magicToken}`;
   const googleWalletLink = `${functionsUrl}/wallet?provider=google&token=${magicToken}`;
 
   await syncApplePassIfExists(db, participantId, {

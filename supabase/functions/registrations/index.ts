@@ -274,7 +274,7 @@ Deno.serve(async (request) => {
     const passLink = `${siteUrl}/pass/?token=${magicToken}`;
     const checkinLink = `${siteUrl}/checkin/?token=${qrToken}`;
     const functionsUrl = `${(Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "")}/functions/v1`;
-    const appleWalletLink = `${functionsUrl}/wallet?provider=apple&token=${magicToken}`;
+    const appleWalletLink = `${functionsUrl}/wallet?provider=apple&redirect=1&token=${magicToken}`;
     const googleWalletLink = `${functionsUrl}/wallet?provider=google&token=${magicToken}`;
 
     if (autoApprove) {
