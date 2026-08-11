@@ -671,7 +671,6 @@ function initMaturityGauge(onChange) {
 function initRegistration() {
   let step = 1;
   let selectedCompany = null;
-  let maturityTouched = false;
   let maturityStepSeen = false;
   const state = {};
   const steps = [...document.querySelectorAll(".form-step")];
@@ -794,8 +793,11 @@ function initRegistration() {
       }
     }
 
-    if (step === 2 && !maturityTouched) {
-      ok = false;
+    if (step === 2) {
+      const maturityLevel = Number(document.getElementById("maturitySlider")?.value);
+      if (!Number.isInteger(maturityLevel) || maturityLevel < 1 || maturityLevel > 10) {
+        ok = false;
+      }
     }
 
     if (step === 3 && !document.getElementById("requiredConsent").checked) {
@@ -816,6 +818,15 @@ function initRegistration() {
     state.company = selectedCompany;
     state.noCompany = noCompany.checked;
     state.aiMaturityLevel = Number(document.getElementById("maturitySlider")?.value || 0);
+    // Backward compatibility for the currently deployed registrations function,
+    // which still validates the former four-stage `aiStage` field.
+    const maturityPhase = window.maturityLevelByNumber?.(state.aiMaturityLevel)?.phase;
+    state.aiStage = {
+      "Izpēte": "Vēl neizmantojam",
+      "Eksperimenti": "Izmēģinām atsevišķus rīkus",
+      "Ieviešana": "Izmantojam vairākos procesos",
+      "Līderis": "MI ir daļa no uzņēmuma stratēģijas",
+    }[maturityPhase] || "Izmēģinām atsevišķus rīkus";
     state.aiAnonymous = document.getElementById("aiAnonymous").checked;
     state.privacyNoticeAcknowledged = document.getElementById("requiredConsent").checked;
     state.publicCompany = document.getElementById("publicCompany").checked;
@@ -933,10 +944,7 @@ function initRegistration() {
     }
   });
 
-  initMaturityGauge(() => {
-    maturityTouched = true;
-    validate();
-  });
+  initMaturityGauge(validate);
 
   updateStep();
 }
