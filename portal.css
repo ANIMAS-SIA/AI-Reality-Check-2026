@@ -806,8 +806,9 @@ body[data-page="pass"] .portal-shell {
   border-radius: 999px;
   background: var(--violet);
   color: var(--text);
-  font-size: 10px;
-  font-weight: 800;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
   text-decoration: none;
 }
 
