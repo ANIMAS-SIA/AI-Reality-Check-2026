@@ -48,8 +48,7 @@ async function inviteUser(db: SupabaseRest, actor: AdminActor, email: string, ro
   if (!email.trim()) return errorResponse("Email is required", 400);
   if (!ROLES.includes(role)) return errorResponse("Unsupported role", 400);
 
-  const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
-  const redirectTo = `${siteUrl}/admin/`;
+  const redirectTo = Deno.env.get("ADMIN_REDIRECT_URL") || "https://konference.animas.lv/admin/";
   const response = await goTrue(`/invite?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",
     body: JSON.stringify({ email: email.trim().toLowerCase() }),
