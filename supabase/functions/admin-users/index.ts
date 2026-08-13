@@ -44,14 +44,54 @@ async function listUsers(db: SupabaseRest): Promise<Response> {
   });
 }
 
+async function findUserByEmail(email: string): Promise<GoTrueUser | null> {
+  const response = await goTrue("/admin/users?per_page=1000");
+  const data = await response.json().catch(() => ({ users: [] }));
+  if (!response.ok) throw new Error(data.msg || data.message || "Neizdevās pārbaudīt esošos lietotājus.");
+  return (data.users || []).find((user: GoTrueUser) => user.email?.toLowerCase() === email) || null;
+}
+
+async function saveAdminProfile(db: SupabaseRest, userId: string, role: Role, displayName: string): Promise<void> {
+  await db.upsert("admin_profiles", [{
+    user_id: userId,
+    role,
+    display_name: displayName.trim() || null,
+    status: "active",
+  }], "user_id");
+  await goTrue(`/admin/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify({ ban_duration: "none" }),
+  });
+}
+
 async function inviteUser(db: SupabaseRest, actor: AdminActor, email: string, role: Role, displayName: string): Promise<Response> {
   if (!email.trim()) return errorResponse("Email is required", 400);
   if (!ROLES.includes(role)) return errorResponse("Unsupported role", 400);
 
+  const normalizedEmail = email.trim().toLowerCase();
   const redirectTo = Deno.env.get("ADMIN_REDIRECT_URL") || "https://konference.animas.lv/admin/";
+  const existingUser = await findUserByEmail(normalizedEmail);
+  if (existingUser) {
+    const recoveryResponse = await goTrue(`/recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
+      method: "POST",
+      body: JSON.stringify({ email: normalizedEmail }),
+    });
+    const recoveryData = await recoveryResponse.json().catch(() => ({}));
+    if (!recoveryResponse.ok) {
+      return errorResponse(recoveryData.msg || recoveryData.message || "Neizdevās atkārtoti nosūtīt piekļuves saiti.", recoveryResponse.status);
+    }
+    await saveAdminProfile(db, existingUser.id, role, displayName);
+    await logAudit(db, actor, "admin_user_access_resent", "admin_profiles", existingUser.id, {
+      email: normalizedEmail,
+      role,
+      redirect_to: redirectTo,
+    });
+    return jsonResponse({ ok: true, user_id: existingUser.id, resent: true });
+  }
+
   const response = await goTrue(`/invite?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",
-    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    body: JSON.stringify({ email: normalizedEmail }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return errorResponse(data.msg || data.message || "Neizdevās uzaicināt lietotāju.", response.status);
@@ -59,14 +99,9 @@ async function inviteUser(db: SupabaseRest, actor: AdminActor, email: string, ro
   const userId = data.id || data.user?.id;
   if (!userId) return errorResponse("GoTrue did not return a user id", 500);
 
-  await db.upsert("admin_profiles", [{
-    user_id: userId,
-    role,
-    display_name: displayName.trim() || null,
-    status: "active",
-  }], "user_id");
+  await saveAdminProfile(db, userId, role, displayName);
 
-  await logAudit(db, actor, "admin_user_invite", "admin_profiles", userId, { email, role, redirect_to: redirectTo });
+  await logAudit(db, actor, "admin_user_invite", "admin_profiles", userId, { email: normalizedEmail, role, redirect_to: redirectTo });
   return jsonResponse({ ok: true, user_id: userId }, 201);
 }
 

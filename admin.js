@@ -1280,7 +1280,7 @@
   el("inviteUserForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      await adminFetch("/admin-users?action=invite", {
+      const result = await adminFetch("/admin-users?action=invite", {
         method: "POST",
         body: JSON.stringify({
           email: el("inviteEmail").value,
@@ -1288,7 +1288,7 @@
           role: el("inviteRole").value,
         }),
       });
-      showToast("Uzaicinājums nosūtīts.");
+      showToast(result.resent ? "Piekļuves saite nosūtīta atkārtoti." : "Uzaicinājums nosūtīts.");
       event.target.reset();
       await refreshUsersList();
     } catch (error) {
