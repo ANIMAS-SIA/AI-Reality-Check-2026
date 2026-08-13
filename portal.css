@@ -5348,6 +5348,11 @@ body[data-page="registration"] .confirmation-pass .btn {
   cursor: grab;
 }
 
+.admin-program-row.is-editing {
+  border-color: rgba(122, 103, 238, .72);
+  background: rgba(122, 103, 238, .09);
+}
+
 .admin-drag-handle {
   color: var(--muted);
 }
@@ -5374,6 +5379,31 @@ body[data-page="registration"] .confirmation-pass .btn {
   gap: 14px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
+}
+
+.admin-program-form-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-program-form-heading strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.admin-program-form.is-inline {
+  margin: -1px 0 12px;
+  padding: 20px;
+  border: 1px solid rgba(122, 103, 238, .55);
+  border-left: 3px solid var(--violet);
+  background: #0e0d14;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, .28);
+  animation: admin-inline-editor-in .18s ease-out;
+}
+
+@keyframes admin-inline-editor-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .admin-form-grid {

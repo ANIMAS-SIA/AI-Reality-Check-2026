@@ -340,8 +340,13 @@
       </header>
       <div class="admin-modal-body">
         <div class="admin-program-list" id="programEditorList"></div>
+        <div id="programFormHome" aria-hidden="true"></div>
         <form id="programItemForm" class="admin-program-form">
           <input type="hidden" id="agendaId">
+          <div class="admin-program-form-heading">
+            <span class="admin-card-label" id="programFormKicker">Jauns programmas punkts</span>
+            <strong id="programFormTitle">Pievienot programmai</strong>
+          </div>
           <div class="admin-form-grid">
             <label class="admin-field"><span>Nosaukums</span><input type="text" id="agendaTitle" required></label>
             <label class="admin-field"><span>Kategorija</span><input type="text" id="agendaCategory" placeholder="Keynote, Panelis..."></label>

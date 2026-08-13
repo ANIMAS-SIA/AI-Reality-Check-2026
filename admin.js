@@ -449,6 +449,7 @@
   }
 
   function renderProgramEditorList() {
+    parkProgramForm();
     const container = el("programEditorList");
     if (!agendaItems.length) { container.innerHTML = `<p class="live-empty">Vēl nav programmas punktu.</p>`; return; }
     container.innerHTML = agendaItems.map((item) => `
@@ -486,6 +487,29 @@
     el("agendaVideoUrl").value = item?.video_url || "";
     el("agendaIsBreak").checked = Boolean(item?.is_break);
     el("agendaQuestionsEnabled").checked = item?.questions_enabled !== false;
+    setText("programFormKicker", item ? "Rediģēt programmas punktu" : "Jauns programmas punkts");
+    setText("programFormTitle", item?.title || "Pievienot programmai");
+    el("programFormReset").textContent = item ? "Atcelt rediģēšanu" : "Notīrīt formu";
+  }
+
+  function parkProgramForm() {
+    const form = el("programItemForm");
+    const home = el("programFormHome");
+    if (!form || !home) return;
+    home.insertAdjacentElement("afterend", form);
+    form.classList.remove("is-inline");
+    document.querySelectorAll(".admin-program-row.is-editing").forEach((row) => row.classList.remove("is-editing"));
+  }
+
+  function placeProgramFormAfter(itemId) {
+    const row = [...document.querySelectorAll("[data-drag-id]")]
+      .find((entry) => entry.dataset.dragId === itemId);
+    if (!row) return false;
+    parkProgramForm();
+    row.classList.add("is-editing");
+    row.insertAdjacentElement("afterend", el("programItemForm"));
+    el("programItemForm").classList.add("is-inline");
+    return true;
   }
 
   async function saveAgendaItem(payload) {
@@ -538,6 +562,7 @@
   });
 
   el("programFormReset")?.addEventListener("click", () => {
+    parkProgramForm();
     fillProgramForm(null);
     setText("programFormStatus", "");
     delete el("programFormStatus").dataset.state;
@@ -550,8 +575,9 @@
       fillProgramForm(item);
       setText("programFormStatus", item ? `Rediģē: ${item.title}` : "Programmas punkts nav atrasts.");
       el("programFormStatus").dataset.state = item ? "pending" : "error";
+      if (item) placeProgramFormAfter(item.id);
       window.requestAnimationFrame(() => {
-        el("programItemForm").scrollIntoView({ behavior: "smooth", block: "start" });
+        el("programItemForm").scrollIntoView({ behavior: "smooth", block: "nearest" });
         el("agendaTitle").focus({ preventScroll: true });
       });
       return;
