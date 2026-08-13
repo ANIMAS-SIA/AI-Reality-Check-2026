@@ -15,7 +15,7 @@
 </head>
 <body data-page="archive">
   <main class="portal-shell">
-    <header class="topbar">
+    <header class="topbar pass-topbar">
       <a class="brand" href="../">
         <img src="https://raw.githubusercontent.com/ANIMAS-SIA/newsletter-assets/5a690087fd9e4635c030c620d7d2e527a37b6946/Animas%20AI.png" alt="ANIMAS AI" class="brand-mark" style="height:2.5rem;width:auto;object-fit:contain">
         <span class="brand-text">
@@ -23,8 +23,14 @@
           <span class="brand-subtitle">2026</span>
         </span>
       </a>
-      <div class="top-actions">
-        <a class="btn secondary" href="../rezultati/">Rezultāti</a>
+      <nav class="pass-nav" aria-label="Live portāla sadaļas">
+        <a href="../live/?view=program">Programma</a>
+        <a href="../rezultati/">Rezultāti</a>
+        <a href="../live/?view=networking">Tīklošanās</a>
+      </nav>
+      <div class="top-actions pass-actions">
+        <span class="mode-chip" id="passAccess">Pilna pieeja</span>
+        <a class="pass-pill" href="../pass/">Mans Pass</a>
       </div>
     </header>
     <section class="hero-panel registration-hero">
