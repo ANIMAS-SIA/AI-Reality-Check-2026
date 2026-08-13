@@ -807,7 +807,7 @@ body[data-page="pass"] .portal-shell {
   background: var(--violet);
   color: var(--text);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   text-decoration: none;
 }
 
