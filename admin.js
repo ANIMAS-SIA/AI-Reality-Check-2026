@@ -1279,6 +1279,10 @@
 
   el("inviteUserForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const submit = event.currentTarget.querySelector("button[type='submit']");
+    submit.disabled = true;
+    setText("inviteUserStatus", "Nosūta piekļuves saiti...");
+    el("inviteUserStatus").dataset.state = "pending";
     try {
       const result = await adminFetch("/admin-users?action=invite", {
         method: "POST",
@@ -1288,11 +1292,19 @@
           role: el("inviteRole").value,
         }),
       });
-      showToast(result.resent ? "Piekļuves saite nosūtīta atkārtoti." : "Uzaicinājums nosūtīts.");
+      const message = result.resent ? "Piekļuves saite nosūtīta atkārtoti." : "Uzaicinājums nosūtīts.";
+      setText("inviteUserStatus", message);
+      el("inviteUserStatus").dataset.state = "success";
+      showToast(message);
       event.target.reset();
       await refreshUsersList();
     } catch (error) {
-      showToast(error.message);
+      const message = error.message || "Piekļuves saiti neizdevās nosūtīt.";
+      setText("inviteUserStatus", message);
+      el("inviteUserStatus").dataset.state = "error";
+      showToast(message);
+    } finally {
+      submit.disabled = false;
     }
   });
 

@@ -1567,7 +1567,7 @@ body[data-page="pass"] .portal-shell {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  z-index: 20;
+  z-index: 200;
   display: none;
   max-width: 360px;
   padding: 14px 16px;
@@ -1575,6 +1575,21 @@ body[data-page="pass"] .portal-shell {
   background: #07120e;
   color: var(--text);
   box-shadow: var(--shadow);
+}
+
+.admin-form-status {
+  grid-column: 1 / -1;
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-form-status[data-state="success"] {
+  color: var(--green);
+}
+
+.admin-form-status[data-state="error"] {
+  color: #ff6b8f;
 }
 
 .toast.is-visible {
