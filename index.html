@@ -1482,7 +1482,7 @@ footer{
       <h2 class="section-h">DIENAS<br/><span style="color:var(--P)">PROGRAMMA</span></h2>
     </div>
 
-    <div class="sr" style="position:relative;z-index:2">
+    <div class="sr" id="homepageAgendaList" style="position:relative;z-index:2" aria-live="polite">
 
       <div class="ag-row">
         <div><div class="ag-dot" style="border-color:var(--P);box-shadow:0 0 12px rgba(255,0,144,.5)"></div><div class="ag-time">9:00<span class="ag-time-end">– 9:30</span></div></div>
@@ -1790,6 +1790,7 @@ footer{
 </footer>
 
 <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script src="config.js"></script>
 <script>
 /* ── Cursor ─────────────────────────────────── */
 const cur = document.getElementById('cursor');
@@ -1935,6 +1936,56 @@ function tick(){
   document.getElementById('cd-s').textContent=pad(d%6e4/1e3);
 }
 tick(); setInterval(tick,1000);
+
+/* ── Shared conference agenda ────────────────── */
+function agendaEscape(value){
+  return String(value ?? '').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  })[char]);
+}
+function agendaTime(value){
+  if(!value)return '--:--';
+  return new Intl.DateTimeFormat('lv-LV',{
+    hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Riga'
+  }).format(new Date(value)).replace(/^0/,'');
+}
+function homepageAgendaMarkup(item,index){
+  const colors=['var(--P)','var(--Y)','var(--V)'];
+  const color=colors[index%colors.length];
+  const category=item.is_break?'Pauze':(item.category||'Programma');
+  const speaker=[item.speaker_name,[item.speaker_company,item.speaker_role].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+  const panel=/panel/i.test(category);
+  return `
+    <div class="ag-row${item.is_break?' ag-break':''}${panel?' ag-panel':''}">
+      <div>
+        ${item.is_break?'':`<div class="ag-dot" style="border-color:${color};box-shadow:0 0 12px color-mix(in srgb, ${color} 45%, transparent)"></div>`}
+        <div class="ag-time"${item.is_break?'':` style="color:${color}"`}>${agendaTime(item.starts_at)}<span class="ag-time-end">– ${agendaTime(item.ends_at)}</span></div>
+      </div>
+      <div>
+        <div class="ag-title">${agendaEscape(item.title)}</div>
+        ${speaker?`<div class="ag-who">${agendaEscape(speaker)}</div>`:''}
+        ${item.description?`<div class="ag-note">${agendaEscape(item.description)}</div>`:''}
+      </div>
+      <span class="ag-badge" style="background:color-mix(in srgb, ${color} 12%, transparent);color:${color}">${agendaEscape(category)}</span>
+    </div>`;
+}
+async function loadSharedHomepageAgenda(){
+  const list=document.getElementById('homepageAgendaList');
+  if(!list)return;
+  try{
+    const apiBase=window.ARC_API_BASE||'https://zoxeflvpiierezdzxwdq.supabase.co/functions/v1';
+    const response=await fetch(`${apiBase}/live-state`);
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||'Programmu neizdevās ielādēt.');
+    const agenda=(data.agenda||[]).filter(item=>item.status!=='cancelled');
+    if(!agenda.length)throw new Error('Programma vēl nav publicēta.');
+    list.innerHTML=agenda.map(homepageAgendaMarkup).join('');
+    list.dataset.agendaSource='database';
+  }catch(error){
+    console.warn('Shared agenda unavailable; keeping the server-rendered fallback.',error);
+  }
+}
+loadSharedHomepageAgenda();
 
 /* ── Seats progress bar ───────────────────────── */
 let seatsAvailable=100, totalSeats=100;

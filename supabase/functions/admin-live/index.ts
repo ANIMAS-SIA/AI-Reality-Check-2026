@@ -135,7 +135,7 @@ function agendaRow(eventId: string, payload: AgendaPayload) {
     speaker_image_url: (payload.speakerImageUrl || "").trim() || null,
     category: (payload.category || "").trim() || null,
     is_break: Boolean(payload.isBreak),
-    display_order: Number(payload.displayOrder || 0),
+    display_order: payload.displayOrder === undefined ? undefined : Math.max(0, Number(payload.displayOrder)),
     materials_url: (payload.materialsUrl || "").trim() || null,
     video_url: (payload.videoUrl || "").trim() || null,
     questions_enabled: payload.questionsEnabled !== false,
@@ -161,6 +161,14 @@ async function upsertAgenda(db: SupabaseRest, actor: AdminActor, event: EventRow
     return jsonResponse({ agenda_item: updated[0] });
   }
 
+  if (row.display_order === undefined) {
+    const lastItem = (await db.select<AgendaItem>("agenda_items", {
+      event_id: `eq.${event.id}`,
+      order: "display_order.desc",
+      limit: 1,
+    }))[0];
+    row.display_order = Number(lastItem?.display_order || 0) + 1;
+  }
   const inserted = await db.insert<AgendaItem>("agenda_items", [{ ...row, status: row.is_break ? "break" : "later" }]);
   await logAudit(db, actor, "agenda_create", "agenda_items", inserted[0]?.id);
   await broadcast(TOPIC, "state_changed", { agenda_item_id: inserted[0]?.id, action: "create" });

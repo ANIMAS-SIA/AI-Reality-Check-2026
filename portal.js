@@ -1009,7 +1009,7 @@ function renderLiveProgram(agenda) {
   const list = document.getElementById("liveProgramList");
   if (!list || !agenda?.length) return;
 
-  list.innerHTML = agenda.map((item) => {
+  list.innerHTML = agenda.filter((item) => item.status !== "cancelled").map((item) => {
     const cls = item.status === "now"
       ? "is-now"
       : item.status === "next"
@@ -1028,7 +1028,7 @@ function renderLiveProgram(agenda) {
           : item.status === "done"
             ? "Pabeigts"
             : "Vēlāk";
-    const meta = [item.speaker_name, item.speaker_company].filter(Boolean).join(" · ") || item.description;
+    const meta = [item.speaker_name, item.speaker_company, item.speaker_role].filter(Boolean).join(" · ") || item.description;
     const actions = item.is_break ? "" : `
       <div class="agenda-actions">
         <button class="agenda-action" type="button" data-agenda-action="questions" data-agenda-id="${item.id}" aria-expanded="false" aria-label="Jautāt par: ${item.title}">
@@ -1043,7 +1043,7 @@ function renderLiveProgram(agenda) {
         <div class="program-item-row">
           <span class="time">${item.time}</span>
           <div class="program-item-body">
-            <span class="program-type">${item.is_break ? "Pauze" : item.status === "now" ? "Live" : "Programma"}</span>
+            <span class="program-type">${item.is_break ? "Pauze" : item.status === "now" ? "Live" : item.category || "Programma"}</span>
             <strong>${item.title}</strong>
             <p>${meta || ""}</p>
           </div>

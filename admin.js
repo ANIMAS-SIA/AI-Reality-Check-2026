@@ -497,37 +497,63 @@
 
   el("programItemForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const payload = {
-      id: el("agendaId").value || undefined,
-      title: el("agendaTitle").value,
-      category: el("agendaCategory").value,
-      startsAt: new Date(el("agendaStarts").value).toISOString(),
-      endsAt: new Date(el("agendaEnds").value).toISOString(),
-      speakerName: el("agendaSpeaker").value,
-      speakerRole: el("agendaSpeakerRole").value,
-      speakerCompany: el("agendaSpeakerCompany").value,
-      speakerImageUrl: el("agendaSpeakerImageUrl").value,
-      description: el("agendaDescription").value,
-      materialsUrl: el("agendaMaterialsUrl").value,
-      videoUrl: el("agendaVideoUrl").value,
-      isBreak: el("agendaIsBreak").checked,
-      questionsEnabled: el("agendaQuestionsEnabled").checked,
-    };
+    const submit = event.currentTarget.querySelector("button[type='submit']");
+    submit.disabled = true;
+    setText("programFormStatus", "Saglabā programmas punktu...");
+    el("programFormStatus").dataset.state = "pending";
     try {
+      const itemId = el("agendaId").value || undefined;
+      const existingItem = itemId ? agendaItems.find((item) => item.id === itemId) : null;
+      const payload = {
+        id: itemId,
+        title: el("agendaTitle").value,
+        category: el("agendaCategory").value,
+        startsAt: new Date(el("agendaStarts").value).toISOString(),
+        endsAt: new Date(el("agendaEnds").value).toISOString(),
+        speakerName: el("agendaSpeaker").value,
+        speakerRole: el("agendaSpeakerRole").value,
+        speakerCompany: el("agendaSpeakerCompany").value,
+        speakerImageUrl: el("agendaSpeakerImageUrl").value,
+        description: el("agendaDescription").value,
+        materialsUrl: el("agendaMaterialsUrl").value,
+        videoUrl: el("agendaVideoUrl").value,
+        isBreak: el("agendaIsBreak").checked,
+        questionsEnabled: el("agendaQuestionsEnabled").checked,
+        displayOrder: existingItem?.display_order,
+        expectedUpdatedAt: existingItem?.updated_at,
+      };
       await saveAgendaItem(payload);
+      setText("programFormStatus", "Saglabāts. Izmaiņas redzamas abās programmas lapās.");
+      el("programFormStatus").dataset.state = "success";
       showToast("Programmas punkts saglabāts.");
       fillProgramForm(null);
     } catch (error) {
-      showToast(error.message);
+      const message = error.message || "Programmas punktu neizdevās saglabāt.";
+      setText("programFormStatus", message);
+      el("programFormStatus").dataset.state = "error";
+      showToast(message);
+    } finally {
+      submit.disabled = false;
     }
   });
 
-  el("programFormReset")?.addEventListener("click", () => fillProgramForm(null));
+  el("programFormReset")?.addEventListener("click", () => {
+    fillProgramForm(null);
+    setText("programFormStatus", "");
+    delete el("programFormStatus").dataset.state;
+  });
 
   document.addEventListener("click", async (event) => {
     const editBtn = event.target.closest("[data-edit-agenda]");
     if (editBtn) {
-      fillProgramForm(agendaItems.find((item) => item.id === editBtn.dataset.editAgenda));
+      const item = agendaItems.find((entry) => entry.id === editBtn.dataset.editAgenda);
+      fillProgramForm(item);
+      setText("programFormStatus", item ? `Rediģē: ${item.title}` : "Programmas punkts nav atrasts.");
+      el("programFormStatus").dataset.state = item ? "pending" : "error";
+      window.requestAnimationFrame(() => {
+        el("programItemForm").scrollIntoView({ behavior: "smooth", block: "start" });
+        el("agendaTitle").focus({ preventScroll: true });
+      });
       return;
     }
     const dupBtn = event.target.closest("[data-duplicate-agenda]");

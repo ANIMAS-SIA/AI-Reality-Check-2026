@@ -18,6 +18,7 @@ type AgendaItem = {
   speaker_role: string | null;
   speaker_company: string | null;
   speaker_image_url: string | null;
+  category: string | null;
   status: string;
   is_break: boolean;
   display_order: number;
@@ -39,6 +40,7 @@ function toPublicAgenda(item: AgendaItem) {
     speaker_role: item.speaker_role || "",
     speaker_company: item.speaker_company || "",
     speaker_image_url: item.speaker_image_url || "",
+    category: item.category || "",
     status: item.status,
     is_break: item.is_break,
   };

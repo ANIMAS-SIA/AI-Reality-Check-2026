@@ -5393,6 +5393,11 @@ body[data-page="registration"] .confirmation-pass .btn {
   gap: 10px;
 }
 
+.admin-form-actions .admin-form-status {
+  margin-right: auto;
+  align-self: center;
+}
+
 /* ---- poll wizard ---- */
 
 .admin-wizard-steps {
