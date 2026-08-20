@@ -232,6 +232,7 @@ Deno.serve(async (request) => {
     // Extract phone - preserve non-empty values
     const phoneStr = clean(payload.phone) || null;
 
+    console.log("Inserting participant with phone:", phoneStr);
     const participantRows = await db.insert<ParticipantRow>("participants", [{
       event_id: event.id,
       company_id: companyId,
@@ -252,6 +253,7 @@ Deno.serve(async (request) => {
       networking_allowed: Boolean(payload.networking),
       newsletter_allowed: Boolean(payload.newsletter),
     }]);
+    console.log("Participant inserted successfully:", participantRows[0]?.id);
 
     const participant = participantRows[0];
     if (!participant?.id) throw new Error("Participant was not saved");
@@ -358,6 +360,11 @@ Deno.serve(async (request) => {
       },
     }, 201);
   } catch (error) {
+    console.error("Registration error:", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Stack:", error.stack);
+    }
     return errorResponse("Registration failed", 500, String(error));
   }
 });
