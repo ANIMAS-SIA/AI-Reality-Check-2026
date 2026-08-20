@@ -787,6 +787,10 @@ function initRegistration() {
         errorFor("email", "Ievadiet derīgu e-pastu.");
         ok = false;
       }
+      if (!fieldValue("phone")) {
+        errorFor("phone", "Šis lauks ir obligāts.");
+        ok = false;
+      }
       if (!noCompany.checked && !selectedCompany && !fieldValue("company")) {
         errorFor("company", "Izvēlieties uzņēmumu vai atzīmējiet, ka to neatrodat.");
         ok = false;
@@ -813,6 +817,7 @@ function initRegistration() {
     state.firstName = fieldValue("firstName");
     state.lastName = fieldValue("lastName");
     state.email = fieldValue("email");
+    state.phone = fieldValue("phone");
     state.role = fieldValue("role") || "Dalībnieks";
     state.companyName = noCompany.checked ? "Nepārstāv uzņēmumu" : (selectedCompany?.name || fieldValue("company"));
     state.company = selectedCompany;
