@@ -840,6 +840,7 @@ function initRegistration() {
   function validate() {
     let ok = true;
     document.querySelectorAll(".field-error").forEach((el) => { el.textContent = ""; });
+    console.log(`validate() step=${step}`);
 
     if (step === 1) {
       ["firstName", "lastName", "email"].forEach((id) => {
@@ -880,10 +881,16 @@ function initRegistration() {
       }
     }
 
-    if (step === 3 && !document.getElementById("requiredConsent").checked) {
-      ok = false;
+    if (step === 3) {
+      const consentChecked = document.getElementById("requiredConsent")?.checked;
+      console.log(`Step 3: requiredConsent=${consentChecked}`);
+      if (!consentChecked) {
+        console.log("Step 3 validation FAILED: requiredConsent not checked");
+        ok = false;
+      }
     }
 
+    console.log(`validate() result: ok=${ok}, step=${step}`);
     next.disabled = !ok;
     submit.disabled = !ok;
     return ok;
