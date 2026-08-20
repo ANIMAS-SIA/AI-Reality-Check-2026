@@ -54,6 +54,7 @@ type ParticipantRow = {
   first_name: string;
   last_name: string;
   email: string;
+  phone?: string | null;
   status: string;
 };
 type EmailResult = {
