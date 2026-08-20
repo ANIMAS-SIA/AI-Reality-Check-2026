@@ -233,57 +233,75 @@ Deno.serve(async (request) => {
     const phoneStr = clean(payload.phone) || null;
 
     console.log("Inserting participant with phone:", phoneStr);
-    const participantRows = await db.insert<ParticipantRow>("participants", [{
-      event_id: event.id,
-      company_id: companyId,
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone: phoneStr,
-      role: clean(payload.role) || null,
-      status: nextStatus,
-      approved_at: autoApprove ? new Date().toISOString() : null,
-      access_mode: payload.fullPortal ? "full" : "basic",
-      ai_maturity_level: maturityLevel,
-      ai_maturity_phase: maturityPhase(maturityLevel),
-      ai_maturity_anonymous: Boolean(payload.aiAnonymous),
-      ai_maturity_answered_at: new Date().toISOString(),
-      ai_maturity_version: 1,
-      public_company_allowed: Boolean(payload.publicCompany),
-      networking_allowed: Boolean(payload.networking),
-      newsletter_allowed: Boolean(payload.newsletter),
-    }]);
-    console.log("Participant inserted successfully:", participantRows[0]?.id);
+    let participantRows;
+    try {
+      participantRows = await db.insert<ParticipantRow>("participants", [{
+        event_id: event.id,
+        company_id: companyId,
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone: phoneStr,
+        role: clean(payload.role) || null,
+        status: nextStatus,
+        approved_at: autoApprove ? new Date().toISOString() : null,
+        access_mode: payload.fullPortal ? "full" : "basic",
+        ai_maturity_level: maturityLevel,
+        ai_maturity_phase: maturityPhase(maturityLevel),
+        ai_maturity_anonymous: Boolean(payload.aiAnonymous),
+        ai_maturity_answered_at: new Date().toISOString(),
+        ai_maturity_version: 1,
+        public_company_allowed: Boolean(payload.publicCompany),
+        networking_allowed: Boolean(payload.networking),
+        newsletter_allowed: Boolean(payload.newsletter),
+      }]);
+      console.log("Participant inserted successfully:", participantRows[0]?.id);
+    } catch (e) {
+      console.error("Participant insert failed:", e);
+      throw e;
+    }
 
     const participant = participantRows[0];
     if (!participant?.id) throw new Error("Participant was not saved");
 
-    await db.upsert("consents", [
-      { participant_id: participant.id, consent_key: "required_participation", granted: true, source: "registration" },
-      { participant_id: participant.id, consent_key: "public_company", granted: Boolean(payload.publicCompany), source: "registration" },
-      { participant_id: participant.id, consent_key: "full_portal", granted: Boolean(payload.fullPortal), source: "registration" },
-      { participant_id: participant.id, consent_key: "networking", granted: Boolean(payload.networking), source: "registration" },
-      { participant_id: participant.id, consent_key: "newsletter", granted: Boolean(payload.newsletter), source: "registration" },
-    ], "participant_id,consent_key");
+    try {
+      await db.upsert("consents", [
+        { participant_id: participant.id, consent_key: "required_participation", granted: true, source: "registration" },
+        { participant_id: participant.id, consent_key: "public_company", granted: Boolean(payload.publicCompany), source: "registration" },
+        { participant_id: participant.id, consent_key: "full_portal", granted: Boolean(payload.fullPortal), source: "registration" },
+        { participant_id: participant.id, consent_key: "networking", granted: Boolean(payload.networking), source: "registration" },
+        { participant_id: participant.id, consent_key: "newsletter", granted: Boolean(payload.newsletter), source: "registration" },
+      ], "participant_id,consent_key");
+      console.log("Consents upserted successfully");
+    } catch (e) {
+      console.error("Consents upsert failed:", e);
+      throw e;
+    }
 
     const pepper = requiredEnv("TOKEN_PEPPER");
     const ttlDays = Number(Deno.env.get("MAGIC_LINK_TTL_DAYS") || "90");
     const magicToken = createToken();
     const qrToken = createToken();
-    await db.insert("participant_tokens", [
-      {
-        participant_id: participant.id,
-        purpose: "magic_link",
-        token_hash: await hashToken(magicToken, pepper),
-        expires_at: addDays(new Date(), ttlDays),
-      },
-      {
-        participant_id: participant.id,
-        purpose: "qr_checkin",
-        token_hash: await hashToken(qrToken, pepper),
-        expires_at: addDays(new Date(), ttlDays),
-      },
-    ]);
+    try {
+      await db.insert("participant_tokens", [
+        {
+          participant_id: participant.id,
+          purpose: "magic_link",
+          token_hash: await hashToken(magicToken, pepper),
+          expires_at: addDays(new Date(), ttlDays),
+        },
+        {
+          participant_id: participant.id,
+          purpose: "qr_checkin",
+          token_hash: await hashToken(qrToken, pepper),
+          expires_at: addDays(new Date(), ttlDays),
+        },
+      ]);
+      console.log("Tokens inserted successfully");
+    } catch (e) {
+      console.error("Tokens insert failed:", e);
+      throw e;
+    }
 
     const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
     const passLink = `${siteUrl}/pass/?token=${magicToken}`;
