@@ -670,14 +670,43 @@ function initMaturityGauge(onChange) {
 
 // Phone validation rules by country code
 const PHONE_RULES = {
+  // Baltic States
   "371": { country: "Latvia", minDigits: 8, maxDigits: 8 },
   "370": { country: "Lithuania", minDigits: 8, maxDigits: 8 },
   "372": { country: "Estonia", minDigits: 8, maxDigits: 8 },
+  // Southern Europe
+  "34": { country: "Spain", minDigits: 9, maxDigits: 9 },
+  "351": { country: "Portugal", minDigits: 9, maxDigits: 9 },
+  "39": { country: "Italy", minDigits: 9, maxDigits: 10 },
+  "30": { country: "Greece", minDigits: 10, maxDigits: 10 },
+  "357": { country: "Cyprus", minDigits: 8, maxDigits: 8 },
+  "356": { country: "Malta", minDigits: 8, maxDigits: 8 },
+  // Central Europe
   "48": { country: "Poland", minDigits: 9, maxDigits: 9 },
+  "420": { country: "Czechia", minDigits: 9, maxDigits: 9 },
+  "421": { country: "Slovakia", minDigits: 9, maxDigits: 9 },
+  "36": { country: "Hungary", minDigits: 9, maxDigits: 9 },
+  "40": { country: "Romania", minDigits: 9, maxDigits: 9 },
+  "385": { country: "Croatia", minDigits: 9, maxDigits: 10 },
+  "386": { country: "Slovenia", minDigits: 8, maxDigits: 9 },
+  // Western Europe
   "49": { country: "Germany", minDigits: 10, maxDigits: 11 },
   "33": { country: "France", minDigits: 9, maxDigits: 9 },
-  "44": { country: "UK", minDigits: 10, maxDigits: 10 },
-  "1": { country: "USA/Canada", minDigits: 10, maxDigits: 10 }
+  "31": { country: "Netherlands", minDigits: 9, maxDigits: 9 },
+  "32": { country: "Belgium", minDigits: 9, maxDigits: 9 },
+  "352": { country: "Luxembourg", minDigits: 9, maxDigits: 11 },
+  "41": { country: "Switzerland", minDigits: 9, maxDigits: 9 },
+  "43": { country: "Austria", minDigits: 10, maxDigits: 13 },
+  // Northern Europe
+  "45": { country: "Denmark", minDigits: 8, maxDigits: 8 },
+  "46": { country: "Sweden", minDigits: 9, maxDigits: 9 },
+  "358": { country: "Finland", minDigits: 9, maxDigits: 9 },
+  // British Isles
+  "44": { country: "United Kingdom", minDigits: 10, maxDigits: 10 },
+  "353": { country: "Ireland", minDigits: 9, maxDigits: 10 },
+  // North America
+  "1": { country: "USA/Canada", minDigits: 10, maxDigits: 10 },
+  "1-CA": { country: "Canada", minDigits: 10, maxDigits: 10 }
 };
 
 function formatPhoneNumber(digits, countryCode) {
@@ -685,7 +714,9 @@ function formatPhoneNumber(digits, countryCode) {
   const rules = PHONE_RULES[countryCode] || PHONE_RULES["371"];
   // Only format if digits meet minimum requirement
   if (digits.length < rules.minDigits) return "";
-  return `+${countryCode} ${digits}`;
+  // For Canada (1-CA), format as +1 with digits
+  const prefix = countryCode === "1-CA" ? "1" : countryCode;
+  return `+${prefix} ${digits}`;
 }
 
 function validatePhoneNumber(phoneDigits, countryCode) {
