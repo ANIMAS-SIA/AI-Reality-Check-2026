@@ -214,6 +214,18 @@ Deno.serve(async (request) => {
     }
 
     const event = await getEvent(db);
+
+    // TESTING: return immediately after event lookup
+    console.log("Event loaded, returning test response");
+    return jsonResponse({
+      participant: {
+        id: `test-${Date.now()}`,
+        status: "testing",
+        access_mode: "basic",
+      },
+      links: { pass: "#", qr_checkin: "#" },
+    }, 201);
+
     const existingParticipant = (await db.select<ParticipantRow>("participants", {
       event_id: `eq.${event.id}`,
       email: `eq.${email}`,
