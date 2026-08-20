@@ -986,7 +986,13 @@ function initRegistration() {
   });
 
   submit?.addEventListener("click", async () => {
-    if (!validate()) return;
+    console.log("SUBMIT BUTTON CLICKED!");
+    console.log("Submit button disabled?", submit?.disabled);
+    if (!validate()) {
+      console.log("VALIDATION FAILED - returning early");
+      return;
+    }
+    console.log("VALIDATION PASSED");
     collect();
     console.log("Registration state:", state);
     submit.disabled = true;
