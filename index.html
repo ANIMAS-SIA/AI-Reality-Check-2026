@@ -155,7 +155,7 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 .hero-vert{
   position:absolute;right:2rem;top:50%;
   transform:translateY(-50%) rotate(90deg);
-  font-size:.6rem;font-weight:700;letter-spacing:.3em;
+  font-size:clamp(.45rem,.8vw,.6rem);font-weight:700;letter-spacing:.25em;
   text-transform:uppercase;color:rgba(255,255,255,.08);
   white-space:nowrap;z-index:2;
 }
@@ -179,6 +179,9 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   animation:none;
   flex-shrink:0;
 }
+@media(max-width:768px){
+  .hero-t1{letter-spacing:-.01em}
+}
 .hero-t2{
   font-family:'Poppins',sans-serif;
   font-size:clamp(4rem,10vw,9rem);
@@ -193,10 +196,19 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   flex-shrink:0;
 }
 @media(max-width:768px){
-  .hero-t1, .hero-t2, .hero-t3, .hero-t4{font-size:clamp(2.5rem,8vw,6rem)}
+  .hero-t2{letter-spacing:-.01em}
+}
+@media(max-width:768px){
+  .hero-t1{font-size:clamp(44px,12vw,56px)}
+  .hero-t2{font-size:clamp(42px,11vw,54px);letter-spacing:-.015em}
+  .hero-t3{font-size:clamp(52px,14vw,70px)}
+  .hero-t4{font-size:clamp(64px,18vw,84px)}
 }
 @media(max-width:480px){
-  .hero-t1, .hero-t2, .hero-t3, .hero-t4{font-size:clamp(1.75rem,6vw,3.5rem);line-height:1}
+  .hero-t1{font-size:clamp(44px,12vw,56px)}
+  .hero-t2{font-size:clamp(42px,11vw,54px);letter-spacing:-.015em}
+  .hero-t3{font-size:clamp(52px,14vw,70px)}
+  .hero-t4{font-size:clamp(64px,18vw,84px)}
 }
 /* text - outline style */
 .hero-t3{
@@ -213,6 +225,9 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   animation:none;
   flex-shrink:0;
 }
+@media(max-width:768px){
+  .hero-t3{letter-spacing:0;-webkit-text-stroke:1px rgba(242,237,230,.4)}
+}
 .hero-t4{
   font-family:'Poppins',sans-serif;
   font-size:clamp(4rem,10vw,9rem);
@@ -225,6 +240,9 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   transform:none;
   animation:none;
   flex-shrink:0;
+}
+@media(max-width:768px){
+  .hero-t4{letter-spacing:-.005em;margin-bottom:1rem}
 }
 
 /* scramble target - text animation only */
@@ -303,13 +321,13 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 .marquee-inner.rev{animation-direction:reverse;animation-duration:24s;font-size:1rem}
 @keyframes roll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(max-width:768px){
-  .marquee-inner{gap:2rem;font-size:1.1rem;animation-duration:22s}
-  .marquee-inner.rev{font-size:.85rem;animation-duration:28s}
+  .marquee-inner{gap:1.2rem;font-size:clamp(14px,2.4vw,18px);letter-spacing:.06em;animation-duration:22s}
+  .marquee-inner.rev{font-size:clamp(11px,1.8vw,13px);letter-spacing:.12em;animation-duration:28s}
 }
 @media(max-width:480px){
-  .marquee-wrap{padding:.6rem 0}
-  .marquee-inner{gap:1.5rem;font-size:.9rem;animation-duration:20s}
-  .marquee-inner.rev{font-size:.7rem;animation-duration:25s}
+  .marquee-wrap{padding:.4rem 0}
+  .marquee-inner{gap:0.5rem;font-size:clamp(12px,2.1vw,15px);letter-spacing:.04em;animation-duration:20s}
+  .marquee-inner.rev{font-size:clamp(9px,1.5vw,11px);letter-spacing:.1em;animation-duration:25s}
 }
 
 /* ─── SECTION SHARED ─────────────────────── */
@@ -1072,7 +1090,7 @@ footer{
         <!-- main heading -->
         <div style="display:flex;gap:1.2rem;align-items:center;max-width:100%;overflow:hidden">
           <div class="hero-t1"><span class="scramble" data-text="AI">AI</span></div>
-          <div style="font-family:'Poppins',sans-serif;font-size:clamp(1rem,2.5vw,1.6rem);font-weight:700;letter-spacing:.02em;line-height:1.1;text-transform:uppercase;flex-shrink:0;overflow:hidden">
+          <div style="font-family:'Poppins',sans-serif;font-size:clamp(26px,7vw,34px);font-weight:700;letter-spacing:.01em;line-height:1.05;text-transform:uppercase;flex-shrink:0;overflow:hidden">
             <div style="color:var(--W)">Mākslīgā</div>
             <div style="color:var(--W)">intelekta</div>
             <div style="color:var(--W)">konference</div>
