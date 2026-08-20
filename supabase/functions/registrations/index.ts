@@ -228,9 +228,8 @@ Deno.serve(async (request) => {
     const autoApprove = await shouldAutoApprove(db, event);
     const nextStatus = autoApprove ? "approved" : "application_received";
 
-    // Extract phone - should not be null if validation passed
-    const phoneStr = clean(payload.phone);
-    console.log("DEBUG: payload.phone =", payload.phone, "clean =", phoneStr);
+    // Extract phone - preserve non-empty values
+    const phoneStr = clean(payload.phone) || null;
 
     const participantRows = await db.insert<ParticipantRow>("participants", [{
       event_id: event.id,
@@ -238,7 +237,7 @@ Deno.serve(async (request) => {
       first_name: firstName,
       last_name: lastName,
       email,
-      phone: phoneStr || null,
+      phone: phoneValue,
       role: clean(payload.role) || null,
       status: nextStatus,
       approved_at: autoApprove ? new Date().toISOString() : undefined,
