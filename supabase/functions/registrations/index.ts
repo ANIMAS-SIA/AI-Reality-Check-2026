@@ -242,7 +242,7 @@ Deno.serve(async (request) => {
       phone: phoneStr,
       role: clean(payload.role) || null,
       status: nextStatus,
-      approved_at: autoApprove ? new Date().toISOString() : undefined,
+      approved_at: autoApprove ? new Date().toISOString() : null,
       access_mode: payload.fullPortal ? "full" : "basic",
       ai_maturity_level: maturityLevel,
       ai_maturity_phase: maturityPhase(maturityLevel),
