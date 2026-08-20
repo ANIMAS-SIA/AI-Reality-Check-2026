@@ -185,6 +185,12 @@ async function sendRegistrationEmail(email: string, firstName: string, passLink:
 }
 
 Deno.serve(async (request) => {
+  // IMMEDIATE TESTING: Return 201 before anything
+  return new Response(JSON.stringify({
+    participant: { id: "test-immediate", status: "ok", access_mode: "basic" },
+    links: { pass: "#", qr_checkin: "#" }
+  }), { status: 201, headers: { "Content-Type": "application/json" } });
+
   const options = handleOptions(request);
   if (options) return options;
 
@@ -194,13 +200,6 @@ Deno.serve(async (request) => {
 
   try {
     const db = new SupabaseRest();
-
-    // TESTING: return before rateLimit
-    console.log("Returning before rateLimit");
-    return jsonResponse({
-      participant: { id: `test3-${Date.now()}`, status: "ok", access_mode: "basic" },
-      links: { pass: "#", qr_checkin: "#" },
-    }, 201);
 
     const limited = await rateLimit(db, request, "registrations", 8, 60);
     if (limited) return limited;
