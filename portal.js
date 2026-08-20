@@ -668,6 +668,36 @@ function initMaturityGauge(onChange) {
   applyLevel(Number(slider.value), { silent: true });
 }
 
+// Phone validation rules by country code
+const PHONE_RULES = {
+  "371": { country: "Latvia", minDigits: 8, maxDigits: 8 },
+  "370": { country: "Lithuania", minDigits: 8, maxDigits: 8 },
+  "372": { country: "Estonia", minDigits: 8, maxDigits: 8 },
+  "48": { country: "Poland", minDigits: 9, maxDigits: 9 },
+  "49": { country: "Germany", minDigits: 10, maxDigits: 11 },
+  "33": { country: "France", minDigits: 9, maxDigits: 9 },
+  "44": { country: "UK", minDigits: 10, maxDigits: 10 },
+  "1": { country: "USA/Canada", minDigits: 10, maxDigits: 10 }
+};
+
+function formatPhoneNumber(digits, countryCode) {
+  if (!digits) return "";
+  const rules = PHONE_RULES[countryCode] || PHONE_RULES["371"];
+  return `+${countryCode} ${digits}`;
+}
+
+function validatePhoneNumber(phoneDigits, countryCode) {
+  const rules = PHONE_RULES[countryCode];
+  if (!rules) return "Valsts kods nav atpazīts.";
+  if (phoneDigits.length < rules.minDigits) {
+    return `${rules.country} numuram ir jābūt vismaz ${rules.minDigits} cipari (ievadīts: ${phoneDigits.length})`;
+  }
+  if (phoneDigits.length > rules.maxDigits) {
+    return `${rules.country} numuram ir jābūt maksimāli ${rules.maxDigits} cipari (ievadīts: ${phoneDigits.length})`;
+  }
+  return null;
+}
+
 function initRegistration() {
   let step = 1;
   let selectedCompany = null;
@@ -678,6 +708,8 @@ function initRegistration() {
   const next = document.querySelector("[data-next]");
   const back = document.querySelector("[data-back]");
   const submit = document.querySelector("[data-submit]");
+  const phoneCountrySelect = document.getElementById("phoneCountry");
+  const phoneInput = document.getElementById("phone");
   const companyInput = document.getElementById("company");
   const companyEmbed = document.getElementById("company360Embed");
   const companyEmbedShell = document.getElementById("companyEmbedShell");
@@ -777,7 +809,7 @@ function initRegistration() {
     document.querySelectorAll(".field-error").forEach((el) => { el.textContent = ""; });
 
     if (step === 1) {
-      ["firstName", "lastName", "email", "phone"].forEach((id) => {
+      ["firstName", "lastName", "email"].forEach((id) => {
         if (!fieldValue(id)) {
           errorFor(id, "Šis lauks ir obligāts.");
           ok = false;
@@ -787,6 +819,21 @@ function initRegistration() {
         errorFor("email", "Ievadiet derīgu e-pastu.");
         ok = false;
       }
+
+      // Phone validation
+      const phoneDigits = fieldValue("phone").replace(/\D/g, "");
+      const countryCode = phoneCountrySelect?.value || "371";
+      if (!phoneDigits) {
+        errorFor("phone", "Šis lauks ir obligāts.");
+        ok = false;
+      } else {
+        const phoneError = validatePhoneNumber(phoneDigits, countryCode);
+        if (phoneError) {
+          errorFor("phone", phoneError);
+          ok = false;
+        }
+      }
+
       if (!noCompany.checked && !selectedCompany && !fieldValue("company")) {
         errorFor("company", "Izvēlieties uzņēmumu vai atzīmējiet, ka to neatrodat.");
         ok = false;
@@ -813,7 +860,9 @@ function initRegistration() {
     state.firstName = fieldValue("firstName");
     state.lastName = fieldValue("lastName");
     state.email = fieldValue("email");
-    state.phone = fieldValue("phone") || "";
+    const phoneDigits = fieldValue("phone").replace(/\D/g, "");
+    const countryCode = phoneCountrySelect?.value || "371";
+    state.phone = formatPhoneNumber(phoneDigits, countryCode);
     state.role = fieldValue("role") || "Dalībnieks";
     state.companyName = noCompany.checked ? "Nepārstāv uzņēmumu" : (selectedCompany?.name || fieldValue("company"));
     state.company = selectedCompany;

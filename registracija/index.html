@@ -78,8 +78,20 @@
               <span class="field-error" data-error-for="email"></span>
             </div>
             <div class="field">
-              <label for="phone">Telefons <span class="required-mark" aria-hidden="true">*</span></label>
-              <input id="phone" type="tel" autocomplete="tel">
+              <label for="phoneCountry">Telefons <span class="required-mark" aria-hidden="true">*</span></label>
+              <div style="display:flex;gap:0.5rem">
+                <select id="phoneCountry" style="flex:0 0 auto;padding:0.6rem;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);color:var(--W);border-radius:.4rem;font-family:inherit;min-width:100px">
+                  <option value="371" selected>🇱🇻 +371 (Latvia)</option>
+                  <option value="370">🇱🇹 +370 (Lithuania)</option>
+                  <option value="372">🇪🇪 +372 (Estonia)</option>
+                  <option value="48">🇵🇱 +48 (Poland)</option>
+                  <option value="49">🇩🇪 +49 (Germany)</option>
+                  <option value="33">🇫🇷 +33 (France)</option>
+                  <option value="44">🇬🇧 +44 (UK)</option>
+                  <option value="1">🇺🇸 +1 (USA/Canada)</option>
+                </select>
+                <input id="phone" type="tel" style="flex:1" placeholder="29XXXXXX" autocomplete="tel">
+              </div>
               <span class="field-error" data-error-for="phone"></span>
             </div>
             <div class="field">
