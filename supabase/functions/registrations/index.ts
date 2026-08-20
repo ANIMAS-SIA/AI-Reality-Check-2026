@@ -237,7 +237,7 @@ Deno.serve(async (request) => {
       first_name: firstName,
       last_name: lastName,
       email,
-      phone: phoneValue,
+      phone: phoneStr,
       role: clean(payload.role) || null,
       status: nextStatus,
       approved_at: autoApprove ? new Date().toISOString() : undefined,

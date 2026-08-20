@@ -710,10 +710,13 @@ const PHONE_RULES = {
 };
 
 function formatPhoneNumber(digits, countryCode) {
-  if (!digits) return null;  // Return null, not empty string
+  if (!digits) return "";
+  const rules = PHONE_RULES[countryCode] || PHONE_RULES["371"];
+  // Only format if digits meet minimum requirement
+  if (digits.length < rules.minDigits) return "";
   // For Canada (1-CA), format as +1 with digits
   const prefix = countryCode === "1-CA" ? "1" : countryCode;
-  return `+${prefix} ${digits}`;  // Always format - validation already checked length
+  return `+${prefix} ${digits}`;
 }
 
 function validatePhoneNumber(phoneDigits, countryCode) {
