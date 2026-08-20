@@ -9,7 +9,6 @@ type RegistrationPayload = {
   firstName?: string;
   lastName?: string;
   email?: string;
-  phone?: string;
   role?: string;
   companyName?: string;
   company?: {
@@ -54,7 +53,6 @@ type ParticipantRow = {
   first_name: string;
   last_name: string;
   email: string;
-  phone?: string | null;
   status: string;
 };
 type EmailResult = {
@@ -185,12 +183,6 @@ async function sendRegistrationEmail(email: string, firstName: string, passLink:
 }
 
 Deno.serve(async (request) => {
-  // IMMEDIATE TESTING: Return 201 before anything
-  return new Response(JSON.stringify({
-    participant: { id: "test-immediate", status: "ok", access_mode: "basic" },
-    links: { pass: "#", qr_checkin: "#" }
-  }), { status: 201, headers: { "Content-Type": "application/json" } });
-
   const options = handleOptions(request);
   if (options) return options;
 
@@ -200,17 +192,9 @@ Deno.serve(async (request) => {
 
   try {
     const db = new SupabaseRest();
-
     const limited = await rateLimit(db, request, "registrations", 8, 60);
     if (limited) return limited;
     const payload = await readJson<RegistrationPayload>(request);
-
-    // TESTING: return after readJson
-    console.log("Payload read successfully, returning test response");
-    return jsonResponse({
-      participant: { id: `test2-${Date.now()}`, status: "ok", access_mode: "basic" },
-      links: { pass: "#", qr_checkin: "#" },
-    }, 201);
     const firstName = clean(payload.firstName);
     const lastName = clean(payload.lastName);
     const email = clean(payload.email).toLowerCase();
@@ -219,7 +203,6 @@ Deno.serve(async (request) => {
     if (!firstName) return errorResponse("Vārds ir obligāts.");
     if (!lastName) return errorResponse("Uzvārds ir obligāts.");
     if (!validEmail(email)) return errorResponse("E-pasts nav derīgs.");
-    if (!clean(payload.phone)) return errorResponse("Telefons ir obligāts.");
     if (!payload.noCompany && !clean(payload.companyName) && !payload.company?.name) {
       return errorResponse("Uzņēmums ir obligāts vai jāatzīmē, ka uzņēmums nav atrasts.");
     }
@@ -228,18 +211,6 @@ Deno.serve(async (request) => {
     }
 
     const event = await getEvent(db);
-
-    // TESTING: return immediately after event lookup
-    console.log("Event loaded, returning test response");
-    return jsonResponse({
-      participant: {
-        id: `test-${Date.now()}`,
-        status: "testing",
-        access_mode: "basic",
-      },
-      links: { pass: "#", qr_checkin: "#" },
-    }, 201);
-
     const existingParticipant = (await db.select<ParticipantRow>("participants", {
       event_id: `eq.${event.id}`,
       email: `eq.${email}`,
@@ -255,107 +226,55 @@ Deno.serve(async (request) => {
     const autoApprove = await shouldAutoApprove(db, event);
     const nextStatus = autoApprove ? "approved" : "application_received";
 
-    // Extract phone - preserve non-empty values
-    const phoneStr = clean(payload.phone) || null;
-
-    // TESTING: Skip insert, just return success
-    console.log("SKIPPING INSERT - returning dummy response");
-    return jsonResponse({
-      participant: {
-        id: `debug-${Date.now()}`,
-        status: nextStatus,
-        access_mode: payload.fullPortal ? "full" : "basic",
-      },
-      links: {
-        pass: "#",
-        qr_checkin: "#",
-      },
-    }, 201);
-
-    console.log("Inserting participant with phone:", phoneStr);
-    let participantRows;
-    try {
-      participantRows = await db.insert<ParticipantRow>("participants", [{
-        event_id: event.id,
-        company_id: companyId,
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        phone: phoneStr,
-        role: clean(payload.role) || null,
-        status: nextStatus,
-        approved_at: autoApprove ? new Date().toISOString() : null,
-        access_mode: payload.fullPortal ? "full" : "basic",
-        ai_maturity_level: maturityLevel,
-        ai_maturity_phase: maturityPhase(maturityLevel),
-        ai_maturity_anonymous: Boolean(payload.aiAnonymous),
-        ai_maturity_answered_at: new Date().toISOString(),
-        ai_maturity_version: 1,
-        public_company_allowed: Boolean(payload.publicCompany),
-        networking_allowed: Boolean(payload.networking),
-        newsletter_allowed: Boolean(payload.newsletter),
-      }]);
-      console.log("Participant inserted successfully:", participantRows[0]?.id);
-    } catch (e) {
-      console.error("Participant insert failed:", e);
-      throw e;
-    }
+    const participantRows = await db.insert<ParticipantRow>("participants", [{
+      event_id: event.id,
+      company_id: companyId,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      role: clean(payload.role) || null,
+      status: nextStatus,
+      approved_at: autoApprove ? new Date().toISOString() : undefined,
+      access_mode: payload.fullPortal ? "full" : "basic",
+      ai_maturity_level: maturityLevel,
+      ai_maturity_phase: maturityPhase(maturityLevel),
+      ai_maturity_anonymous: Boolean(payload.aiAnonymous),
+      ai_maturity_answered_at: new Date().toISOString(),
+      ai_maturity_version: 1,
+      public_company_allowed: Boolean(payload.publicCompany),
+      networking_allowed: Boolean(payload.networking),
+      newsletter_allowed: Boolean(payload.newsletter),
+    }]);
 
     const participant = participantRows[0];
     if (!participant?.id) throw new Error("Participant was not saved");
 
-    // TEMPORARY: Skip everything after insert for debugging
-    return jsonResponse({
-      participant: {
-        id: participant.id,
-        status: nextStatus,
-        access_mode: payload.fullPortal ? "full" : "basic",
-      },
-      links: {
-        pass: `${(Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "")}/pass/?token=debug`,
-        qr_checkin: "#",
-      },
-    }, 201);
-
-    // OLD CODE DISABLED:
-    try {
-      await db.upsert("consents", [
-        { participant_id: participant.id, consent_key: "required_participation", granted: true, source: "registration" },
-        { participant_id: participant.id, consent_key: "public_company", granted: Boolean(payload.publicCompany), source: "registration" },
-        { participant_id: participant.id, consent_key: "full_portal", granted: Boolean(payload.fullPortal), source: "registration" },
-        { participant_id: participant.id, consent_key: "networking", granted: Boolean(payload.networking), source: "registration" },
-        { participant_id: participant.id, consent_key: "newsletter", granted: Boolean(payload.newsletter), source: "registration" },
-      ], "participant_id,consent_key");
-      console.log("Consents upserted successfully");
-    } catch (e) {
-      console.error("Consents upsert failed:", e);
-      throw e;
-    }
+    await db.upsert("consents", [
+      { participant_id: participant.id, consent_key: "required_participation", granted: true, source: "registration" },
+      { participant_id: participant.id, consent_key: "public_company", granted: Boolean(payload.publicCompany), source: "registration" },
+      { participant_id: participant.id, consent_key: "full_portal", granted: Boolean(payload.fullPortal), source: "registration" },
+      { participant_id: participant.id, consent_key: "networking", granted: Boolean(payload.networking), source: "registration" },
+      { participant_id: participant.id, consent_key: "newsletter", granted: Boolean(payload.newsletter), source: "registration" },
+    ], "participant_id,consent_key");
 
     const pepper = requiredEnv("TOKEN_PEPPER");
     const ttlDays = Number(Deno.env.get("MAGIC_LINK_TTL_DAYS") || "90");
     const magicToken = createToken();
     const qrToken = createToken();
-    try {
-      await db.insert("participant_tokens", [
-        {
-          participant_id: participant.id,
-          purpose: "magic_link",
-          token_hash: await hashToken(magicToken, pepper),
-          expires_at: addDays(new Date(), ttlDays),
-        },
-        {
-          participant_id: participant.id,
-          purpose: "qr_checkin",
-          token_hash: await hashToken(qrToken, pepper),
-          expires_at: addDays(new Date(), ttlDays),
-        },
-      ]);
-      console.log("Tokens inserted successfully");
-    } catch (e) {
-      console.error("Tokens insert failed:", e);
-      throw e;
-    }
+    await db.insert("participant_tokens", [
+      {
+        participant_id: participant.id,
+        purpose: "magic_link",
+        token_hash: await hashToken(magicToken, pepper),
+        expires_at: addDays(new Date(), ttlDays),
+      },
+      {
+        participant_id: participant.id,
+        purpose: "qr_checkin",
+        token_hash: await hashToken(qrToken, pepper),
+        expires_at: addDays(new Date(), ttlDays),
+      },
+    ]);
 
     const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
     const passLink = `${siteUrl}/pass/?token=${magicToken}`;
@@ -364,8 +283,61 @@ Deno.serve(async (request) => {
     const appleWalletLink = `${functionsUrl}/wallet?provider=apple&redirect=1&token=${magicToken}`;
     const googleWalletLink = `${functionsUrl}/wallet?provider=google&token=${magicToken}`;
 
-    // Skip email/calendar on first deployment to test core registration
-    console.log("Skipping email/calendar for now");
+    if (autoApprove) {
+      const calendarResult = await addParticipantToCalendarInvite(event, {
+        id: participant.id,
+        first_name: firstName,
+        last_name: lastName,
+        email,
+      });
+      await logCalendarInvite(db, event, {
+        id: participant.id,
+        first_name: firstName,
+        last_name: lastName,
+        email,
+      }, calendarResult);
+
+      const emailResult = await sendEmail(email, "participation_approved", {
+        firstName,
+        participantName: `${firstName} ${lastName}`.trim(),
+        companyName: clean(payload.companyName || payload.company?.name) || "",
+        ticketCode: `ARC-2026-${participant.id.replaceAll("-", "").slice(0, 8).toUpperCase()}`,
+        passLink,
+        checkinLink,
+        appleWalletLink,
+        googleWalletLink,
+      });
+      await logEmail(db, participant.id, "participation_approved", email, emailResult, {
+        first_name: firstName,
+        event_name: "AI Reality Check 2026",
+        pass_link: passLink,
+        checkin_link: checkinLink,
+        apple_wallet_link: appleWalletLink,
+        google_wallet_link: googleWalletLink,
+        calendar_invite: calendarResult.status,
+      });
+    } else {
+      const emailResult = await sendEmail(email, "registration_received", {
+        firstName,
+        passLink,
+        registrationNumber: participant.id,
+      });
+      await db.insert("email_deliveries", [{
+        participant_id: participant.id,
+        template_key: "registration_received",
+        provider: emailResult.provider,
+        provider_message_id: emailResult.provider_message_id || null,
+        status: emailResult.status,
+        subject: "Tavs pieteikums AI Reality Check 2026 ir saņemts",
+        sent_to: email,
+        payload: {
+          first_name: firstName,
+          event_name: "AI Reality Check 2026",
+          pass_link: passLink,
+        },
+        error_message: emailResult.error_message || null,
+      }]);
+    }
 
     return jsonResponse({
       participant: {
@@ -379,11 +351,6 @@ Deno.serve(async (request) => {
       },
     }, 201);
   } catch (error) {
-    console.error("Registration error:", error);
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Stack:", error.stack);
-    }
     return errorResponse("Registration failed", 500, String(error));
   }
 });

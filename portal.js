@@ -668,69 +668,6 @@ function initMaturityGauge(onChange) {
   applyLevel(Number(slider.value), { silent: true });
 }
 
-// Phone validation rules by country code
-const PHONE_RULES = {
-  // Baltic States
-  "371": { country: "Latvia", minDigits: 8, maxDigits: 8 },
-  "370": { country: "Lithuania", minDigits: 8, maxDigits: 8 },
-  "372": { country: "Estonia", minDigits: 8, maxDigits: 8 },
-  // Southern Europe
-  "34": { country: "Spain", minDigits: 9, maxDigits: 9 },
-  "351": { country: "Portugal", minDigits: 9, maxDigits: 9 },
-  "39": { country: "Italy", minDigits: 9, maxDigits: 10 },
-  "30": { country: "Greece", minDigits: 10, maxDigits: 10 },
-  "357": { country: "Cyprus", minDigits: 8, maxDigits: 8 },
-  "356": { country: "Malta", minDigits: 8, maxDigits: 8 },
-  // Central Europe
-  "48": { country: "Poland", minDigits: 9, maxDigits: 9 },
-  "420": { country: "Czechia", minDigits: 9, maxDigits: 9 },
-  "421": { country: "Slovakia", minDigits: 9, maxDigits: 9 },
-  "36": { country: "Hungary", minDigits: 9, maxDigits: 9 },
-  "40": { country: "Romania", minDigits: 9, maxDigits: 9 },
-  "385": { country: "Croatia", minDigits: 9, maxDigits: 10 },
-  "386": { country: "Slovenia", minDigits: 8, maxDigits: 9 },
-  // Western Europe
-  "49": { country: "Germany", minDigits: 10, maxDigits: 11 },
-  "33": { country: "France", minDigits: 9, maxDigits: 9 },
-  "31": { country: "Netherlands", minDigits: 9, maxDigits: 9 },
-  "32": { country: "Belgium", minDigits: 9, maxDigits: 9 },
-  "352": { country: "Luxembourg", minDigits: 9, maxDigits: 11 },
-  "41": { country: "Switzerland", minDigits: 9, maxDigits: 9 },
-  "43": { country: "Austria", minDigits: 10, maxDigits: 13 },
-  // Northern Europe
-  "45": { country: "Denmark", minDigits: 8, maxDigits: 8 },
-  "46": { country: "Sweden", minDigits: 9, maxDigits: 9 },
-  "358": { country: "Finland", minDigits: 9, maxDigits: 9 },
-  // British Isles
-  "44": { country: "United Kingdom", minDigits: 10, maxDigits: 10 },
-  "353": { country: "Ireland", minDigits: 9, maxDigits: 10 },
-  // North America
-  "1": { country: "USA/Canada", minDigits: 10, maxDigits: 10 },
-  "1-CA": { country: "Canada", minDigits: 10, maxDigits: 10 }
-};
-
-function formatPhoneNumber(digits, countryCode) {
-  if (!digits) return "";
-  const rules = PHONE_RULES[countryCode] || PHONE_RULES["371"];
-  // Only format if digits meet minimum requirement
-  if (digits.length < rules.minDigits) return "";
-  // For Canada (1-CA), format as +1 with digits
-  const prefix = countryCode === "1-CA" ? "1" : countryCode;
-  return `+${prefix} ${digits}`;
-}
-
-function validatePhoneNumber(phoneDigits, countryCode) {
-  const rules = PHONE_RULES[countryCode];
-  if (!rules) return "Valsts kods nav atpazīts.";
-  if (phoneDigits.length < rules.minDigits) {
-    return `${rules.country} numuram ir jābūt vismaz ${rules.minDigits} cipari (ievadīts: ${phoneDigits.length})`;
-  }
-  if (phoneDigits.length > rules.maxDigits) {
-    return `${rules.country} numuram ir jābūt maksimāli ${rules.maxDigits} cipari (ievadīts: ${phoneDigits.length})`;
-  }
-  return null;
-}
-
 function initRegistration() {
   let step = 1;
   let selectedCompany = null;
@@ -741,8 +678,6 @@ function initRegistration() {
   const next = document.querySelector("[data-next]");
   const back = document.querySelector("[data-back]");
   const submit = document.querySelector("[data-submit]");
-  const phoneCountrySelect = document.getElementById("phoneCountry");
-  const phoneInput = document.getElementById("phone");
   const companyInput = document.getElementById("company");
   const companyEmbed = document.getElementById("company360Embed");
   const companyEmbedShell = document.getElementById("companyEmbedShell");
@@ -852,21 +787,6 @@ function initRegistration() {
         errorFor("email", "Ievadiet derīgu e-pastu.");
         ok = false;
       }
-
-      // Phone validation
-      const phoneDigits = fieldValue("phone").replace(/\D/g, "");
-      const countryCode = phoneCountrySelect?.value || "371";
-      if (!phoneDigits) {
-        errorFor("phone", "Šis lauks ir obligāts.");
-        ok = false;
-      } else {
-        const phoneError = validatePhoneNumber(phoneDigits, countryCode);
-        if (phoneError) {
-          errorFor("phone", phoneError);
-          ok = false;
-        }
-      }
-
       if (!noCompany.checked && !selectedCompany && !fieldValue("company")) {
         errorFor("company", "Izvēlieties uzņēmumu vai atzīmējiet, ka to neatrodat.");
         ok = false;
@@ -893,9 +813,6 @@ function initRegistration() {
     state.firstName = fieldValue("firstName");
     state.lastName = fieldValue("lastName");
     state.email = fieldValue("email");
-    const phoneDigits = fieldValue("phone").replace(/\D/g, "");
-    const countryCode = phoneCountrySelect?.value || "371";
-    state.phone = formatPhoneNumber(phoneDigits, countryCode);
     state.role = fieldValue("role") || "Dalībnieks";
     state.companyName = noCompany.checked ? "Nepārstāv uzņēmumu" : (selectedCompany?.name || fieldValue("company"));
     state.company = selectedCompany;
@@ -986,15 +903,8 @@ function initRegistration() {
   });
 
   submit?.addEventListener("click", async () => {
-    console.log("SUBMIT BUTTON CLICKED!");
-    console.log("Submit button disabled?", submit?.disabled);
-    if (!validate()) {
-      console.log("VALIDATION FAILED - returning early");
-      return;
-    }
-    console.log("VALIDATION PASSED");
+    if (!validate()) return;
     collect();
-    console.log("Registration state:", state);
     submit.disabled = true;
     submit.textContent = "Nosūta...";
     try {
