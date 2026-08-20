@@ -21,6 +21,7 @@ type ParticipantRow = {
   first_name: string;
   last_name: string;
   email: string;
+  phone?: string | null;
   role: string | null;
   status: string;
   access_mode: string;
@@ -219,7 +220,7 @@ function csvCell(value: unknown) {
 async function exportRegistrations(db: SupabaseRest, url: URL): Promise<Response> {
   const rows = await queryRegistrations(db, url);
   const header = [
-    "id", "first_name", "last_name", "email", "role", "status", "access_mode",
+    "id", "first_name", "last_name", "email", "phone", "role", "status", "access_mode",
     "ai_maturity_level", "ai_maturity_phase", "ai_maturity_anonymous", "ai_maturity_answered_at",
     "ai_stage", "consent_required_participation", "consent_public_company", "consent_networking",
     "consent_newsletter", "created_at",

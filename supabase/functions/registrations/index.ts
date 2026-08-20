@@ -9,6 +9,7 @@ type RegistrationPayload = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  phone?: string;
   role?: string;
   companyName?: string;
   company?: {
@@ -203,6 +204,7 @@ Deno.serve(async (request) => {
     if (!firstName) return errorResponse("Vārds ir obligāts.");
     if (!lastName) return errorResponse("Uzvārds ir obligāts.");
     if (!validEmail(email)) return errorResponse("E-pasts nav derīgs.");
+    if (!clean(payload.phone)) return errorResponse("Telefons ir obligāts.");
     if (!payload.noCompany && !clean(payload.companyName) && !payload.company?.name) {
       return errorResponse("Uzņēmums ir obligāts vai jāatzīmē, ka uzņēmums nav atrasts.");
     }
@@ -232,6 +234,7 @@ Deno.serve(async (request) => {
       first_name: firstName,
       last_name: lastName,
       email,
+      phone: clean(payload.phone) || null,
       role: clean(payload.role) || null,
       status: nextStatus,
       approved_at: autoApprove ? new Date().toISOString() : undefined,
