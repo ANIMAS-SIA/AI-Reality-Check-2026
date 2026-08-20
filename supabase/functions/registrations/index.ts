@@ -264,6 +264,20 @@ Deno.serve(async (request) => {
     const participant = participantRows[0];
     if (!participant?.id) throw new Error("Participant was not saved");
 
+    // TEMPORARY: Skip everything after insert for debugging
+    return jsonResponse({
+      participant: {
+        id: participant.id,
+        status: nextStatus,
+        access_mode: payload.fullPortal ? "full" : "basic",
+      },
+      links: {
+        pass: `${(Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "")}/pass/?token=debug`,
+        qr_checkin: "#",
+      },
+    }, 201);
+
+    // OLD CODE DISABLED:
     try {
       await db.upsert("consents", [
         { participant_id: participant.id, consent_key: "required_participation", granted: true, source: "registration" },
@@ -310,61 +324,8 @@ Deno.serve(async (request) => {
     const appleWalletLink = `${functionsUrl}/wallet?provider=apple&redirect=1&token=${magicToken}`;
     const googleWalletLink = `${functionsUrl}/wallet?provider=google&token=${magicToken}`;
 
-    if (autoApprove) {
-      const calendarResult = await addParticipantToCalendarInvite(event, {
-        id: participant.id,
-        first_name: firstName,
-        last_name: lastName,
-        email,
-      });
-      await logCalendarInvite(db, event, {
-        id: participant.id,
-        first_name: firstName,
-        last_name: lastName,
-        email,
-      }, calendarResult);
-
-      const emailResult = await sendEmail(email, "participation_approved", {
-        firstName,
-        participantName: `${firstName} ${lastName}`.trim(),
-        companyName: clean(payload.companyName || payload.company?.name) || "",
-        ticketCode: `ARC-2026-${participant.id.replaceAll("-", "").slice(0, 8).toUpperCase()}`,
-        passLink,
-        checkinLink,
-        appleWalletLink,
-        googleWalletLink,
-      });
-      await logEmail(db, participant.id, "participation_approved", email, emailResult, {
-        first_name: firstName,
-        event_name: "AI Reality Check 2026",
-        pass_link: passLink,
-        checkin_link: checkinLink,
-        apple_wallet_link: appleWalletLink,
-        google_wallet_link: googleWalletLink,
-        calendar_invite: calendarResult.status,
-      });
-    } else {
-      const emailResult = await sendEmail(email, "registration_received", {
-        firstName,
-        passLink,
-        registrationNumber: participant.id,
-      });
-      await db.insert("email_deliveries", [{
-        participant_id: participant.id,
-        template_key: "registration_received",
-        provider: emailResult.provider,
-        provider_message_id: emailResult.provider_message_id || null,
-        status: emailResult.status,
-        subject: "Tavs pieteikums AI Reality Check 2026 ir saņemts",
-        sent_to: email,
-        payload: {
-          first_name: firstName,
-          event_name: "AI Reality Check 2026",
-          pass_link: passLink,
-        },
-        error_message: emailResult.error_message || null,
-      }]);
-    }
+    // Skip email/calendar on first deployment to test core registration
+    console.log("Skipping email/calendar for now");
 
     return jsonResponse({
       participant: {
