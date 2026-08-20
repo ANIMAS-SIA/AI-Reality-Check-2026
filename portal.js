@@ -683,6 +683,8 @@ const PHONE_RULES = {
 function formatPhoneNumber(digits, countryCode) {
   if (!digits) return "";
   const rules = PHONE_RULES[countryCode] || PHONE_RULES["371"];
+  // Only format if digits meet minimum requirement
+  if (digits.length < rules.minDigits) return "";
   return `+${countryCode} ${digits}`;
 }
 
@@ -955,6 +957,7 @@ function initRegistration() {
   submit?.addEventListener("click", async () => {
     if (!validate()) return;
     collect();
+    console.log("Registration state:", state);
     submit.disabled = true;
     submit.textContent = "Nosūta...";
     try {
