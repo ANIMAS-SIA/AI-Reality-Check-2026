@@ -777,7 +777,7 @@ function initRegistration() {
     document.querySelectorAll(".field-error").forEach((el) => { el.textContent = ""; });
 
     if (step === 1) {
-      ["firstName", "lastName", "email"].forEach((id) => {
+      ["firstName", "lastName", "email", "phone"].forEach((id) => {
         if (!fieldValue(id)) {
           errorFor(id, "Šis lauks ir obligāts.");
           ok = false;
@@ -813,6 +813,7 @@ function initRegistration() {
     state.firstName = fieldValue("firstName");
     state.lastName = fieldValue("lastName");
     state.email = fieldValue("email");
+    state.phone = fieldValue("phone") || "";
     state.role = fieldValue("role") || "Dalībnieks";
     state.companyName = noCompany.checked ? "Nepārstāv uzņēmumu" : (selectedCompany?.name || fieldValue("company"));
     state.company = selectedCompany;

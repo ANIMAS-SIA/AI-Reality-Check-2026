@@ -1103,6 +1103,7 @@
         <div class="admin-participant-body">
           <strong>${esc(participant.first_name)} ${esc(participant.last_name)}</strong>
           <a class="admin-participant-email" href="mailto:${encodeURIComponent(participant.email || "")}">${esc(participant.email || "—")}</a>
+          ${participant.phone ? `<span class="admin-fine">${esc(participant.phone)}</span>` : ""}
           <span class="admin-fine">${esc(participant.role || "Dalībnieks")}${maturity ? ` · ${esc(maturity)}` : ""}</span>
           <div class="admin-consent-chips">
             ${consentChip("Datu apstrāde", consents.required_participation !== false)}
