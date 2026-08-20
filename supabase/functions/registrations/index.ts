@@ -197,6 +197,13 @@ Deno.serve(async (request) => {
     const limited = await rateLimit(db, request, "registrations", 8, 60);
     if (limited) return limited;
     const payload = await readJson<RegistrationPayload>(request);
+
+    // TESTING: return after readJson
+    console.log("Payload read successfully, returning test response");
+    return jsonResponse({
+      participant: { id: `test2-${Date.now()}`, status: "ok", access_mode: "basic" },
+      links: { pass: "#", qr_checkin: "#" },
+    }, 201);
     const firstName = clean(payload.firstName);
     const lastName = clean(payload.lastName);
     const email = clean(payload.email).toLowerCase();
