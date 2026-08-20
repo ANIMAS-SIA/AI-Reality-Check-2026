@@ -53,6 +53,7 @@ type ParticipantRow = {
   first_name: string;
   last_name: string;
   email: string;
+  phone?: string | null;
   status: string;
 };
 type EmailResult = {
@@ -225,6 +226,7 @@ Deno.serve(async (request) => {
     const companyId = await saveCompany(db, payload);
     const autoApprove = await shouldAutoApprove(db, event);
     const nextStatus = autoApprove ? "approved" : "application_received";
+    const phoneStr = clean(payload.phone) || null;
 
     const participantRows = await db.insert<ParticipantRow>("participants", [{
       event_id: event.id,
@@ -232,6 +234,7 @@ Deno.serve(async (request) => {
       first_name: firstName,
       last_name: lastName,
       email,
+      phone: phoneStr,
       role: clean(payload.role) || null,
       status: nextStatus,
       approved_at: autoApprove ? new Date().toISOString() : undefined,
