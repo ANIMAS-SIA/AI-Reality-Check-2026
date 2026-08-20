@@ -194,6 +194,14 @@ Deno.serve(async (request) => {
 
   try {
     const db = new SupabaseRest();
+
+    // TESTING: return before rateLimit
+    console.log("Returning before rateLimit");
+    return jsonResponse({
+      participant: { id: `test3-${Date.now()}`, status: "ok", access_mode: "basic" },
+      links: { pass: "#", qr_checkin: "#" },
+    }, 201);
+
     const limited = await rateLimit(db, request, "registrations", 8, 60);
     if (limited) return limited;
     const payload = await readJson<RegistrationPayload>(request);
