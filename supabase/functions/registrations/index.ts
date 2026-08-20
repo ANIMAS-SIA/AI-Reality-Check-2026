@@ -232,6 +232,20 @@ Deno.serve(async (request) => {
     // Extract phone - preserve non-empty values
     const phoneStr = clean(payload.phone) || null;
 
+    // TESTING: Skip insert, just return success
+    console.log("SKIPPING INSERT - returning dummy response");
+    return jsonResponse({
+      participant: {
+        id: `debug-${Date.now()}`,
+        status: nextStatus,
+        access_mode: payload.fullPortal ? "full" : "basic",
+      },
+      links: {
+        pass: "#",
+        qr_checkin: "#",
+      },
+    }, 201);
+
     console.log("Inserting participant with phone:", phoneStr);
     let participantRows;
     try {
