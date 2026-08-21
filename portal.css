@@ -5880,7 +5880,7 @@ body[data-page="present"] {
 
   body[data-page="registration"] .company-embed-shell {
     height: 160px;
-    margin-bottom: 180px;
+    margin-bottom: 280px;
   }
   body[data-page="registration"] .company-embed-shell iframe {
     height: 160px;
@@ -5944,7 +5944,7 @@ body[data-page="present"] {
 
   body[data-page="registration"] .company-embed-shell {
     height: 140px;
-    margin-bottom: 160px;
+    margin-bottom: 240px;
   }
   body[data-page="registration"] .company-embed-shell iframe {
     height: 140px;
