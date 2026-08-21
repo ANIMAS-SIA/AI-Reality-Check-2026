@@ -208,8 +208,19 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 
 .hero-content{position:relative;z-index:5;width:100%;margin-top:0.5rem;display:flex;align-items:flex-end;justify-content:space-between;gap:4rem}
 @media(max-width:768px){
-  .hero-container{flex-wrap:wrap}
-  .hero-container > div:first-child{flex-basis:100%}
+  .hero-container{
+    flex-wrap:wrap;
+    max-width:1400px;
+    margin:0 auto;
+    justify-content:center;
+    padding:0 2rem;
+  }
+  .hero-container > div:first-child{
+    flex-basis:auto;
+    display:grid;
+    grid-template-columns:minmax(350px,650px) minmax(320px,420px);
+    gap:clamp(40px,4vw,80px);
+  }
   .hero-content{gap:1rem;align-items:stretch}
   .hero-content > div:last-child{display:none}
 }
@@ -1132,8 +1143,8 @@ footer{
   <div class="hero-slab"></div>
   <div class="hero-vert">MĀKSLĪGĀ INTELEKTA KONFERENCE · 2026</div>
 
-  <div class="hero-container" style="display:flex;align-items:flex-end;justify-content:space-between;gap:4rem;width:100%">
-    <div style="flex:1;display:grid;grid-template-columns:minmax(350px,1fr) minmax(380px,480px);gap:clamp(80px,10vw,140px);align-items:stretch;height:100%;transform:none;animation:none">
+  <div class="hero-container" style="display:flex;align-items:flex-end;justify-content:center;gap:4rem">
+    <div style="display:grid;grid-template-columns:minmax(350px,650px) minmax(320px,420px);gap:clamp(40px,4vw,80px);align-items:stretch;height:100%;transform:none;animation:none">
       <!-- LEFT: Main Title -->
       <h1 style="display:flex;flex-direction:column;gap:0.6rem;transform:none;animation:none;flex-shrink:0;max-width:100%;overflow:hidden">
         <!-- ANIMAS logo -->
