@@ -122,6 +122,49 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   .nav-cta{display:none}
 }
 
+/* Hero primary CTA (mobile) */
+.hero-cta-primary{
+  display:none;
+}
+@media(max-width:768px){
+  .hero-cta-primary{
+    display:block !important;width:calc(100% - 40px);min-height:52px;
+    background:var(--V);color:#fff;
+    padding:12px 20px;border-radius:2px;
+    text-decoration:none;text-align:center;
+    font-size:1rem;font-weight:700;
+    letter-spacing:.04em;
+    transition:all .2s;
+    margin-top:1.5rem;
+    margin-left:auto;margin-right:auto;
+  }
+  .hero-cta-primary:hover{transform:translateY(-2px);background:#6457d0}
+}
+
+/* Sticky mobile CTA footer */
+#sticky-cta{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:rgba(8,8,8,.95);backdrop-filter:blur(12px);
+  border-top:1px solid rgba(255,255,255,.1);
+  padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  z-index:100;
+}
+#sticky-cta a{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:48px;
+  background:var(--V);color:#fff;
+  text-decoration:none;font-weight:700;
+  border-radius:2px;transition:all .2s;
+}
+#sticky-cta a:hover{transform:translateY(-1px);background:#6457d0}
+@media(max-width:768px){
+  #sticky-cta{display:block}
+}
+@media(max-width:480px){
+  #sticky-cta{padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  #sticky-cta a{min-height:44px;font-size:.9rem}
+}
+
 /* ─── HERO ───────────────────────────────── */
 #hero{
   position:relative;min-height:70vh;
@@ -130,10 +173,10 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   margin-top:0;
 }
 @media(max-width:768px){
-  #hero{padding:2.5rem 0 3rem 0;min-height:60vh}
+  #hero{padding:2rem 0 1.5rem 0;min-height:auto;padding-bottom:calc(1.5rem + 60px)}
 }
 @media(max-width:480px){
-  #hero{padding:2rem 0 2rem 0;min-height:55vh}
+  #hero{padding:1.5rem 0 1rem 0;min-height:auto;padding-bottom:calc(1rem + 60px)}
 }
 
 /* canvas fills hero */
@@ -164,6 +207,12 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 }
 
 .hero-content{position:relative;z-index:5;width:100%;margin-top:0.5rem;display:flex;align-items:flex-end;justify-content:space-between;gap:4rem}
+@media(max-width:768px){
+  .hero-container{flex-wrap:wrap}
+  .hero-container > div:first-child{flex-basis:100%}
+  .hero-content{gap:1rem;align-items:stretch}
+  .hero-content > div:last-child{display:none}
+}
 
 /* GIANT title - Space Grotesk Bold for readability */
 .hero-t1{
@@ -181,6 +230,7 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 }
 @media(max-width:768px){
   .hero-t1{letter-spacing:-.01em}
+  .hero-subtitle{font-size:clamp(22px,5.5vw,26px) !important;line-height:1.08 !important;max-height:3.2em;overflow:hidden}
 }
 .hero-t2{
   font-family:'Poppins',sans-serif;
@@ -1069,7 +1119,11 @@ footer{
   <a href="#speakers" class="nav-link">Runātāji</a>
   <a href="#agenda"   class="nav-link">Programma</a>
   <a href="#about"    class="nav-link">Par konferenci</a>
-  <a href="/registracija/" class="nav-cta" style="text-align:center;margin-top:1rem">Reģistrēties — Bez maksas</a>
+  <hr style="margin:1rem 0;border:none;border-top:1px solid rgba(255,255,255,.1)">
+  <a href="/registracija/" class="nav-cta" style="text-align:center;margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.6rem">
+    <span>Reģistrēties</span>
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
 </div>
 
 <!-- ═══════════ HERO ═══════════ -->
@@ -1078,7 +1132,7 @@ footer{
   <div class="hero-slab"></div>
   <div class="hero-vert">MĀKSLĪGĀ INTELEKTA KONFERENCE · 2026</div>
 
-  <div class="container" style="display:flex;align-items:flex-end;justify-content:space-between;gap:4rem;width:100%">
+  <div class="hero-container" style="display:flex;align-items:flex-end;justify-content:space-between;gap:4rem;width:100%">
     <div style="flex:1;display:grid;grid-template-columns:minmax(350px,1fr) minmax(380px,480px);gap:clamp(80px,10vw,140px);align-items:stretch;height:100%;transform:none;animation:none">
       <!-- LEFT: Main Title -->
       <h1 style="display:flex;flex-direction:column;gap:0.6rem;transform:none;animation:none;flex-shrink:0;max-width:100%;overflow:hidden">
@@ -1090,7 +1144,7 @@ footer{
         <!-- main heading -->
         <div style="display:flex;gap:1.2rem;align-items:center;max-width:100%;overflow:hidden">
           <div class="hero-t1"><span class="scramble" data-text="AI">AI</span></div>
-          <div style="font-family:'Poppins',sans-serif;font-size:clamp(26px,7vw,34px);font-weight:700;letter-spacing:.01em;line-height:1.05;text-transform:uppercase;flex-shrink:0;overflow:hidden">
+          <div class="hero-subtitle" style="font-family:'Poppins',sans-serif;font-size:clamp(26px,7vw,34px);font-weight:700;letter-spacing:.01em;line-height:1.05;text-transform:uppercase;flex-shrink:0;overflow:hidden">
             <div style="color:var(--W)">Mākslīgā</div>
             <div style="color:var(--W)">intelekta</div>
             <div style="color:var(--W)">konference</div>
@@ -1103,7 +1157,11 @@ footer{
           <div class="hero-t3"><span class="scramble" data-text="CHECK">CHECK</span></div>
           <div class="hero-t4"><span class="scramble" data-text="2026">2026</span></div>
         </div>
+        <!-- Mobile primary CTA -->
+        <a href="/registracija/" class="hero-cta-primary" style="display: none;">Reģistrēties</a>
       </h1>
+      <!-- Mobile primary CTA (outside h1) -->
+      <a href="/registracija/" class="hero-cta-primary-mobile" style="display: none; margin-top: 1.5rem; width: 100%; min-height: 52px; background: var(--V); color: #fff; padding: 12px 20px; border-radius: 2px; text-decoration: none; text-align: center; font-size: 1rem; font-weight: 700; letter-spacing: .04em; transition: all .2s;">Reģistrēties</a>
 
       <!-- RIGHT: Meta + CTA -->
       <div style="display:flex;flex-direction:column;gap:1.5rem;align-items:flex-start;align-self:center;padding-top:2rem;transform:none !important;animation:none !important;position:relative;z-index:10">
@@ -2139,5 +2197,30 @@ function handleReg(e){
 <style>
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 </style>
+
+<!-- Mobile sticky CTA footer -->
+<div id="sticky-cta">
+  <a href="/registracija/">Reģistrēties — Bez maksas</a>
+</div>
+
+<script>
+// Sticky CTA visibility logic
+(function() {
+  const stickyCtA = document.getElementById('sticky-cta');
+  const hero = document.getElementById('hero');
+
+  function updateStickyVisibility() {
+    if (!hero || window.innerWidth > 768) return;
+    const heroBottom = hero.offsetTop + hero.offsetHeight;
+    const scrollPos = window.scrollY;
+    stickyCtA.style.display = scrollPos > heroBottom ? 'block' : 'none';
+  }
+
+  window.addEventListener('scroll', updateStickyVisibility, { passive: true });
+  window.addEventListener('resize', updateStickyVisibility, { passive: true });
+  updateStickyVisibility();
+})();
+</script>
+
 </body>
 </html>

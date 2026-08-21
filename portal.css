@@ -5830,3 +5830,141 @@ body[data-page="present"] {
   margin: 0;
 }
 
+/* ═══ REGISTRATION FORM MOBILE OPTIMIZATION ═══ */
+@media (max-width: 768px) {
+  body[data-page="registration"] .field label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  body[data-page="registration"] .field input,
+  body[data-page="registration"] .field textarea,
+  body[data-page="registration"] .field select {
+    min-height: 48px;
+    font-size: 16px;
+    padding: 14px 16px;
+    border-radius: 2px;
+  }
+
+  body[data-page="registration"] .field textarea {
+    min-height: 100px;
+  }
+
+  body[data-page="registration"] .check-choice,
+  body[data-page="registration"] .choice {
+    min-height: 52px;
+    padding: 14px;
+    font-size: 15px;
+  }
+
+  body[data-page="registration"] .form-step {
+    padding: 20px 16px;
+    min-height: auto;
+  }
+
+  body[data-page="registration"] .form-step-label {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  body[data-page="registration"] .form-step h2 {
+    font-size: 22px;
+    line-height: 1.2;
+    margin-bottom: 16px;
+  }
+
+  body[data-page="registration"] .grid.two {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  body[data-page="registration"] .company-embed-shell,
+  body[data-page="registration"] .company-embed-shell iframe {
+    height: 160px;
+  }
+
+  body[data-page="registration"] .confirmation {
+    padding: 24px 16px;
+    min-height: auto;
+  }
+
+  body[data-page="registration"] .confirmation-details {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  body[data-page="registration"] .btn-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+    padding: 0;
+  }
+
+  body[data-page="registration"] .btn {
+    width: 100%;
+    min-height: 52px;
+    font-size: 14px;
+    padding: 12px 20px;
+  }
+
+  body[data-page="registration"] .registration-card {
+    margin: 0;
+    border-radius: 0;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  body[data-page="registration"] .form-step {
+    padding: 16px 12px;
+  }
+
+  body[data-page="registration"] .form-step h2 {
+    font-size: 20px;
+  }
+
+  body[data-page="registration"] .field input,
+  body[data-page="registration"] .field textarea {
+    font-size: 16px;
+    min-height: 44px;
+    padding: 12px 14px;
+  }
+
+  body[data-page="registration"] .check-choice,
+  body[data-page="registration"] .choice {
+    min-height: 48px;
+    padding: 12px;
+    grid-template-columns: 20px 1fr;
+    gap: 10px;
+  }
+
+  body[data-page="registration"] .company-embed-shell,
+  body[data-page="registration"] .company-embed-shell iframe {
+    height: 140px;
+  }
+
+  body[data-page="registration"] .btn {
+    min-height: 48px;
+    font-size: 13px;
+  }
+
+  body[data-page="registration"] .confirmation {
+    padding: 20px 12px;
+  }
+
+  .maturity-gauge-visual {
+    max-width: 100%;
+    padding: 0 12px;
+  }
+
+  body[data-page="registration"] .registration-topbar {
+    padding: 0 12px;
+    min-height: 48px;
+  }
+
+  body[data-page="registration"] .field label {
+    font-size: 13px;
+  }
+}
+
