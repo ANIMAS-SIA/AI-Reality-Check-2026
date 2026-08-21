@@ -131,21 +131,9 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   .nav-cta{display:none}
 }
 
-/* Hero primary CTA */
+/* Hero primary CTA - HIDDEN EVERYWHERE */
 .hero-cta-primary{
-  display:inline-flex;align-items:center;justify-content:center;
-  gap:10px;min-height:48px;padding:12px 18px;
-  background:var(--V);color:#fff;
-  text-decoration:none;font-size:13px;font-weight:700;
-  border-radius:100px;transition:transform .18s ease;
-}
-.hero-cta-primary:hover{transform:translateY(-1px)}
-
-/* Hide on Tablet & Mobile */
-@media(max-width:1023px){
-  .hero-cta-primary{
-    display:none !important;
-  }
+  display:none !important;
 }
 
 /* Hide ALL hero CTAs on Tablet & Mobile (both .hero-cta-primary and inline <a>) */
@@ -277,54 +265,26 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   .hero-vert{display:none}
 }
 
-/* Hero Container Responsive Layout */
-.hero-container{
-  display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:4rem;
-  width:100%;
-}
-
-/* Tablet (768–1023px) */
+/* Tablet & Mobile (0–1023px): Hero content in single column */
 @media(max-width:1023px){
   .hero-container{
-    display:flex;
-    flex-direction:column;
-    gap:1.5rem;
-    align-items:stretch;
-    justify-content:flex-start;
-  }
-
-  .hero-container > div:first-child{
-    display:block !important;
-    height:auto !important;
-  }
-
-  .hero-container > div:last-child{
-    display:none !important;
-  }
-}
-
-/* Mobile (0–767px) */
-@media(max-width:767px){
-  .hero-container{
-    display:flex;
-    flex-direction:column;
-    gap:1rem;
-    align-items:stretch;
-    justify-content:flex-start;
-  }
-
-  .hero-container > div:first-child{
     display:flex !important;
     flex-direction:column !important;
-    grid-template-columns:none !important;
-    gap:0 !important;
+    gap:1.5rem !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+  }
+
+  /* Left column: keep as grid but single column */
+  .hero-container > div:first-child{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:1rem !important;
     align-items:stretch !important;
     height:auto !important;
   }
 
+  /* Right column: hide */
   .hero-container > div:last-child{
     display:none !important;
   }
