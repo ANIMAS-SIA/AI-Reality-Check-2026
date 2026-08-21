@@ -5878,7 +5878,10 @@ body[data-page="present"] {
     gap: 12px;
   }
 
-  body[data-page="registration"] .company-embed-shell,
+  body[data-page="registration"] .company-embed-shell {
+    height: 160px;
+    margin-bottom: 180px;
+  }
   body[data-page="registration"] .company-embed-shell iframe {
     height: 160px;
   }
@@ -5939,7 +5942,10 @@ body[data-page="present"] {
     gap: 10px;
   }
 
-  body[data-page="registration"] .company-embed-shell,
+  body[data-page="registration"] .company-embed-shell {
+    height: 140px;
+    margin-bottom: 160px;
+  }
   body[data-page="registration"] .company-embed-shell iframe {
     height: 140px;
   }
