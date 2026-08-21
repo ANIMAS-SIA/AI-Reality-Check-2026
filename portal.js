@@ -672,6 +672,7 @@ function initRegistration() {
   let step = 1;
   let selectedCompany = null;
   let maturityStepSeen = false;
+  let userHasInteracted = false;
   const state = {};
   const steps = [...document.querySelectorAll(".form-step")];
   const pills = [...document.querySelectorAll(".step-pill")];
@@ -731,7 +732,6 @@ function initRegistration() {
     companyInput.value = "";
     hideCompanySelection();
     resetCompanyEmbed();
-    validate();
   });
 
   function updateStep() {
@@ -755,7 +755,6 @@ function initRegistration() {
     }
     if (contextTitle) contextTitle.innerHTML = contextByStep[step].title;
     if (contextDescription) contextDescription.textContent = contextByStep[step].description;
-    validate();
     const card = document.querySelector(".registration-card");
     if (card) {
       const top = window.scrollY + card.getBoundingClientRect().top - 24;
@@ -774,25 +773,27 @@ function initRegistration() {
 
   function validate() {
     let ok = true;
-    document.querySelectorAll(".field-error").forEach((el) => { el.textContent = ""; });
+    if (userHasInteracted) {
+      document.querySelectorAll(".field-error").forEach((el) => { el.textContent = ""; });
+    }
 
     if (step === 1) {
       ["firstName", "lastName", "email"].forEach((id) => {
         if (!fieldValue(id)) {
-          errorFor(id, "Šis lauks ir obligāts.");
+          if (userHasInteracted) errorFor(id, "Šis lauks ir obligāts.");
           ok = false;
         }
       });
       if (fieldValue("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fieldValue("email"))) {
-        errorFor("email", "Ievadiet derīgu e-pastu.");
+        if (userHasInteracted) errorFor("email", "Ievadiet derīgu e-pastu.");
         ok = false;
       }
       if (!fieldValue("phone")) {
-        errorFor("phone", "Šis lauks ir obligāts.");
+        if (userHasInteracted) errorFor("phone", "Šis lauks ir obligāts.");
         ok = false;
       }
       if (!noCompany.checked && !selectedCompany && !fieldValue("company")) {
-        errorFor("company", "Izvēlieties uzņēmumu vai atzīmējiet, ka to neatrodat.");
+        if (userHasInteracted) errorFor("company", "Izvēlieties uzņēmumu vai atzīmējiet, ka to neatrodat.");
         ok = false;
       }
     }
@@ -879,8 +880,14 @@ function initRegistration() {
     }
   });
 
-  document.querySelectorAll("input, textarea").forEach((el) => el.addEventListener("input", validate));
-  document.querySelectorAll("input[type='checkbox'], input[type='radio']").forEach((el) => el.addEventListener("change", validate));
+  document.querySelectorAll("input, textarea").forEach((el) => el.addEventListener("input", () => {
+    userHasInteracted = true;
+    validate();
+  }));
+  document.querySelectorAll("input[type='checkbox'], input[type='radio']").forEach((el) => el.addEventListener("change", () => {
+    userHasInteracted = true;
+    validate();
+  }));
   noCompany?.addEventListener("change", () => {
     setCompanyEmbedDisabled(noCompany.checked);
     if (noCompany.checked) {
