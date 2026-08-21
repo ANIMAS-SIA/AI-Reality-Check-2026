@@ -58,10 +58,18 @@ body{
   min-height:100vh;
   line-height:1.6;
 }
-@media(max-width:768px){
+@media(max-width:1023px){
   html{cursor:auto}
   #cursor,#cursor-ring{display:none !important}
-  body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+  body{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+}
+
+@media(max-width:767px){
+  body{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+}
+
+@media(max-width:480px){
+  body{padding-bottom:calc(54px + env(safe-area-inset-bottom))}
 }
 .bb{font-family:'Poppins',sans-serif}
 
@@ -132,34 +140,83 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   border-radius:100px;transition:transform .18s ease;
 }
 .hero-cta-primary:hover{transform:translateY(-1px)}
-@media(max-width:767px){
+
+/* Hide on Tablet & Mobile */
+@media(max-width:1023px){
   .hero-cta-primary{
     display:none !important;
   }
 }
 
+/* Hide ALL hero CTAs on Tablet & Mobile (both .hero-cta-primary and inline <a>) */
+@media(max-width:1023px){
+  /* Hide all links to /registracija/ except sticky CTA */
+  a[href="/registracija/"]{
+    display:none !important;
+  }
+
+  /* But show sticky CTA link */
+  #sticky-cta a[href="/registracija/"]{
+    display:flex !important;
+  }
+}
+
 /* Sticky mobile CTA footer */
 #sticky-cta{
-  display:none;position:fixed;bottom:0;left:0;right:0;
-  background:rgba(8,8,8,.95);backdrop-filter:blur(12px);
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:rgba(8,8,8,.95);
+  backdrop-filter:blur(12px);
   border-top:1px solid rgba(255,255,255,.1);
-  padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));
   z-index:100;
 }
-@media(max-width:767px){
-  #sticky-cta{display:block !important}
-}
+
 #sticky-cta a{
-  display:flex;align-items:center;justify-content:center;
-  width:100%;min-height:48px;
-  background:var(--V);color:#fff;
-  text-decoration:none;font-weight:700;
-  border-radius:2px;transition:all .2s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  background:var(--V);
+  color:#fff;
+  text-decoration:none;
+  font-weight:700;
+  border-radius:2px;
+  transition:all .2s;
 }
-#sticky-cta a:hover{transform:translateY(-1px);background:#6457d0}
-@media(max-width:480px){
-  #sticky-cta{padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
-  #sticky-cta a{min-height:44px;font-size:.9rem}
+
+#sticky-cta a:hover{
+  transform:translateY(-1px);
+  background:#6457d0;
+}
+
+/* Tablet (768–1023px): show sticky CTA */
+@media(max-width:1023px){
+  #sticky-cta{
+    display:block;
+    padding:12px 16px;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  }
+
+  #sticky-cta a{
+    min-height:48px;
+    font-size:1rem;
+  }
+}
+
+/* Mobile (0–767px): compact sticky CTA */
+@media(max-width:767px){
+  #sticky-cta{
+    padding:10px 12px;
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+  }
+
+  #sticky-cta a{
+    min-height:44px;
+    font-size:0.9rem;
+  }
 }
 
 /* ─── HERO ───────────────────────────────── */
@@ -169,11 +226,28 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   padding:4rem 0 5rem 0;overflow:hidden;
   margin-top:0;
 }
-@media(max-width:768px){
-  #hero{padding:2rem 0 1.5rem 0;min-height:auto;padding-bottom:calc(1.5rem + 60px)}
+
+/* Tablet (768–1023px) */
+@media(max-width:1023px){
+  #hero{
+    min-height:auto;
+    padding:3rem 0 2rem 0;
+  }
 }
+
+/* Mobile (0–767px) */
+@media(max-width:767px){
+  #hero{
+    min-height:auto;
+    padding:2rem 0 1.5rem 0;
+  }
+}
+
+/* Small Mobile (0–480px) */
 @media(max-width:480px){
-  #hero{padding:1.5rem 0 1rem 0;min-height:auto;padding-bottom:calc(1rem + 60px)}
+  #hero{
+    padding:1.5rem 0 1rem 0;
+  }
 }
 
 /* canvas fills hero */
@@ -201,6 +275,63 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 }
 @media(max-width:1024px){
   .hero-vert{display:none}
+}
+
+/* Hero Container Responsive Layout */
+.hero-container{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:4rem;
+  width:100%;
+}
+
+/* Tablet (768–1023px) */
+@media(max-width:1023px){
+  .hero-container{
+    display:flex;
+    flex-direction:column;
+    gap:1.5rem;
+    align-items:stretch;
+    justify-content:flex-start;
+  }
+
+  .hero-container > div:first-child{
+    display:flex !important;
+    flex-direction:column !important;
+    grid-template-columns:none !important;
+    gap:0 !important;
+    align-items:stretch !important;
+    height:auto !important;
+  }
+
+  .hero-container > div:last-child{
+    display:none !important;
+  }
+}
+
+/* Mobile (0–767px) */
+@media(max-width:767px){
+  .hero-container{
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+    align-items:stretch;
+    justify-content:flex-start;
+  }
+
+  .hero-container > div:first-child{
+    display:flex !important;
+    flex-direction:column !important;
+    grid-template-columns:none !important;
+    gap:0 !important;
+    align-items:stretch !important;
+    height:auto !important;
+  }
+
+  .hero-container > div:last-child{
+    display:none !important;
+  }
 }
 
 .hero-content{position:relative;z-index:5;width:100%;margin-top:0.5rem;display:flex;align-items:flex-end;justify-content:space-between;gap:4rem}
@@ -394,12 +525,21 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 
 /* ─── SECTION SHARED ─────────────────────── */
 section{position:relative}
-.container{max-width:1280px;margin:0 auto;padding:0 2rem;width:100%}
-@media(max-width:768px){
-  .container{padding:0 1.5rem}
+.container{max-width:1280px;margin:0 auto;padding-inline:clamp(24px,4vw,48px);width:100%}
+
+/* Tablet (768–1023px) */
+@media(max-width:1023px){
+  .container{padding-inline:clamp(24px,5vw,40px)}
 }
+
+/* Mobile (0–767px) */
+@media(max-width:767px){
+  .container{padding-inline:clamp(16px,4vw,24px)}
+}
+
+/* Small Mobile (0–480px) */
 @media(max-width:480px){
-  .container{padding:0 1rem}
+  .container{padding-inline:clamp(12px,3vw,20px)}
 }
 
 /* ─── STATS BAR ──────────────────────────── */
@@ -1172,8 +1312,6 @@ footer{
         <!-- Mobile primary CTA -->
         <a href="/registracija/" class="hero-cta-primary">Reģistrēties</a>
       </h1>
-      <!-- Mobile primary CTA (outside h1) -->
-      <a href="/registracija/" class="hero-cta-primary-mobile" style="display: none; margin-top: 1.5rem; width: 100%; min-height: 52px; background: var(--V); color: #fff; padding: 12px 20px; border-radius: 2px; text-decoration: none; text-align: center; font-size: 1rem; font-weight: 700; letter-spacing: .04em; transition: all .2s;">Reģistrēties</a>
 
       <!-- RIGHT: Meta + CTA -->
       <div style="display:flex;flex-direction:column;gap:1.5rem;align-items:flex-start;align-self:center;padding-top:2rem;transform:none !important;animation:none !important;position:relative;z-index:10">
@@ -2214,24 +2352,6 @@ function handleReg(e){
 <div id="sticky-cta">
   <a href="/registracija/">Reģistrēties — Bez maksas</a>
 </div>
-
-<script>
-// Sticky CTA visibility logic
-(function() {
-  const stickyCtA = document.getElementById('sticky-cta');
-
-  function updateStickyVisibility() {
-    if (window.innerWidth >= 768) {
-      stickyCtA.style.display = 'none !important';
-    } else {
-      stickyCtA.style.display = 'block !important';
-    }
-  }
-
-  window.addEventListener('resize', updateStickyVisibility, { passive: true });
-  updateStickyVisibility();
-})();
-</script>
 
 </body>
 </html>
