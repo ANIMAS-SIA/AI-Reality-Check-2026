@@ -136,14 +136,19 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   display:none !important;
 }
 
-/* Hide ALL hero CTAs on Tablet & Mobile (both .hero-cta-primary and inline <a>) */
+/* Hide hero CTAs on Tablet & Mobile */
 @media(max-width:1023px){
-  /* Hide all links to /registracija/ except sticky CTA */
-  a[href="/registracija/"]{
+  /* Hide ONLY hero registration CTA */
+  #hero a[href="/registracija/"]{
     display:none !important;
   }
 
-  /* But show sticky CTA link */
+  /* Show hamburger menu registration link */
+  #mobile-nav a[href="/registracija/"]{
+    display:flex !important;
+  }
+
+  /* Show sticky CTA link */
   #sticky-cta a[href="/registracija/"]{
     display:flex !important;
   }
@@ -265,28 +270,9 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   .hero-vert{display:none}
 }
 
-/* Tablet & Mobile (0–1023px): Hero content in single column */
+/* Hide desktop registration column on mobile/tablet */
 @media(max-width:1023px){
-  .hero-container{
-    display:flex !important;
-    flex-direction:column !important;
-    gap:1.5rem !important;
-    align-items:stretch !important;
-    justify-content:flex-start !important;
-  }
-
-  /* Left column: keep as grid but single column */
-  .hero-container > div:first-child{
-    display:grid !important;
-    grid-template-columns:1fr !important;
-    gap:1rem !important;
-    align-items:stretch !important;
-    height:auto !important;
-    min-height:auto !important;
-  }
-
-  /* Right column: hide */
-  .hero-container > div:last-child{
+  .hero-container > div:first-child > div:last-child{
     display:none !important;
   }
 }
@@ -330,7 +316,7 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
 }
 @media(max-width:768px){
   .hero-t1{letter-spacing:-.01em}
-  .hero-subtitle{font-size:clamp(22px,5.5vw,26px) !important;line-height:1.08 !important;max-height:3.2em;overflow:hidden}
+  .hero-subtitle{font-size:clamp(15px,4vw,18px) !important;line-height:1.08 !important;max-height:none;overflow:visible}
 }
 .hero-t2{
   font-family:'Poppins',sans-serif;
