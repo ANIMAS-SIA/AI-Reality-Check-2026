@@ -1873,9 +1873,9 @@ footer{
           Reģistrācija ir obligāta. Vietu skaits ir strikti ierobežots. Apstiprinājums tiks nosūtīts uz e-pastu.
         </p>
         <!-- seats progress -->
-        <div>
+        <div id="seats-status" hidden>
           <div class="seats-bar"><div class="seats-fill" id="seats-fill"></div></div>
-          <div class="seats-text" id="seats-text">Ielādē brīvās vietas...</div>
+          <div class="seats-text" id="seats-text"></div>
         </div>
         <!-- event details -->
         <div style="margin-top:2.5rem;display:flex;flex-direction:column;gap:1rem">
@@ -2215,8 +2215,6 @@ async function loadSharedHomepageAgenda(){
       totalSeats=data.event.capacity;
       seatsAvailable=data.event.available_seats;
       updateSeatsDisplay();
-    }else{
-      document.getElementById('seats-text').textContent='Vietu skaits pašlaik nav pieejams.';
     }
     if(!list)return;
     const agenda=(data.agenda||[]).filter(item=>item.status!=='cancelled');
@@ -2224,9 +2222,6 @@ async function loadSharedHomepageAgenda(){
     list.innerHTML=agenda.map(homepageAgendaMarkup).join('');
     list.dataset.agendaSource='database';
   }catch(error){
-    if(!Number.isFinite(seatsAvailable)){
-      document.getElementById('seats-text').textContent='Vietu skaitu neizdevās ielādēt.';
-    }
     console.warn('Shared agenda unavailable; keeping the server-rendered fallback.',error);
   }
 }
@@ -2240,6 +2235,7 @@ function updateSeatsDisplay(){
   const pct=(taken/totalSeats*100).toFixed(0);
   document.getElementById('seats-fill').style.width=pct+'%';
   document.getElementById('seats-text').textContent=`${seatsAvailable} vietas vēl pieejamas no ${totalSeats}`;
+  document.getElementById('seats-status').hidden=false;
 }
 
 /* ── Registration ─────────────────────────────── */
