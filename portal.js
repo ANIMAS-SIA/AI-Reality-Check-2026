@@ -960,7 +960,36 @@ function initRegistration() {
   updateStep();
 }
 
+function initPassCountdown() {
+  const countdown = document.getElementById("passCountdown");
+  if (!countdown) return;
+
+  const eventStartsAt = new Date("2026-09-30T09:00:00+03:00").getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  const update = () => {
+    const remaining = Math.max(0, eventStartsAt - Date.now());
+    const days = Math.floor(remaining / day);
+    const hours = Math.floor((remaining % day) / hour);
+    const minutes = Math.floor((remaining % hour) / minute);
+
+    setText("passCountdownDays", days);
+    setText("passCountdownHours", hours);
+    setText("passCountdownMinutes", minutes);
+    countdown.setAttribute(
+      "aria-label",
+      `Līdz konferencei ${days} dienas, ${hours} stundas un ${minutes} minūtes`
+    );
+  };
+
+  update();
+  window.setInterval(update, minute);
+}
+
 async function initPass() {
+  initPassCountdown();
   const token = new URLSearchParams(window.location.search).get("token");
   applyWalletLinks(token);
   initAddToCalendar();
