@@ -2206,31 +2206,41 @@ function homepageAgendaMarkup(item,index){
 }
 async function loadSharedHomepageAgenda(){
   const list=document.getElementById('homepageAgendaList');
-  if(!list)return;
   try{
     const apiBase=window.ARC_API_BASE||'https://zoxeflvpiierezdzxwdq.supabase.co/functions/v1';
     const response=await fetch(`${apiBase}/live-state`);
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||'Programmu neizdevās ielādēt.');
+    if(Number.isFinite(data.event?.capacity)&&Number.isFinite(data.event?.available_seats)){
+      totalSeats=data.event.capacity;
+      seatsAvailable=data.event.available_seats;
+      updateSeatsDisplay();
+    }else{
+      document.getElementById('seats-text').textContent='Vietu skaits pašlaik nav pieejams.';
+    }
+    if(!list)return;
     const agenda=(data.agenda||[]).filter(item=>item.status!=='cancelled');
     if(!agenda.length)throw new Error('Programma vēl nav publicēta.');
     list.innerHTML=agenda.map(homepageAgendaMarkup).join('');
     list.dataset.agendaSource='database';
   }catch(error){
+    if(!Number.isFinite(seatsAvailable)){
+      document.getElementById('seats-text').textContent='Vietu skaitu neizdevās ielādēt.';
+    }
     console.warn('Shared agenda unavailable; keeping the server-rendered fallback.',error);
   }
 }
 loadSharedHomepageAgenda();
 
 /* ── Seats progress bar ───────────────────────── */
-let seatsAvailable=100, totalSeats=100;
+let seatsAvailable=null, totalSeats=null;
 function updateSeatsDisplay(){
+  if(!Number.isFinite(seatsAvailable)||!Number.isFinite(totalSeats)||totalSeats<=0)return;
   const taken=totalSeats-seatsAvailable;
   const pct=(taken/totalSeats*100).toFixed(0);
   document.getElementById('seats-fill').style.width=pct+'%';
   document.getElementById('seats-text').textContent=`${seatsAvailable} vietas vēl pieejamas no ${totalSeats}`;
 }
-setTimeout(updateSeatsDisplay,600);
 
 /* ── Registration ─────────────────────────────── */
 function handleReg(e){
@@ -2244,11 +2254,6 @@ function handleReg(e){
   fetch('/api/register',{method:'POST',body:formData})
     .then(r=>r.json())
     .then(data=>{
-      /* Samazināt vietas par 1 ja reģistrācija veiksmīga */
-      if(data.success && seatsAvailable>0){
-        seatsAvailable--;
-        updateSeatsDisplay();
-      }
       setTimeout(()=>{
         document.getElementById('regForm').style.display='none';
         document.getElementById('regOk').style.display='block';

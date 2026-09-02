@@ -4,6 +4,7 @@ import { SupabaseRest } from "../_shared/supabase-rest.ts";
 type EventRow = {
   id: string;
   name: string;
+  capacity: number;
   current_agenda_item_id: string | null;
 };
 
@@ -82,6 +83,12 @@ Deno.serve(async (request) => {
       event_id: `eq.${event.id}`,
       order: "display_order.asc,starts_at.asc",
     });
+    const approvedParticipants = await db.select<{ id: string }>("participants", {
+      event_id: `eq.${event.id}`,
+      status: "in.(approved,arrived)",
+      limit: event.capacity + 1,
+    });
+    const approvedCount = Math.min(approvedParticipants.length, event.capacity);
     const current = resolveCurrent(event, agenda);
     const next = resolveNext(agenda, current);
     if (current && current.id !== event.current_agenda_item_id) {
@@ -89,7 +96,14 @@ Deno.serve(async (request) => {
     }
 
     return jsonResponse({
-      event: { id: event.id, name: event.name, slug },
+      event: {
+        id: event.id,
+        name: event.name,
+        slug,
+        capacity: event.capacity,
+        approved_count: approvedCount,
+        available_seats: Math.max(0, event.capacity - approvedCount),
+      },
       current: current ? toPublicAgenda(current) : null,
       next: next ? toPublicAgenda(next) : null,
       agenda: agenda.map(toPublicAgenda),
