@@ -5879,11 +5879,11 @@ body[data-page="present"] {
   }
 
   body[data-page="registration"] .company-embed-shell {
-    height: 160px;
-    margin-bottom: 280px;
+    height: 440px;
+    margin-bottom: 0;
   }
   body[data-page="registration"] .company-embed-shell iframe {
-    height: 160px;
+    height: 440px;
   }
 
   body[data-page="registration"] .confirmation {
@@ -5943,11 +5943,11 @@ body[data-page="present"] {
   }
 
   body[data-page="registration"] .company-embed-shell {
-    height: 140px;
-    margin-bottom: 240px;
+    height: 380px;
+    margin-bottom: 0;
   }
   body[data-page="registration"] .company-embed-shell iframe {
-    height: 140px;
+    height: 380px;
   }
 
   body[data-page="registration"] .btn {
