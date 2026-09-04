@@ -8,6 +8,7 @@ const companies = [
 ];
 
 const API_BASE = (window.ARC_API_BASE || "").replace(/\/$/, "");
+const APPLE_WALLET_AVAILABLE = false;
 const REALTIME_TOPIC = "live:ai-reality-check-2026";
 
 const defaultParticipant = {
@@ -100,13 +101,21 @@ function applyWalletLinks(token) {
   const apple = document.getElementById("appleWalletLink");
   const google = document.getElementById("googleWalletLink");
   const qr = document.getElementById("passQrImage");
+  if (apple && !APPLE_WALLET_AVAILABLE) {
+    apple.removeAttribute("href");
+    apple.removeAttribute("target");
+    apple.setAttribute("aria-disabled", "true");
+    apple.setAttribute("aria-label", "Apple Wallet — Pakalpojums īslaicīgi nav pieejams");
+    const label = apple.querySelector("span:last-child");
+    if (label) label.innerHTML = "<small>Apple Wallet</small>Pakalpojums īslaicīgi nav pieejams";
+  }
   if (!API_BASE || !token) {
     apple?.setAttribute("aria-disabled", "true");
     google?.setAttribute("aria-disabled", "true");
     if (qr) qr.removeAttribute("src");
     return;
   }
-  if (apple) {
+  if (apple && APPLE_WALLET_AVAILABLE) {
     apple.removeAttribute("aria-disabled");
     apple.href = `${API_BASE}/wallet?provider=apple&token=${encodeURIComponent(token)}`;
     apple.addEventListener("click", (event) => {
