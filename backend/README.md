@@ -147,17 +147,17 @@ Ja `SUPABASE_ANON_KEY` nav norādīts, Live lapa turpina strādāt ar 10 sekunž
 
 ## 5. Wallet production dati
 
-Wallet endpointi tagad pieslēdz pogas e-pastos un AI Pass skatā, kā arī reģistrē pass statusu datubāzē. Apple Wallet pass tiek ģenerēts caur PerkPass (https://perkpass.co.uk), nevis ar pašu parakstītu sertifikātu. Pilnai production palaišanai vajadzīgi vēl šie secrets:
+Wallet endpointi pieslēdz pogas e-pastos un AI Pass skatā, kā arī reģistrē pass statusu datubāzē. Apple Wallet pass tiek ģenerēts caur WalletWallet (https://walletwallet.dev), nevis ar pašu parakstītu sertifikātu. Pilnai production palaišanai vajadzīgi vēl šie secrets:
 
 ```text
-PERKPASS_API_KEY
+WALLETWALLET_API_KEY
 GOOGLE_WALLET_ISSUER_ID
 GOOGLE_WALLET_CLASS_ID
 GOOGLE_WALLET_SERVICE_ACCOUNT_JSON
 GOOGLE_WALLET_SERVICE_ACCOUNT_JSON_BASE64
 ```
 
-`wallet?provider=apple&token=...` pirmajā izsaukumā izveido PerkPass pass un saglabā `serial_number`/`share_url` tabulā `wallet_passes` (`provider = 'apple'`); nākamie izsaukumi atgriež jau saglabāto `share_url`, neveidojot jaunu pass. Ja `PERKPASS_API_KEY` trūkst vai PerkPass atgriež kļūdu, endpoints atgriež 502 (429 rate-limit gadījumā) ar vispārīgu ziņojumu, bet pilnu PerkPass atbildi un statusu ieraksta funkcijas logā.
+`wallet?provider=apple&token=...` pirmajā izsaukumā izveido WalletWallet pass un saglabā `serial_number`/`share_url` tabulā `wallet_passes` (`provider = 'apple'`); nākamie izsaukumi atgriež jau saglabāto `share_url`, neveidojot jaunu pass. Vecie Apple ieraksti bez `wallet_provider = walletwallet` tiek automātiski aizstāti pirmajā jaunajā pieprasījumā. Ja `WALLETWALLET_API_KEY` trūkst vai WalletWallet atgriež kļūdu, endpoints atgriež 502 (429 rate-limit gadījumā) ar vispārīgu ziņojumu, bet pilnu WalletWallet atbildi un statusu ieraksta funkcijas logā.
 
 Google endpointis ģenerē parakstītu Save JWT, ja ir iestatīts `GOOGLE_WALLET_SERVICE_ACCOUNT_JSON` vai `GOOGLE_WALLET_SERVICE_ACCOUNT_JSON_BASE64`.
 

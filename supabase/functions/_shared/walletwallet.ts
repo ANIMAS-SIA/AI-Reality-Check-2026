@@ -1,49 +1,51 @@
 import { SupabaseRest } from "./supabase-rest.ts";
 
-const PERKPASS_BASE_URL = "https://perkpass.co.uk";
+const WALLETWALLET_BASE_URL = "https://api.walletwallet.dev";
+const WALLET_PROVIDER = "walletwallet";
 
-export type PerkPassField = {
-  key: string;
+export type WalletWalletField = {
   label: string;
   value: string;
   changeMessage?: string;
 };
 
-export type PerkPassBody = {
-  passStyle: "eventTicket";
+export type WalletWalletPassBody = {
   organizationName: string;
   logoText: string;
-  description: string;
   barcodeValue: string;
   barcodeFormat: "QR";
-  headerFields: PerkPassField[];
-  primaryFields: PerkPassField[];
-  secondaryFields: PerkPassField[];
-  backFields: PerkPassField[];
-  expirationDate: string;
+  barcodeAltText: string;
+  colorPreset: "dark";
+  color: string;
+  logoURL: string;
+  iconURL: string;
+  headerFields: WalletWalletField[];
+  primaryFields: WalletWalletField[];
+  secondaryFields: WalletWalletField[];
+  backFields: WalletWalletField[];
   locations: { latitude: number; longitude: number; relevantText: string }[];
   sharingProhibited: true;
 };
 
-export type PerkPassCreateResult = {
+export type WalletWalletCreateResult = {
   serialNumber: string;
   shareUrl: string;
 };
 
-export class PerkPassApiError extends Error {
+export class WalletWalletApiError extends Error {
   readonly status: number;
   readonly body: unknown;
 
   constructor(status: number, body: unknown) {
-    super(`PerkPass API responded with ${status}`);
+    super(`WalletWallet API responded with ${status}`);
     this.status = status;
     this.body = body;
   }
 }
 
 function apiKey(): string {
-  const key = Deno.env.get("PERKPASS_API_KEY");
-  if (!key) throw new Error("Missing env: PERKPASS_API_KEY");
+  const key = Deno.env.get("WALLETWALLET_API_KEY");
+  if (!key) throw new Error("Missing env: WALLETWALLET_API_KEY");
   return key;
 }
 
@@ -95,33 +97,42 @@ export function buildApplePassBody(params: {
   attendeeName: string;
   companyName: string;
   barcodeValue: string;
-}): PerkPassBody {
+}): WalletWalletPassBody {
+  const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
   return {
-    passStyle: "eventTicket",
-    organizationName: "Animas",
+    organizationName: "ANIMAS",
     logoText: "AI Reality Check",
-    description: "AI Reality Check 2026 Conference Ticket",
     barcodeValue: params.barcodeValue,
     barcodeFormat: "QR",
+    barcodeAltText: "IEEJAS QR KODS",
+    colorPreset: "dark",
+    color: "#080808",
+    logoURL: `${siteUrl}/apple-touch-icon.png`,
+    iconURL: `${siteUrl}/apple-touch-icon.png`,
     headerFields: [
-      { key: "date", label: "DATE", value: "30 SEPT" },
+      { label: "DATUMS", value: "30. SEPT." },
     ],
     primaryFields: [
-      { key: "attendee", label: "ATTENDEE", value: params.attendeeName },
+      { label: "DALĪBNIEKS", value: params.attendeeName },
     ],
     secondaryFields: [
-      { key: "company", label: "COMPANY", value: formatWalletCompanyName(params.companyName) || "—" },
-      { key: "location", label: "LOCATION", value: "Rīgas Motormuzejs" },
-      { key: "time", label: "TIME", value: "09:00" },
+      { label: "UZŅĒMUMS", value: formatWalletCompanyName(params.companyName) || "—" },
+      { label: "VIETA", value: "Rīgas Motormuzejs" },
+      { label: "LAIKS", value: "09.00–15.00" },
     ],
     backFields: [
-      { key: "website", label: "Website", value: "https://airealitycheck.lv" },
-      { key: "support", label: "Support", value: "konference@animas.lv" },
-      { key: "terms", label: "Terms", value: "Valid only for the registered attendee." },
+      { label: "PASĀKUMS", value: "AI Reality Check 2026" },
+      { label: "ADRESE", value: "Sergeja Eizenšteina iela 8, Rīga" },
+      { label: "MĀJASLAPA", value: siteUrl },
+      { label: "ATBALSTS", value: "konference@animas.lv" },
+      {
+        label: "NOTEIKUMI",
+        value: "Biļete ir personīga un derīga tikai reģistrētajam dalībniekam. Nepārsūti QR kodu citām personām.",
+      },
+      { label: "Notifications", value: " ", changeMessage: "%@" },
     ],
-    expirationDate: "2026-09-30T18:00:00+03:00",
     locations: [
-      { latitude: 56.9719, longitude: 24.2436, relevantText: "AI Reality Check at Rīgas Motormuzejs" },
+      { latitude: 56.9719, longitude: 24.2436, relevantText: "AI Reality Check — Rīgas Motormuzejs" },
     ],
     sharingProhibited: true,
   };
@@ -136,8 +147,8 @@ async function parseBody(response: Response): Promise<unknown> {
   }
 }
 
-export async function createApplePass(body: PerkPassBody): Promise<PerkPassCreateResult> {
-  const response = await fetch(`${PERKPASS_BASE_URL}/api/passes`, {
+export async function createApplePass(body: WalletWalletPassBody): Promise<WalletWalletCreateResult> {
+  const response = await fetch(`${WALLETWALLET_BASE_URL}/api/passes`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey()}`,
@@ -146,17 +157,17 @@ export async function createApplePass(body: PerkPassBody): Promise<PerkPassCreat
     body: JSON.stringify(body),
   });
   const data = await parseBody(response);
-  if (!response.ok) throw new PerkPassApiError(response.status, data);
+  if (!response.ok) throw new WalletWalletApiError(response.status, data);
   const result = data as { serialNumber?: string; shareUrl?: string };
   if (!result.serialNumber || !result.shareUrl) {
-    throw new PerkPassApiError(response.status, data);
+    throw new WalletWalletApiError(response.status, data);
   }
   return { serialNumber: result.serialNumber, shareUrl: result.shareUrl };
 }
 
 /** PUT expects the full current pass body — never include serialNumber or authenticationToken. */
-export async function updateApplePass(serialNumber: string, body: PerkPassBody): Promise<void> {
-  const response = await fetch(`${PERKPASS_BASE_URL}/api/passes/${encodeURIComponent(serialNumber)}`, {
+export async function updateApplePass(serialNumber: string, body: WalletWalletPassBody): Promise<void> {
+  const response = await fetch(`${WALLETWALLET_BASE_URL}/api/passes/${encodeURIComponent(serialNumber)}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${apiKey()}`,
@@ -164,14 +175,14 @@ export async function updateApplePass(serialNumber: string, body: PerkPassBody):
     },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new PerkPassApiError(response.status, await parseBody(response));
+  if (!response.ok) throw new WalletWalletApiError(response.status, await parseBody(response));
 }
 
 const USER_FACING_ERROR = "Apple Wallet biļeti pašlaik neizdevās izveidot. Lūdzu, mēģiniet vēlreiz.";
 
-export function logPerkPassError(context: { participantId: string; ticketId: string }, error: unknown): void {
-  if (error instanceof PerkPassApiError) {
-    console.error("PerkPass API error", {
+export function logWalletWalletError(context: { participantId: string; ticketId: string }, error: unknown): void {
+  if (error instanceof WalletWalletApiError) {
+    console.error("WalletWallet API error", {
       status: error.status,
       body: error.body,
       participant_id: context.participantId,
@@ -179,20 +190,20 @@ export function logPerkPassError(context: { participantId: string; ticketId: str
     });
     return;
   }
-  console.error("PerkPass request failed", {
+  console.error("WalletWallet request failed", {
     message: error instanceof Error ? error.message : String(error),
     participant_id: context.participantId,
     ticket_id: context.ticketId,
   });
 }
 
-export function perkPassUserMessage(): string {
+export function walletWalletUserMessage(): string {
   return USER_FACING_ERROR;
 }
 
 type WalletPassRow = {
   serial_number: string | null;
-  payload: { barcode_value?: string } | null;
+  payload: { barcode_value?: string; wallet_provider?: string } | null;
 };
 
 /**
@@ -203,7 +214,8 @@ type WalletPassRow = {
  * the fields that are allowed to change, so the QR code a participant already
  * scanned or bookmarked never shifts under them. Failures are logged, not
  * thrown, so this can be called from flows (e.g. approval) that must not
- * break because of a PerkPass hiccup.
+ * break because of a WalletWallet hiccup. Legacy passes from the previous
+ * provider are skipped and replaced on the participant's next wallet request.
  */
 export async function syncApplePassIfExists(
   db: SupabaseRest,
@@ -216,7 +228,7 @@ export async function syncApplePassIfExists(
     limit: 1,
   }))[0];
   const barcodeValue = existing?.payload?.barcode_value;
-  if (!existing?.serial_number || !barcodeValue) return;
+  if (existing?.payload?.wallet_provider !== WALLET_PROVIDER || !existing.serial_number || !barcodeValue) return;
 
   try {
     await updateApplePass(existing.serial_number, buildApplePassBody({ ...fields, barcodeValue }));
@@ -225,6 +237,6 @@ export async function syncApplePassIfExists(
       provider: "eq.apple",
     });
   } catch (error) {
-    logPerkPassError({ participantId, ticketId: existing.serial_number }, error);
+    logWalletWalletError({ participantId, ticketId: existing.serial_number }, error);
   }
 }

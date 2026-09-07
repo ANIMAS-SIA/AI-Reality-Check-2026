@@ -2,7 +2,7 @@ import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } fro
 import { addParticipantToCalendarInvite, logCalendarInvite } from "../_shared/calendar-invite.ts";
 import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, logAudit } from "../_shared/auth.ts";
 import { logEmail, sendCustomEmail, sendEmail } from "../_shared/email.ts";
-import { formatWalletCompanyName, syncApplePassIfExists } from "../_shared/perkpass.ts";
+import { formatWalletCompanyName, syncApplePassIfExists } from "../_shared/walletwallet.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { addDays, createToken, hashToken } from "../_shared/tokens.ts";
 

@@ -5,11 +5,11 @@ import {
   buildApplePassBody,
   createApplePass,
   formatWalletCompanyName,
-  logPerkPassError,
-  perkPassUserMessage,
-  PerkPassApiError,
+  logWalletWalletError,
+  walletWalletUserMessage,
+  WalletWalletApiError,
   syncApplePassIfExists,
-} from "../_shared/perkpass.ts";
+} from "../_shared/walletwallet.ts";
 
 type TokenRow = { participant_id: string; expires_at: string | null; revoked_at: string | null };
 type ParticipantRow = {
@@ -23,7 +23,7 @@ type ParticipantRow = {
 type CompanyRow = { id: string; name: string; legal_form: string | null };
 type WalletPassRow = {
   serial_number: string | null;
-  payload: { share_url?: string; barcode_value?: string } | null;
+  payload: { share_url?: string; barcode_value?: string; wallet_provider?: string } | null;
 };
 type GoogleServiceAccount = {
   client_email: string;
@@ -177,7 +177,11 @@ Deno.serve(async (request) => {
         provider: "eq.apple",
         limit: 1,
       }))[0];
-      if (existing?.serial_number && existing.payload?.share_url) {
+      if (
+        existing?.serial_number
+        && existing.payload?.share_url
+        && existing.payload.wallet_provider === "walletwallet"
+      ) {
         await syncApplePassIfExists(db, participant.id, {
           attendeeName: `${participant.first_name} ${participant.last_name}`.trim(),
           companyName,
@@ -201,13 +205,17 @@ Deno.serve(async (request) => {
           provider: "apple",
           serial_number: created.serialNumber,
           status: "created",
-          payload: { share_url: created.shareUrl, barcode_value: barcodeValue },
+          payload: {
+            wallet_provider: "walletwallet",
+            share_url: created.shareUrl,
+            barcode_value: barcodeValue,
+          },
         }], "participant_id,provider");
         return applePassResponse(request, url, created.shareUrl);
       } catch (error) {
-        logPerkPassError({ participantId: participant.id, ticketId }, error);
-        const status = error instanceof PerkPassApiError && error.status === 429 ? 429 : 502;
-        return errorResponse(perkPassUserMessage(), status);
+        logWalletWalletError({ participantId: participant.id, ticketId }, error);
+        const status = error instanceof WalletWalletApiError && error.status === 429 ? 429 : 502;
+        return errorResponse(walletWalletUserMessage(), status);
       }
     }
 
