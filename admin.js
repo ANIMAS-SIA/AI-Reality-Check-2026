@@ -1034,7 +1034,8 @@
       const settings = data.settings || {};
       el("autoApproveEnabled").checked = Boolean(settings.auto_approve_enabled);
       el("autoApproveLimit").value = Number(settings.auto_approve_limit || 0);
-      el("autoApproveLimit").max = Number(settings.capacity || 0);
+      el("autoApproveLimit").max = Number(settings.approval_limit || settings.capacity || 0);
+      el("approvalLimit").value = Number(settings.approval_limit || settings.capacity || 100);
       el("autoApproveLimit").disabled = !el("autoApproveEnabled").checked;
       el("settingsGraphCalendarUser").value = settings.graph_calendar_user || "konference@animas.lv";
       el("settingsGraphEventId").value = settings.microsoft_graph_event_id || "";
@@ -1049,6 +1050,9 @@
   el("autoApproveEnabled")?.addEventListener("change", () => {
     el("autoApproveLimit").disabled = !el("autoApproveEnabled").checked;
   });
+  el("approvalLimit")?.addEventListener("input", () => {
+    el("autoApproveLimit").max = Math.max(1, Number(el("approvalLimit").value || 1));
+  });
   el("eventSettingsForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const submit = event.target.querySelector("button[type='submit']");
@@ -1060,6 +1064,7 @@
         body: JSON.stringify({
           autoApproveEnabled: el("autoApproveEnabled").checked,
           autoApproveLimit: Number(el("autoApproveLimit").value || 0),
+          approvalLimit: Number(el("approvalLimit").value || 0),
           graphCalendarUser: el("settingsGraphCalendarUser").value,
           microsoftGraphEventId: el("settingsGraphEventId").value,
         }),

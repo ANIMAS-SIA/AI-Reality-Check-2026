@@ -40,6 +40,7 @@ type ParticipantRow = {
 type EventRow = {
   id: string;
   capacity: number;
+  approval_limit: number;
   name: string;
   auto_approve_enabled: boolean;
   auto_approve_limit: number;
@@ -69,6 +70,7 @@ type UpdatePayload = Partial<{
 type SettingsPayload = Partial<{
   autoApproveEnabled: boolean;
   autoApproveLimit: number;
+  approvalLimit: number;
   graphCalendarUser: string;
   microsoftGraphEventId: string;
 }>;
@@ -288,15 +290,17 @@ async function eventSettings(db: SupabaseRest): Promise<EventRow> {
 
 async function getSettings(db: SupabaseRest): Promise<Response> {
   const event = await eventSettings(db);
+  const approvalLimit = event.approval_limit || event.capacity;
   const approved = await db.select<{ id: string }>("participants", {
     event_id: `eq.${event.id}`,
     status: "in.(approved,arrived)",
-    limit: event.capacity + 1,
+    limit: 10000,
   });
   return jsonResponse({
     settings: {
       event_id: event.id,
       capacity: event.capacity,
+      approval_limit: approvalLimit,
       approved_count: approved.length,
       auto_approve_enabled: event.auto_approve_enabled,
       auto_approve_limit: event.auto_approve_limit,
@@ -308,9 +312,11 @@ async function getSettings(db: SupabaseRest): Promise<Response> {
 
 async function updateSettings(db: SupabaseRest, actor: AdminActor, payload: SettingsPayload): Promise<Response> {
   const event = await eventSettings(db);
+  const approvalLimit = Math.max(1, Math.floor(Number(payload.approvalLimit || event.approval_limit || event.capacity)));
   const row = {
     auto_approve_enabled: Boolean(payload.autoApproveEnabled),
-    auto_approve_limit: Math.max(0, Math.min(Number(payload.autoApproveLimit || 0), event.capacity)),
+    auto_approve_limit: Math.max(0, Math.min(Math.floor(Number(payload.autoApproveLimit || 0)), approvalLimit)),
+    approval_limit: approvalLimit,
     graph_calendar_user: clean(payload.graphCalendarUser) || "konference@animas.lv",
     microsoft_graph_event_id: clean(payload.microsoftGraphEventId) || null,
   };
@@ -333,10 +339,11 @@ async function approveRegistration(db: SupabaseRest, actor: AdminActor, particip
 
   const approved = await db.select<{ id: string }>("participants", {
     event_id: `eq.${participant.event_id}`,
-    status: "eq.approved",
+    status: "in.(approved,arrived)",
   });
-  if (participant.status !== "approved" && approved.length >= event.capacity) {
-    return errorResponse("Event capacity is full", 409, { capacity: event.capacity });
+  const approvalLimit = event.approval_limit || event.capacity;
+  if (!["approved", "arrived"].includes(participant.status) && approved.length >= approvalLimit) {
+    return errorResponse("Sasniegts apstiprināšanas limits", 409, { approval_limit: approvalLimit });
   }
 
   const updated = await db.update<ParticipantRow>("participants", {

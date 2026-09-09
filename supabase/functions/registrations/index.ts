@@ -42,6 +42,7 @@ type EventRow = {
   id: string;
   slug: string;
   capacity: number;
+  approval_limit: number;
   auto_approve_enabled: boolean;
   auto_approve_limit: number;
   graph_calendar_user?: string | null;
@@ -128,12 +129,13 @@ async function saveCompany(db: SupabaseRest, payload: RegistrationPayload): Prom
 async function shouldAutoApprove(db: SupabaseRest, event: EventRow, existing?: ParticipantRow | null) {
   if (!event.auto_approve_enabled || event.auto_approve_limit <= 0) return false;
   if (existing && !["application_received", "reconfirm_required"].includes(existing.status)) return false;
+  const approvalLimit = event.approval_limit || event.capacity;
   const approved = await db.select<{ id: string }>("participants", {
     event_id: `eq.${event.id}`,
     status: "in.(approved,arrived)",
-    limit: event.capacity + 1,
+    limit: approvalLimit + 1,
   });
-  return approved.length < Math.min(event.auto_approve_limit, event.capacity);
+  return approved.length < Math.min(event.auto_approve_limit, approvalLimit);
 }
 
 function registrationEmailHtml(firstName: string, passLink: string): string {
