@@ -17,7 +17,7 @@ seed_items(starts_at, ends_at, title, description, speaker_name, speaker_company
     ('2026-09-30 12:00:00+03'::timestamptz, '2026-09-30 13:00:00+03'::timestamptz, 'Pusdienas', null, null, null, 'break'::agenda_status, true, 90),
     ('2026-09-30 13:00:00+03'::timestamptz, '2026-09-30 13:20:00+03'::timestamptz, 'Nozare PropTech nekustamo īpašumu tehnoloģijas un dati', null, 'Artūrs Kostins', 'Estimo.lv', 'later'::agenda_status, false, 100),
     ('2026-09-30 13:20:00+03'::timestamptz, '2026-09-30 13:40:00+03'::timestamptz, 'Kāpēc lielākā daļa AI iniciatīvu uzņēmumos neattaisno cerības.', null, 'Kristaps Cīrulis', 'SHIFT2 & Shipyard AI', 'later'::agenda_status, false, 110),
-    ('2026-09-30 13:40:00+03'::timestamptz, '2026-09-30 14:00:00+03'::timestamptz, 'No paralēlām realitātēm uz kopīgu risinājumu', null, 'Guna Pūce', 'Mākslīgā intelekta centrs', 'later'::agenda_status, false, 120),
+    ('2026-09-30 13:40:00+03'::timestamptz, '2026-09-30 14:00:00+03'::timestamptz, 'No paralēlām realitātēm uz kopīgu risinājumu', null, 'Guna Puce', 'Mākslīgā intelekta centrs', 'later'::agenda_status, false, 120),
     ('2026-09-30 14:00:00+03'::timestamptz, '2026-09-30 14:15:00+03'::timestamptz, 'Kafijas pauze', null, null, null, 'break'::agenda_status, true, 130),
     ('2026-09-30 14:15:00+03'::timestamptz, '2026-09-30 15:00:00+03'::timestamptz, 'Paneļdiskusija', null, 'Valdis Melderis', null, 'later'::agenda_status, false, 140)
 )
