@@ -209,6 +209,18 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   #sticky-cta a{
     min-height:44px;
     font-size:0.9rem;
+    overflow:hidden;
+  }
+
+  .sticky-cta-marquee{
+    animation:marquee-scroll 15s linear infinite;
+    white-space:nowrap;
+    display:inline-block;
+  }
+
+  @keyframes marquee-scroll{
+    0%{transform:translateX(100%)}
+    100%{transform:translateX(-100%)}
   }
 }
 
@@ -464,6 +476,13 @@ nav.scrolled{background:rgba(8,8,8,.93);backdrop-filter:blur(16px);border-bottom
   .marquee-wrap{padding:.4rem 0}
   .marquee-inner{gap:0.5rem;font-size:clamp(12px,2.1vw,15px);letter-spacing:.04em;animation-duration:20s}
   .marquee-inner.rev{font-size:clamp(9px,1.5vw,11px);letter-spacing:.1em;animation-duration:25s}
+  .desktop-marquee{display:none !important}
+  .mobile-marquee{display:flex !important}
+}
+
+@media(max-width:767px){
+  .desktop-marquee{display:none !important}
+  .mobile-marquee{display:flex !important}
 }
 
 /* ─── SECTION SHARED ─────────────────────── */
@@ -1302,7 +1321,7 @@ footer{
 
 <!-- ═══════════ MARQUEE ═══════════ -->
 <div class="marquee-wrap" style="background:var(--Y);padding:.9rem 0">
-  <div class="marquee-inner bb" style="font-size:1.5rem;letter-spacing:.12em;color:var(--K);gap:2.5rem">
+  <div class="marquee-inner bb desktop-marquee" style="font-size:1.5rem;letter-spacing:.12em;color:var(--K);gap:2.5rem">
     <span>AI REALITY CHECK 2026</span><span style="opacity:.3">✦</span>
     <span>30. SEPTEMBRIS</span><span style="opacity:.3">✦</span>
     <span>RĪGAS MOTORMUZEJS</span><span style="opacity:.3">✦</span>
@@ -1313,6 +1332,12 @@ footer{
     <span>RĪGAS MOTORMUZEJS</span><span style="opacity:.3">✦</span>
     <span>100 VIETAS</span><span style="opacity:.3">✦</span>
     <span>ANIMAS</span><span style="opacity:.3">✦</span>
+  </div>
+  <div class="marquee-inner bb mobile-marquee" style="font-size:1.5rem;letter-spacing:.12em;color:var(--K);gap:2.5rem;display:none">
+    <span>VIETAS AIZPILDĪTAS</span><span style="opacity:.3">✦</span>
+    <span>PIESAKIES GAIDĪTĀJU RINDĀ</span><span style="opacity:.3">✦</span>
+    <span>VIETAS AIZPILDĪTAS</span><span style="opacity:.3">✦</span>
+    <span>PIESAKIES GAIDĪTĀJU RINDĀ</span><span style="opacity:.3">✦</span>
   </div>
 </div>
 <div class="marquee-wrap" style="background:rgba(255,255,255,.03);padding:.65rem 0;border-bottom:1px solid rgba(255,255,255,.05)">
