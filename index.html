@@ -1203,7 +1203,7 @@ footer{
     <a href="#agenda"   class="nav-link">Programma</a>
     <a href="#about"    class="nav-link">Par konferenci</a>
   </div>
-  <a href="/registracija/" class="nav-cta">Reģistrēties</a>
+  <a href="/registracija/" class="nav-cta">Pieteikties gaidītāju rindā</a>
   <button id="hamburger" aria-label="Izvēlne">
     <span id="hb1"></span><span id="hb2"></span><span id="hb3"></span>
   </button>
@@ -1215,7 +1215,7 @@ footer{
   <a href="#about"    class="nav-link">Par konferenci</a>
   <hr style="margin:1rem 0;border:none;border-top:1px solid rgba(255,255,255,.1)">
   <a href="/registracija/" class="nav-cta" style="text-align:center;margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.6rem">
-    <span>Reģistrēties</span>
+    <span>Pieteikties gaidītāju rindā</span>
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
   </a>
 </div>
@@ -1252,11 +1252,17 @@ footer{
           <div class="hero-t4"><span class="scramble" data-text="2026">2026</span></div>
         </div>
         <!-- Mobile primary CTA -->
-        <a href="/registracija/" class="hero-cta-primary">Reģistrēties</a>
+        <a href="/registracija/" class="hero-cta-primary">Pieteikties gaidītāju rindā</a>
       </h1>
 
       <!-- RIGHT: Meta + CTA -->
       <div style="display:flex;flex-direction:column;gap:1.5rem;align-items:flex-start;align-self:center;padding-top:2rem;transform:none !important;animation:none !important;position:relative;z-index:10">
+        <!-- Waitlist Notification Circle -->
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:220px;height:220px;border-radius:50%;background:#ffff00;color:#000;position:relative;margin-bottom:1.5rem;flex-shrink:0">
+          <div style="text-align:center;font-weight:800;font-size:1.5rem;text-transform:uppercase;letter-spacing:.05em;line-height:1.2">Vietas<br>aizpildītas</div>
+          <div style="font-size:0.75rem;color:rgba(0,0,0,.6);margin-top:0.8rem;text-align:center;max-width:160px">Reģistrējies<br>gaidītāju rindā</div>
+        </div>
+
         <!-- Event Info + CTA Wrapper -->
         <div style="display:flex;flex-direction:column;gap:1.2rem;width:100%;transform:none !important;animation:none !important">
           <!-- Subtitle -->
@@ -1284,7 +1290,7 @@ footer{
           <a href="/registracija/" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.08em;background:var(--V);color:#fff;padding:.8rem 2.2rem;border-radius:100px;text-decoration:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.6rem;white-space:nowrap;transform:none !important;animation:none !important"
              onmouseover="this.style.boxShadow='0 12px 40px rgba(123,111,232,.55)';this.style.transform='translateY(-2px)'"
              onmouseout="this.style.boxShadow='none';this.style.transform=''">
-            Reģistrēties
+            Pieteikties gaidītāju rindā
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
         </div>
@@ -1391,7 +1397,7 @@ footer{
       <a href="/registracija/" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.1em;background:transparent;color:var(--P);border:2px solid var(--P);padding:.7rem 2.2rem;border-radius:100px;text-decoration:none;transition:all .2s;display:inline-block"
          onmouseover="this.style.background='var(--P)';this.style.color='#fff'"
          onmouseout="this.style.background='transparent';this.style.color='var(--P)'">
-        Nodrošini savu vietu →
+        Pieteikties gaidītāju rindā →
       </a>
     </div>
   </div>
@@ -1947,7 +1953,7 @@ footer{
           </div>
           <button class="form-submit" type="submit" id="submitBtn">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-8 0v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Reģistrēties bez maksas
+            Pieteikties gaidītāju rindā
           </button>
           <div class="form-note">Apstiprinājums tiks nosūtīts uz Jūsu e-pastu</div>
         </form>
@@ -2271,7 +2277,7 @@ function handleReg(e){
 
 <!-- Mobile sticky CTA footer -->
 <div id="sticky-cta">
-  <a href="/registracija/">Reģistrēties — Bez maksas</a>
+  <a href="/registracija/">Pieteikties gaidītāju rindā</a>
 </div>
 
 </body>

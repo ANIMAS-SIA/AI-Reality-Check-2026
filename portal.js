@@ -690,8 +690,8 @@ function initRegistration() {
   const contextDescription = document.getElementById("registrationContextDescription");
   const contextByStep = {
     1: {
-      title: "Rezervē<br>savu vietu.",
-      description: "Trīs īsi soļi līdz dalībai AI Reality Check 2026."
+      title: "Piesakies<br>gaidītāju rindā.",
+      description: "Visas konferences vietas pašlaik ir aizpildītas. Atstāj savu kontaktinformāciju, un mēs ar tevi sazināsimies, ja atbrīvosies vieta."
     },
     2: {
       title: "Kur jūs<br>esat<br>šobrīd?",
