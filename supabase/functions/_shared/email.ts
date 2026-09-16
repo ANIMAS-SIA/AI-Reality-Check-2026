@@ -125,7 +125,7 @@ export function renderEmail(templateKey: string, input: TemplateInput) {
     },
     registration_cancelled: {
       subject: "Reģistrācija atcelta — AI Reality Check 2026",
-      html: shell("REĢISTRĀCIJA ATCELTA", "Jūsu reģistrācija ir atcelta", `<p>Paldies! Jūsu reģistrācija konferencei <strong>AI Reality Check 2026</strong> ir atcelta.</p><p style="margin-top:12px">Ja tas bija pieņēmums kļūdas dēļ, varat reģistrēties atkārtoti mūsu vietnē.</p>`),
+      html: shell("REĢISTRĀCIJA ATCELTA", "Reģistrācija atcelta", `<p>Paldies! Jūsu reģistrācija konferencei <strong>AI Reality Check 2026</strong> ir atcelta.</p>`),
       text: `Paldies! Jūsu reģistrācija konferencei AI Reality Check 2026 ir atcelta.`,
     },
   };
