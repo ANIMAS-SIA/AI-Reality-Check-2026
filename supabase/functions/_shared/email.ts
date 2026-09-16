@@ -123,6 +123,11 @@ export function renderEmail(templateKey: string, input: TemplateInput) {
       html: shell("Materiāli un rezultāti", "Konferences kopsavilkums ir pieejams", `<p>Sveiki, ${firstName}! Paldies par dalību. Materiāli, jautājumi un rezultāti ir publicēti arhīvā.</p>`, input.resultsLink ? { label: "Atvērt rezultātus", href: input.resultsLink } : undefined),
       text: `Sveiki, ${firstName}! AI Reality Check 2026 materiāli un rezultāti: ${input.resultsLink || ""}`,
     },
+    registration_cancelled: {
+      subject: "Reģistrācija atcelta — AI Reality Check 2026",
+      html: shell("REĢISTRĀCIJA ATCELTA", "Jūsu reģistrācija ir atcelta", `<p>Paldies! Jūsu reģistrācija konferencei <strong>AI Reality Check 2026</strong> ir atcelta.</p><p style="margin-top:12px">Ja tas bija pieņēmums kļūdas dēļ, varat reģistrēties atkārtoti mūsu vietnē.</p>`),
+      text: `Paldies! Jūsu reģistrācija konferencei AI Reality Check 2026 ir atcelta.`,
+    },
   };
   return templates[templateKey] || templates.reminder;
 }

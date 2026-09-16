@@ -1,6 +1,7 @@
 import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { hashToken } from "../_shared/tokens.ts";
+import { sendEmail, logEmail } from "../_shared/email.ts";
 
 type TokenRow = {
   participant_id: string;
@@ -14,6 +15,8 @@ type ParticipantRow = {
   cancelled_at: string | null;
   lunch_opt_out: boolean;
   lunch_opted_out_at: string | null;
+  email: string;
+  first_name: string;
 };
 
 type RequestPayload = {
@@ -136,7 +139,13 @@ async function cancelRegistration(
     } as ErrorThrow;
   }
 
-  return updated[0];
+  const updatedParticipant = updated[0];
+  const emailResult = await sendEmail(updatedParticipant.email, "registration_cancelled", {
+    firstName: updatedParticipant.first_name,
+  });
+  await logEmail(db, participantId, "registration_cancelled", updatedParticipant.email, emailResult);
+
+  return updatedParticipant;
 }
 
 async function optOutLunch(
