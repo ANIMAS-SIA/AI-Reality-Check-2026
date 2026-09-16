@@ -1004,10 +1004,32 @@ async function initPass() {
   setText("passName", `${p.firstName} ${p.lastName}`);
   setText("passCompany", p.companyName);
   setText("passRole", p.role);
-  setText("passStatus", p.status);
+  setText("passStatus", p.statusLabel || p.status);
   setText("passAccess", p.access);
   setText("passId", p.passId);
   setText("aiStage", p.aiStage);
+
+  const cancelBtn = document.getElementById("cancelRegistrationBtn");
+  const lunchBtn = document.getElementById("lunchOptOutBtn");
+  const qrImage = document.getElementById("passQrImage");
+  const walletPanel = document.querySelector(".pass-wallet-panel");
+  const liveLink = document.querySelector("a[href*='live']");
+  const networkingLink = document.querySelector("a[href*='networking']");
+
+  if (p.cancelledAt) {
+    if (cancelBtn) cancelBtn.parentElement?.removeChild(cancelBtn);
+    if (lunchBtn) lunchBtn.parentElement?.removeChild(lunchBtn);
+    if (qrImage) qrImage.style.opacity = "0.3";
+    if (walletPanel) walletPanel.style.pointerEvents = "none";
+    if (liveLink) liveLink.setAttribute("aria-disabled", "true");
+    if (networkingLink) networkingLink.setAttribute("aria-disabled", "true");
+  } else {
+    if (p.lunchOptOut && lunchBtn) {
+      lunchBtn.textContent = "No pusdienām atteikts";
+      lunchBtn.disabled = true;
+    }
+    initCheckableActions(token);
+  }
 
   const activate = document.getElementById("activatePortal");
   activate?.addEventListener("click", () => {
@@ -1750,6 +1772,65 @@ async function checkinRequest(path, options = {}) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Check-in pieprasījums neizdevās.");
   return data;
+}
+
+async function callParticipantAction(action, token) {
+  if (!API_BASE || !token) throw new Error("API nav konfigurēts.");
+  const response = await fetch(`${API_BASE}/participant-actions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, token }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const msg = data.message || (action === "cancel_registration" ? "Reģistrāciju neizdevās atsaukt." : "Atteikšanos no pusdienām neizdevās apstrādāt.");
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function initCheckableActions(token) {
+  const cancelBtn = document.getElementById("cancelRegistrationBtn");
+  const lunchBtn = document.getElementById("lunchOptOutBtn");
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", async () => {
+      if (!confirm("Vai tiešām vēlaties atsaukt savu reģistrāciju? Jūsu vieta var tikt piedāvāta citam dalībniekam.")) return;
+      cancelBtn.disabled = true;
+      const originalText = cancelBtn.textContent;
+      cancelBtn.textContent = "Apstrādā...";
+      try {
+        await callParticipantAction("cancel_registration", token);
+        showToast("Jūsu reģistrācija ir atsaukta.");
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      } catch (error) {
+        showToast(error.message || "Reģistrāciju neizdevās atsaukt.");
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = originalText;
+      }
+    });
+  }
+
+  if (lunchBtn) {
+    lunchBtn.addEventListener("click", async () => {
+      if (!confirm("Vai tiešām vēlaties atteikties no pusdienām?")) return;
+      lunchBtn.disabled = true;
+      const originalText = lunchBtn.textContent;
+      lunchBtn.textContent = "Apstrādā...";
+      try {
+        await callParticipantAction("opt_out_lunch", token);
+        showToast("No pusdienām atteikts.");
+        lunchBtn.textContent = "No pusdienām atteikts";
+        lunchBtn.disabled = true;
+      } catch (error) {
+        showToast(error.message || "Atteikšanos neizdevās apstrādāt.");
+        lunchBtn.disabled = false;
+        lunchBtn.textContent = originalText;
+      }
+    });
+  }
 }
 
 function initCheckin() {

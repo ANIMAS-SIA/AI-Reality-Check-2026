@@ -11,6 +11,10 @@
   <link rel="icon" type="image/x-icon" href="../favicon.ico">
   <link rel="stylesheet" href="../portal.css">
   <link rel="stylesheet" href="../site-chrome.css">
+  <style>
+    body { background: #0a0a0a; color: #f2ede6; }
+    body * { color: #f2ede6; }
+  </style>
   <script src="../site-chrome.js" defer></script>
 </head>
 <body data-page="pass">
@@ -76,6 +80,8 @@
             </div>
           </div>
 
+          <button id="cancelRegistrationBtn" type="button" style="width:100%;margin-top:1.2rem;padding:0.7rem;background:#ff4444;color:#fff;border:none;border-radius:0.4rem;font-weight:700;cursor:pointer;font-size:0.9rem;transition:all 0.2s">Atsaukt reģistrāciju</button>
+
           <footer class="pass-ticket-footer">
             <span>30. septembris · 09:00</span>
             <span>Rīgas Motormuzejs</span>
@@ -137,27 +143,9 @@
       <p class="pass-stage-note" id="aiStage">Izmēģinām atsevišķus rīkus</p>
       <button class="sr-only" id="activatePortal" type="button">Aktivizēt pilno pieredzi</button>
 
-      <article style="background:rgba(255,229,0,0.08);border:1px solid rgba(255,229,0,0.2);padding:1.5rem;border-radius:0.6rem;margin-top:2rem">
-        <h3 style="margin:0 0 0.5rem 0;font-size:1rem;color:rgba(242,237,230,.9)">🍽️ Pusdienīšana</h3>
-        <p style="margin:0 0 1rem 0;font-size:0.9rem;color:rgba(242,237,230,.7)">Vai paliek uz pusdienām (12:00–13:00)?</p>
-        <div style="display:flex;flex-direction:column;gap:0.8rem;margin-bottom:1.2rem">
-          <label style="display:flex;align-items:center;cursor:pointer;font-size:0.95rem">
-            <input type="radio" name="lunch" value="yes" style="margin-right:0.8rem;cursor:pointer">
-            <span>Jā, paliku</span>
-          </label>
-          <label style="display:flex;align-items:center;cursor:pointer;font-size:0.95rem">
-            <input type="radio" name="lunch" value="no" style="margin-right:0.8rem;cursor:pointer">
-            <span>Nē, nepaliku</span>
-          </label>
-        </div>
-        <button style="width:100%;padding:0.8rem;background:var(--V);color:#fff;border:none;border-radius:0.4rem;font-weight:600;cursor:pointer;font-size:0.9rem;transition:all 0.2s">Saglabāt</button>
+      <article style="padding:1.5rem;margin-top:2rem">
+        <button id="lunchOptOutBtn" type="button" style="width:100%;padding:0.8rem;background:#ffd700;color:#1a1a1a;border:none;border-radius:0.4rem;font-weight:600;cursor:pointer;font-size:0.9rem;transition:all 0.2s">Atteikties no pusdienām</button>
       </article>
-
-      <section style="background:rgba(255,50,50,0.08);border:1px solid rgba(255,50,50,0.2);padding:1.5rem;border-radius:0.6rem;margin-top:1.5rem">
-        <h2 style="margin:0 0 0.8rem 0;color:#ff6b6b;font-size:1.1rem">⚠️ Atteikties no konferences</h2>
-        <p style="margin:0 0 1.2rem 0;color:rgba(242,237,230,.8);line-height:1.6;font-size:0.95rem">Ja tavs plāns ir mainījies, atbrīvo savu vietu citiem no gaidītāju rindas. <strong>Šo darbību nevar atsaukt!</strong></p>
-        <button style="width:100%;padding:0.8rem;background:#ff4444;color:#fff;border:none;border-radius:0.4rem;font-weight:700;cursor:pointer;font-size:0.95rem;transition:all 0.2s">Atsaukt reģistrāciju</button>
-      </section>
     </section>
   </main>
 

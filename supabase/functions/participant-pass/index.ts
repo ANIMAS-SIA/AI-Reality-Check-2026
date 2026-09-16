@@ -23,6 +23,9 @@ type ParticipantRow = {
   public_company_allowed: boolean;
   networking_allowed: boolean;
   newsletter_allowed: boolean;
+  cancelled_at: string | null;
+  lunch_opt_out: boolean;
+  lunch_opted_out_at: string | null;
 };
 
 type CompanyRow = {
@@ -103,7 +106,8 @@ Deno.serve(async (request) => {
         lastName: participant.last_name,
         email: participant.email,
         role: participant.role || "Dalībnieks",
-        status: statusLabel(participant.status),
+        status: participant.status,
+        statusLabel: statusLabel(participant.status),
         access: accessLabel(participant.access_mode),
         aiStage: participant.ai_maturity_level
           ? `${participant.ai_maturity_phase || ""} · ${participant.ai_maturity_level}/10`.replace(/^ · /, "")
@@ -111,6 +115,9 @@ Deno.serve(async (request) => {
         publicCompany: participant.public_company_allowed,
         networking: participant.networking_allowed,
         newsletter: participant.newsletter_allowed,
+        cancelledAt: participant.cancelled_at,
+        lunchOptOut: participant.lunch_opt_out,
+        lunchOptedOutAt: participant.lunch_opted_out_at,
         companyName: company?.name || "Nepārstāv uzņēmumu",
         company,
       },

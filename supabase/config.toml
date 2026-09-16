@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.analytics-events]
 verify_jwt = false
+
+[functions.participant-actions]
+verify_jwt = false

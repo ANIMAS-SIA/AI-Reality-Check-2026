@@ -1101,6 +1101,12 @@
       ? `MI ${participant.ai_maturity_level}/10 · ${participant.ai_maturity_phase || ""} · ${participant.ai_maturity_anonymous ? "anonīmi" : "publiski"}`
       : "";
     const consents = participant.consents || {};
+    const statusBadge = participant.status === "cancelled"
+      ? `<span class="admin-status-pill" style="background:#e74c3c;color:#fff">ATSAUCIS DALĪBU</span>`
+      : `<span class="admin-status-pill admin-status-${esc(participant.status)}">${esc(STATUS_LABELS[participant.status] || participant.status)}</span>`;
+    const lunchBadge = participant.lunch_opt_out && participant.status !== "cancelled"
+      ? `<span class="admin-status-pill" style="background:#f39c12;color:#fff">BEZ PUSDIENĀM</span>`
+      : "";
     return `
       <article class="admin-participant-row ${selectedParticipantIds.has(participant.id) ? "is-selected" : ""}" data-participant-row="${participant.id}">
         <label class="admin-row-select" aria-label="Atlasīt ${esc(participant.first_name)} ${esc(participant.last_name)}"><input type="checkbox" data-participant-select="${participant.id}" ${selectedParticipantIds.has(participant.id) ? "checked" : ""}></label>
@@ -1117,7 +1123,8 @@
             ${consentChip("Jaunumi", Boolean(consents.newsletter))}
           </div>
         </div>
-        <span class="admin-status-pill admin-status-${esc(participant.status)}">${esc(STATUS_LABELS[participant.status] || participant.status)}</span>
+        ${statusBadge}
+        ${lunchBadge}
         <span class="admin-fine">${participant.access_mode === "full" ? "Pilnā pieeja" : "Pamata pieeja"}</span>
         <div class="admin-more-menu">
           <button type="button" class="admin-more-toggle" aria-label="Dalībnieka darbības">⋯</button>
@@ -1134,10 +1141,13 @@
   function visibleParticipants() {
     const search = (el("participantsSearch")?.value || "").trim().toLocaleLowerCase("lv-LV");
     const consent = el("participantsConsentFilter")?.value || "all";
+    const status = el("participantsStatusFilter")?.value || "all";
     return currentParticipants.filter((participant) => {
       const haystack = [participant.first_name, participant.last_name, participant.email, participant.role]
         .filter(Boolean).join(" ").toLocaleLowerCase("lv-LV");
       if (search && !haystack.includes(search)) return false;
+      if (status === "cancelled") return participant.status === "cancelled" || participant.cancelled_at;
+      if (status === "lunch_opted_out") return participant.lunch_opt_out === true && participant.status !== "cancelled";
       if (consent === "all") return true;
       if (consent === "newsletter_no") return !participant.consents?.newsletter;
       return Boolean(participant.consents?.[consent]);
@@ -1166,8 +1176,12 @@
   async function refreshParticipants() {
     const container = el("participantsList");
     const status = el("participantsStatusFilter")?.value || "all";
+    const params = new URLSearchParams();
+    if (status !== "all") params.set("status", status);
+    if (status === "lunch_opted_out") params.set("lunch_opt_out", "true");
     try {
-      const data = await adminFetch(`/admin-registrations${status !== "all" ? `?status=${status}` : ""}`);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const data = await adminFetch(`/admin-registrations${query}`);
       currentParticipants = data.registrations || [];
       selectedParticipantIds.clear();
       renderParticipants();

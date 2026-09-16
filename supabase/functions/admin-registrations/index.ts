@@ -34,6 +34,9 @@ type ParticipantRow = {
   networking_allowed?: boolean;
   newsletter_allowed?: boolean;
   attendance_reconfirmed_at?: string | null;
+  cancelled_at?: string | null;
+  lunch_opt_out?: boolean;
+  lunch_opted_out_at?: string | null;
   created_at: string;
 };
 
@@ -225,7 +228,7 @@ async function exportRegistrations(db: SupabaseRest, url: URL): Promise<Response
     "id", "first_name", "last_name", "email", "phone", "role", "status", "access_mode",
     "ai_maturity_level", "ai_maturity_phase", "ai_maturity_anonymous", "ai_maturity_answered_at",
     "ai_stage", "consent_required_participation", "consent_public_company", "consent_networking",
-    "consent_newsletter", "created_at",
+    "consent_newsletter", "cancelled_at", "lunch_opt_out", "lunch_opted_out_at", "created_at",
   ];
   const body = rows.map((row) => {
     const flatRow: Record<string, unknown> = {
