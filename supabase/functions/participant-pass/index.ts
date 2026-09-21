@@ -26,6 +26,7 @@ type ParticipantRow = {
   cancelled_at: string | null;
   lunch_opt_out: boolean;
   lunch_opted_out_at: string | null;
+  attendance_reconfirmed_at: string | null;
 };
 
 type CompanyRow = {
@@ -118,6 +119,7 @@ Deno.serve(async (request) => {
         cancelledAt: participant.cancelled_at,
         lunchOptOut: participant.lunch_opt_out,
         lunchOptedOutAt: participant.lunch_opted_out_at,
+        attendanceReconfirmedAt: participant.attendance_reconfirmed_at,
         companyName: company?.name || "Nepārstāv uzņēmumu",
         company,
       },

@@ -224,21 +224,53 @@ function csvCell(value: unknown) {
 
 async function exportRegistrations(db: SupabaseRest, url: URL): Promise<Response> {
   const rows = await queryRegistrations(db, url);
-  const header = [
+  const dbFields = [
     "id", "first_name", "last_name", "email", "phone", "role", "status", "access_mode",
     "ai_maturity_level", "ai_maturity_phase", "ai_maturity_anonymous", "ai_maturity_answered_at",
     "ai_stage", "consent_required_participation", "consent_public_company", "consent_networking",
-    "consent_newsletter", "cancelled_at", "lunch_opt_out", "lunch_opted_out_at", "created_at",
+    "consent_newsletter", "cancelled_at", "lunch_opt_out", "lunch_opted_out_at", "attendance_reconfirmed", "attendance_reconfirmed_at", "created_at",
   ];
+  const csvHeaders: Record<string, string> = {
+    id: "ID",
+    first_name: "Vārds",
+    last_name: "Uzvārds",
+    email: "E-pasts",
+    phone: "Tālrunis",
+    role: "Amats",
+    status: "Statuss",
+    access_mode: "Piekļuves režīms",
+    ai_maturity_level: "AI nobrieduma līmenis",
+    ai_maturity_phase: "AI nobrieduma fāze",
+    ai_maturity_anonymous: "Anonīmi",
+    ai_maturity_answered_at: "Atbildēts",
+    ai_stage: "AI stadija",
+    consent_required_participation: "Piekrīt datu apstrādei",
+    consent_public_company: "Publisks uzņēmums",
+    consent_networking: "Networking",
+    consent_newsletter: "Jaunumi",
+    cancelled_at: "Atsaukšanas laiks",
+    lunch_opt_out: "Atteicies no pusdienām",
+    lunch_opted_out_at: "Atteikšanās no pusdienām laiks",
+    attendance_reconfirmed: "Ierašanās apstiprināta",
+    attendance_reconfirmed_at: "Ierašanās apstiprināta laikā",
+    created_at: "Izveidots",
+  };
+  const header = dbFields.map((key) => csvHeaders[key] || key);
   const body = rows.map((row) => {
+    const isAttendanceReconfirmed = Boolean(row.attendance_reconfirmed_at);
+    const attendanceDateFormatted = isAttendanceReconfirmed && row.attendance_reconfirmed_at
+      ? new Date(row.attendance_reconfirmed_at).toLocaleString("lv-LV", { timeZone: "Europe/Riga" })
+      : "";
     const flatRow: Record<string, unknown> = {
       ...row,
       consent_required_participation: row.consents.required_participation,
       consent_public_company: row.consents.public_company,
       consent_networking: row.consents.networking,
       consent_newsletter: row.consents.newsletter,
+      attendance_reconfirmed: isAttendanceReconfirmed ? "Jā" : "Nē",
+      attendance_reconfirmed_at: attendanceDateFormatted,
     };
-    return header.map((key) => csvCell(flatRow[key])).join(",");
+    return dbFields.map((key) => csvCell(flatRow[key])).join(",");
   });
   return new Response([header.join(","), ...body].join("\n"), {
     headers: {

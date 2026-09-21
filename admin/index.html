@@ -290,7 +290,16 @@
             <option value="newsletter">Jaunumi: jā</option>
             <option value="newsletter_no">Jaunumi: nē</option>
           </select>
+          <select id="participantsAttendanceFilter">
+            <option value="all">Visi</option>
+            <option value="reconfirmed">Ierašanos apstiprinājuši</option>
+            <option value="not_reconfirmed">Ierašanos nav apstiprinājuši</option>
+          </select>
           <label class="admin-select-all"><input type="checkbox" id="participantsSelectAll"> Atlasīt visus redzamos</label>
+        </div>
+        <div class="admin-participant-stats">
+          <span>Ierašanos apstiprinājuši: <strong id="attendanceReconfirmedCount">0</strong></span>
+          <span>Nav apstiprinājuši: <strong id="attendanceNotReconfirmedCount">0</strong></span>
         </div>
         <div id="participantsList" class="admin-participant-list"><p class="live-empty">Ielādē...</p></div>
       </section>

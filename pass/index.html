@@ -14,6 +14,13 @@
   <style>
     body { background: #0a0a0a; color: #f2ede6; }
     body * { color: #f2ede6; }
+    #reconfirmAttendanceBtn:hover {
+      background: #8181ff;
+    }
+    #reconfirmAttendanceBtn:focus {
+      outline: 3px solid rgba(111, 111, 251, 0.35);
+      outline-offset: 2px;
+    }
   </style>
   <script src="../site-chrome.js" defer></script>
 </head>
@@ -80,7 +87,9 @@
             </div>
           </div>
 
-          <button id="cancelRegistrationBtn" type="button" style="width:100%;margin-top:1.2rem;padding:0.7rem;background:#ff4444;color:#fff;border:none;border-radius:0.4rem;font-weight:700;cursor:pointer;font-size:0.9rem;transition:all 0.2s">Atsaukt reģistrāciju</button>
+          <button id="reconfirmAttendanceBtn" type="button" style="width:100%;margin-top:1.2rem;margin-bottom:0.8rem;padding:0.7rem;background:#6f6ffb;color:#fff;border:none;border-radius:0.4rem;font-weight:700;cursor:pointer;font-size:0.9rem;transition:all 0.2s">Apstiprināt ierašanos</button>
+
+          <button id="cancelRegistrationBtn" type="button" style="width:100%;padding:0.7rem;background:#ff4444;color:#fff;border:none;border-radius:0.4rem;font-weight:700;cursor:pointer;font-size:0.9rem;transition:all 0.2s">Atsaukt reģistrāciju</button>
 
           <footer class="pass-ticket-footer">
             <span>30. septembris · 09:00</span>

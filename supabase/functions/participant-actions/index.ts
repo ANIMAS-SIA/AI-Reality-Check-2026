@@ -15,6 +15,7 @@ type ParticipantRow = {
   cancelled_at: string | null;
   lunch_opt_out: boolean;
   lunch_opted_out_at: string | null;
+  attendance_reconfirmed_at: string | null;
   email: string;
   first_name: string;
 };
@@ -30,6 +31,7 @@ type ResponsePayload = {
   cancelledAt: string | null;
   lunchOptOut: boolean;
   lunchOptedOutAt: string | null;
+  attendanceReconfirmedAt: string | null;
 };
 
 type ErrorThrow = {
@@ -38,9 +40,10 @@ type ErrorThrow = {
   status: number;
 };
 
-const ALLOWED_ACTIONS = ["cancel_registration", "opt_out_lunch"];
+const ALLOWED_ACTIONS = ["cancel_registration", "opt_out_lunch", "reconfirm_attendance"];
 const CANCELLABLE_STATUSES = ["approved", "reconfirm_required"];
 const LUNCH_OPT_OUT_STATUSES = ["approved", "reconfirm_required"];
+const RECONFIRMABLE_STATUSES = ["approved", "reconfirm_required"];
 
 async function validateToken(
   token: string,
@@ -208,6 +211,65 @@ async function optOutLunch(
   return updated[0];
 }
 
+async function reconfirmAttendance(
+  db: SupabaseRest,
+  participantId: string,
+): Promise<ParticipantRow> {
+  const participant = await getParticipantState(db, participantId);
+
+  if (!participant) {
+    throw {
+      code: "NOT_FOUND",
+      message: "Participant not found",
+      status: 404,
+    } as ErrorThrow;
+  }
+
+  if (participant.attendance_reconfirmed_at) {
+    return participant;
+  }
+
+  if (!RECONFIRMABLE_STATUSES.includes(participant.status)) {
+    throw {
+      code: "FORBIDDEN",
+      message: `Cannot reconfirm attendance with status: ${participant.status}`,
+      status: 403,
+    } as ErrorThrow;
+  }
+
+  const updated = await db.update<ParticipantRow>(
+    "participants",
+    {
+      attendance_reconfirmed_at: new Date().toISOString(),
+    },
+    {
+      id: `eq.${participantId}`,
+      status: `in.(${RECONFIRMABLE_STATUSES.join(",")})`,
+    },
+  );
+
+  if (updated.length === 0) {
+    const current = await getParticipantState(db, participantId);
+    if (!current) {
+      throw {
+        code: "NOT_FOUND",
+        message: "Participant not found",
+        status: 404,
+      } as ErrorThrow;
+    }
+    if (current.attendance_reconfirmed_at) {
+      return current;
+    }
+    throw {
+      code: "CONFLICT",
+      message: "Attendance reconfirmation failed: status changed",
+      status: 409,
+    } as ErrorThrow;
+  }
+
+  return updated[0];
+}
+
 function formatResponse(participant: ParticipantRow): ResponsePayload {
   return {
     success: true,
@@ -215,6 +277,7 @@ function formatResponse(participant: ParticipantRow): ResponsePayload {
     cancelledAt: participant.cancelled_at,
     lunchOptOut: participant.lunch_opt_out,
     lunchOptedOutAt: participant.lunch_opted_out_at,
+    attendanceReconfirmedAt: participant.attendance_reconfirmed_at,
   };
 }
 
@@ -295,6 +358,8 @@ Deno.serve(async (request) => {
       updatedParticipant = await cancelRegistration(db, participantId);
     } else if (action === "opt_out_lunch") {
       updatedParticipant = await optOutLunch(db, participantId);
+    } else if (action === "reconfirm_attendance") {
+      updatedParticipant = await reconfirmAttendance(db, participantId);
     } else {
       return errorResponse("Invalid action", 400);
     }

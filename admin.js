@@ -1107,6 +1107,9 @@
     const lunchBadge = participant.lunch_opt_out && participant.status !== "cancelled"
       ? `<span class="admin-status-pill" style="background:#f39c12;color:#fff">BEZ PUSDIENĀM</span>`
       : "";
+    const attendanceBadge = participant.attendance_reconfirmed_at
+      ? `<span class="admin-status-pill" style="background:#27ae60;color:#fff">JĀ<br><small style="font-size:0.7em;display:block;margin-top:2px">${new Date(participant.attendance_reconfirmed_at).toLocaleString("lv-LV", { timeZone: "Europe/Riga" })}</small></span>`
+      : "";
     return `
       <article class="admin-participant-row ${selectedParticipantIds.has(participant.id) ? "is-selected" : ""}" data-participant-row="${participant.id}">
         <label class="admin-row-select" aria-label="Atlasīt ${esc(participant.first_name)} ${esc(participant.last_name)}"><input type="checkbox" data-participant-select="${participant.id}" ${selectedParticipantIds.has(participant.id) ? "checked" : ""}></label>
@@ -1125,6 +1128,7 @@
         </div>
         ${statusBadge}
         ${lunchBadge}
+        ${attendanceBadge}
         <span class="admin-fine">${participant.access_mode === "full" ? "Pilnā pieeja" : "Pamata pieeja"}</span>
         <div class="admin-more-menu">
           <button type="button" class="admin-more-toggle" aria-label="Dalībnieka darbības">⋯</button>
@@ -1142,12 +1146,18 @@
     const search = (el("participantsSearch")?.value || "").trim().toLocaleLowerCase("lv-LV");
     const consent = el("participantsConsentFilter")?.value || "all";
     const status = el("participantsStatusFilter")?.value || "all";
+    const attendance = el("participantsAttendanceFilter")?.value || "all";
     return currentParticipants.filter((participant) => {
       const haystack = [participant.first_name, participant.last_name, participant.email, participant.role]
         .filter(Boolean).join(" ").toLocaleLowerCase("lv-LV");
       if (search && !haystack.includes(search)) return false;
       if (status === "cancelled") return participant.status === "cancelled" || participant.cancelled_at;
       if (status === "lunch_opted_out") return participant.lunch_opt_out === true && participant.status !== "cancelled";
+      if (attendance === "reconfirmed") return Boolean(participant.attendance_reconfirmed_at);
+      if (attendance === "not_reconfirmed") {
+        const nonApplicableStatuses = ["cancelled", "rejected", "waitlisted"];
+        return !participant.attendance_reconfirmed_at && !nonApplicableStatuses.includes(participant.status);
+      }
       if (consent === "all") return true;
       if (consent === "newsletter_no") return !participant.consents?.newsletter;
       return Boolean(participant.consents?.[consent]);
@@ -1166,6 +1176,13 @@
 
   function renderParticipants() {
     const rows = visibleParticipants();
+    const reconfirmedCount = currentParticipants.filter((p) => Boolean(p.attendance_reconfirmed_at)).length;
+    const notReconfirmedCount = currentParticipants.filter((p) => {
+      const nonApplicable = ["cancelled", "rejected", "waitlisted"];
+      return !p.attendance_reconfirmed_at && !nonApplicable.includes(p.status);
+    }).length;
+    setText("attendanceReconfirmedCount", String(reconfirmedCount));
+    setText("attendanceNotReconfirmedCount", String(notReconfirmedCount));
     el("participantsList").innerHTML = rows.length
       ? rows.map(participantRowMarkup).join("")
       : `<p class="live-empty">Nav dalībnieku šajā skatā.</p>`;
@@ -1192,6 +1209,7 @@
 
   el("participantsStatusFilter")?.addEventListener("change", refreshParticipants);
   el("participantsConsentFilter")?.addEventListener("change", renderParticipants);
+  el("participantsAttendanceFilter")?.addEventListener("change", renderParticipants);
   el("participantsSearch")?.addEventListener("input", debounce(renderParticipants, 200));
   el("participantsSelectAll")?.addEventListener("change", () => {
     visibleParticipants().forEach((participant) => {
