@@ -46,7 +46,6 @@ supabase secrets set PUBLIC_SITE_URL=https://konference.animas.lv
 supabase secrets set C360_API_BASE=https://api.company360.lv
 supabase secrets set C360_API_KEY=c360_xxx
 supabase secrets set TOKEN_PEPPER=replace_with_long_random_secret
-supabase secrets set ADMIN_API_KEY=replace_with_long_random_admin_secret
 supabase secrets set MAGIC_LINK_TTL_DAYS=90
 supabase secrets set EMAIL_PROVIDER=resend
 supabase secrets set EMAIL_FROM="AI Reality Check <konference@animas.lv>"
@@ -122,7 +121,7 @@ GET  {ARC_API_BASE}/wallet?provider=apple&token=
 GET  {ARC_API_BASE}/wallet?provider=google&token=
 ```
 
-Admin endpointiem (`admin-*`, `presentation` POST, `presentation-links`) tagad jāpadod Supabase Auth sesijas token, nevis `x-admin-key`:
+Admin endpointiem (`admin-*`, `checkin-scan`, `presentation` POST, `presentation-links`) tagad jāpadod Supabase Auth sesijas token, nevis `x-admin-key`:
 
 ```text
 Authorization: Bearer <supabase-auth-access-token>

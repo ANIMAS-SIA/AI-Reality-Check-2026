@@ -1,6 +1,9 @@
 import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } from "../_shared/http.ts";
+import { AdminAuthError, adminAuthErrorResponse, authenticateAdmin, type AdminActor } from "../_shared/auth.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { hashToken } from "../_shared/tokens.ts";
+
+const CHECKIN_ROLES = ["superadmin", "organizer", "moderator"] as const;
 
 type CheckinPayload = {
   token?: string;
@@ -39,14 +42,6 @@ type CheckinRow = {
   scan_result: string;
   scanned_at: string;
 };
-
-function requireAdmin(request: Request): Response | null {
-  const expected = Deno.env.get("ADMIN_API_KEY");
-  if (!expected) return errorResponse("ADMIN_API_KEY is not configured", 500);
-  const actual = request.headers.get("x-admin-key") || "";
-  if (actual !== expected) return errorResponse("Unauthorized", 401);
-  return null;
-}
 
 function statusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -124,7 +119,7 @@ async function previewCheckin(db: SupabaseRest, token: string): Promise<Response
   return jsonResponse({ participant: await participantPayload(db, participant, duplicate) });
 }
 
-async function confirmCheckin(db: SupabaseRest, payload: CheckinPayload): Promise<Response> {
+async function confirmCheckin(db: SupabaseRest, payload: CheckinPayload, actor: AdminActor): Promise<Response> {
   const token = (payload.token || "").trim();
   if (!token) return errorResponse("Token is required", 400);
 
@@ -142,6 +137,8 @@ async function confirmCheckin(db: SupabaseRest, payload: CheckinPayload): Promis
     device_label: payload.deviceLabel || null,
     metadata: {
       previous_status: participant.status,
+      scanned_by_user_id: actor.userId,
+      scanned_by_email: actor.email,
     },
   }]);
 
@@ -170,24 +167,30 @@ Deno.serve(async (request) => {
   const options = handleOptions(request);
   if (options) return options;
 
-  const adminError = requireAdmin(request);
-  if (adminError) return adminError;
-
   try {
     const db = new SupabaseRest();
+    const actor = await authenticateAdmin(request, db, [...CHECKIN_ROLES]);
 
     if (request.method === "GET") {
+      if (new URL(request.url).searchParams.get("action") === "whoami") {
+        return jsonResponse({
+          email: actor.email,
+          role: actor.role,
+          displayName: actor.displayName,
+        });
+      }
       const token = (new URL(request.url).searchParams.get("token") || "").trim();
       if (!token) return errorResponse("Token is required", 400);
       return await previewCheckin(db, token);
     }
 
     if (request.method === "POST") {
-      return await confirmCheckin(db, await readJson<CheckinPayload>(request));
+      return await confirmCheckin(db, await readJson<CheckinPayload>(request), actor);
     }
 
     return errorResponse("Method not allowed", 405);
   } catch (error) {
+    if (error instanceof AdminAuthError) return adminAuthErrorResponse(error);
     return errorResponse("Check-in failed", 500, String(error));
   }
 });

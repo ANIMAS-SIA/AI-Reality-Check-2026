@@ -2,65 +2,86 @@
 <html lang="lv">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Check-in | AI Reality Check 2026</title>
-  <meta name="description" content="AI Reality Check 2026 QR check-in.">
+  <meta name="description" content="AI Reality Check 2026 dalībnieku check-in.">
+  <meta name="theme-color" content="#030303">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/x-icon" href="../favicon.ico">
   <link rel="stylesheet" href="../portal.css">
-  <link rel="stylesheet" href="../site-chrome.css">
-  <script src="../site-chrome.js" defer></script>
 </head>
 <body data-page="checkin">
-  <main class="portal-shell">
-    <header class="topbar pass-topbar">
-      <a class="brand" href="../">
-        <img src="https://raw.githubusercontent.com/ANIMAS-SIA/newsletter-assets/5a690087fd9e4635c030c620d7d2e527a37b6946/Animas%20AI.png" alt="ANIMAS AI" class="brand-mark" style="height:2.5rem;width:auto;object-fit:contain">
+  <main class="checkin-shell">
+    <header class="checkin-topbar">
+      <a class="brand" href="../admin/" aria-label="AI Reality Check admin panelis">
+        <img src="https://raw.githubusercontent.com/ANIMAS-SIA/newsletter-assets/5a690087fd9e4635c030c620d7d2e527a37b6946/Animas%20AI.png" alt="ANIMAS AI" class="brand-mark checkin-brand-mark">
         <span class="brand-text">
           <span class="brand-title">Reality Check</span>
-          <span class="brand-subtitle">2026</span>
+          <span class="brand-subtitle">Check-in 2026</span>
         </span>
       </a>
-      <nav class="pass-nav" aria-label="Live portāla sadaļas">
-        <a href="../live/?view=program">Programma</a>
-        <a href="../rezultati/">Rezultāti</a>
-        <a href="../live/?view=networking">Tīklošanās</a>
-      </nav>
-      <div class="top-actions pass-actions">
-        <span class="mode-chip" id="passAccess">Pilna pieeja</span>
-        <a class="pass-pill" href="../pass/">Mans Pass</a>
+      <div class="checkin-account" id="checkinAccount" hidden>
+        <span id="checkinActor"></span>
+        <button type="button" id="checkinLogout">Iziet</button>
       </div>
     </header>
 
-    <section class="hero-panel registration-hero">
-      <div>
-        <div class="eyebrow">AI Reality Check 2026</div>
-        <h1 class="registration-title">Check-in</h1>
+    <section class="checkin-login" id="checkinLogin">
+      <div class="checkin-login-copy">
+        <p class="checkin-kicker">Ieejas kontrole</p>
+        <h1>Viens skatiens.<br><em>Viens skenējums.</em></h1>
+        <p>Ielogojies vienreiz un skenē dalībniekus bez papildu apstiprināšanas.</p>
       </div>
+      <form class="checkin-login-card" id="checkinLoginForm">
+        <p class="checkin-step">01 / Autorizācija</p>
+        <h2>Pārbaudītāja konts</h2>
+        <label>
+          <span>E-pasts</span>
+          <input type="email" id="checkinEmail" autocomplete="username" required>
+        </label>
+        <label>
+          <span>Parole</span>
+          <input type="password" id="checkinPassword" autocomplete="current-password" required>
+        </label>
+        <button class="checkin-primary" type="submit" id="checkinLoginButton">Atvērt skeneri <span>→</span></button>
+        <p class="checkin-message" id="checkinLoginStatus" role="status" aria-live="polite"></p>
+      </form>
     </section>
 
-    <section class="card registration-card" style="margin-top:20px">
-      <div class="grid two">
-        <div class="field">
-          <label for="checkinAdminKey">Admin atslēga</label>
-          <input id="checkinAdminKey" type="password" autocomplete="off">
+    <section class="checkin-workspace" id="checkinWorkspace" hidden>
+      <div class="checkin-stage" id="checkinScannerView">
+        <div class="checkin-stage-heading">
+          <div>
+            <p class="checkin-kicker">Gatavs darbam</p>
+            <h1>Noskenē dalībnieka QR</h1>
+          </div>
+          <span class="checkin-live"><i></i> Kamera aktīva</span>
         </div>
-        <div class="field">
-          <label for="checkinToken">QR token</label>
-          <input id="checkinToken" autocomplete="off">
+
+        <div class="checkin-camera-frame">
+          <div id="checkinReader" class="checkin-reader"></div>
+          <div class="checkin-reticle" aria-hidden="true"><span></span></div>
         </div>
+        <p class="checkin-message checkin-camera-status" id="checkinCameraStatus" role="status" aria-live="polite">Atļauj piekļuvi kamerai un pavērs to pret QR kodu.</p>
+        <button class="checkin-secondary" type="button" id="checkinRetryCamera" hidden>Mēģināt vēlreiz</button>
       </div>
-      <div class="btn-row">
-        <button class="btn secondary" type="button" id="previewCheckin">Pārbaudīt</button>
-        <button class="btn pink" type="button" id="confirmCheckin" disabled>Apstiprināt ierašanos</button>
+
+      <div class="checkin-stage checkin-result-stage" id="checkinResultView" hidden>
+        <div class="checkin-result-mark" id="checkinResultMark" aria-hidden="true">✓</div>
+        <p class="checkin-kicker" id="checkinResultKicker">Ierašanās reģistrēta</p>
+        <h1 id="checkinParticipantName">—</h1>
+        <p class="checkin-company" id="checkinParticipantCompany">—</p>
+        <p class="checkin-result-note" id="checkinResultNote"></p>
+        <button class="checkin-primary checkin-next" type="button" id="checkinNext">Skenēt nākamo <span>→</span></button>
       </div>
-      <p class="fine" id="checkinStatus">Noskenē QR vai ielīmē tokenu.</p>
-      <div id="checkinResult" class="checkin-result"></div>
     </section>
   </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="../config.js"></script>
-  <script src="../portal.js"></script>
+  <script src="../checkin.js"></script>
 </body>
 </html>

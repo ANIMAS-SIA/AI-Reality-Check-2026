@@ -1817,20 +1817,6 @@ function initArchive() {
     });
 }
 
-async function checkinRequest(path, options = {}) {
-  const adminKey = sessionStorage.getItem("arcAdminKey") || "";
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "x-admin-key": adminKey,
-      ...(options.headers || {})
-    }
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Check-in pieprasījums neizdevās.");
-  return data;
-}
-
 async function callParticipantAction(action, token) {
   if (!API_BASE || !token) throw new Error("API nav konfigurēts.");
   const response = await fetch(`${API_BASE}/participant-actions`, {
@@ -1920,106 +1906,11 @@ function initCheckableActions(token) {
   }
 }
 
-function initCheckin() {
-  const keyInput = document.getElementById("checkinAdminKey");
-  const tokenInput = document.getElementById("checkinToken");
-  const previewButton = document.getElementById("previewCheckin");
-  const confirmButton = document.getElementById("confirmCheckin");
-  const status = document.getElementById("checkinStatus");
-  const result = document.getElementById("checkinResult");
-  const params = new URLSearchParams(window.location.search);
-
-  keyInput.value = sessionStorage.getItem("arcAdminKey") || "";
-  tokenInput.value = params.get("token") || "";
-
-  function setStatus(message) {
-    status.textContent = message;
-  }
-
-  function currentToken() {
-    return tokenInput.value.trim();
-  }
-
-  function saveKey() {
-    const key = keyInput.value.trim();
-    if (key) sessionStorage.setItem("arcAdminKey", key);
-    return key;
-  }
-
-  function renderParticipant(data) {
-    const p = data.participant;
-    const tone = data.result === "accepted"
-      ? "is-ok"
-      : p.duplicate || data.result === "duplicate"
-        ? "is-warning"
-        : data.result === "invalid_status"
-          ? "is-error"
-          : "";
-    result.innerHTML = `
-      <div class="checkin-card ${tone}">
-        <span class="status-chip ${p.status === "arrived" ? "is-ok" : ""}">${p.status_label}</span>
-        <h2 style="margin-bottom:0">${p.name}</h2>
-        <p class="muted" style="margin-bottom:0">${p.company_name}</p>
-        <p class="fine" style="margin-bottom:0">${p.email}${p.role ? ` · ${p.role}` : ""}</p>
-        ${p.duplicate || data.result === "duplicate" ? `<strong style="color:var(--yellow)">QR jau ir izmantots.</strong>` : ""}
-        ${data.result === "invalid_status" ? `<strong style="color:var(--red)">Dalībnieka statuss neļauj veikt check-in.</strong>` : ""}
-      </div>
-    `;
-  }
-
-  async function preview() {
-    if (!API_BASE) return setStatus("API nav konfigurēts.");
-    if (!saveKey()) return setStatus("Ievadi admin atslēgu.");
-    if (!currentToken()) return setStatus("Nav QR tokena.");
-    confirmButton.disabled = true;
-    setStatus("Pārbauda...");
-    try {
-      const data = await checkinRequest(`/checkin-scan?token=${encodeURIComponent(currentToken())}`);
-      renderParticipant(data);
-      confirmButton.disabled = data.participant?.duplicate || !["approved", "reconfirm_required"].includes(data.participant?.status);
-      setStatus(data.participant?.duplicate ? "QR jau izmantots." : "Dalībnieks atrasts.");
-    } catch (error) {
-      result.innerHTML = "";
-      setStatus(error.message || "Pārbaude neizdevās.");
-    }
-  }
-
-  async function confirm() {
-    if (!saveKey()) return setStatus("Ievadi admin atslēgu.");
-    if (!currentToken()) return setStatus("Nav QR tokena.");
-    confirmButton.disabled = true;
-    confirmButton.textContent = "Apstiprina...";
-    try {
-      const data = await checkinRequest("/checkin-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: currentToken(),
-          deviceLabel: navigator.userAgent.slice(0, 120)
-        })
-      });
-      renderParticipant(data);
-      setStatus(data.result === "accepted" ? "Ierašanās apstiprināta." : "Check-in netika pieņemts.");
-      showToast(data.result === "accepted" ? "Dalībnieks atzīmēts kā ieradies." : "QR netika pieņemts.");
-    } catch (error) {
-      setStatus(error.message || "Check-in neizdevās.");
-      confirmButton.disabled = false;
-    } finally {
-      confirmButton.textContent = "Apstiprināt ierašanos";
-    }
-  }
-
-  previewButton?.addEventListener("click", preview);
-  confirmButton?.addEventListener("click", confirm);
-  if (currentToken() && keyInput.value.trim()) preview();
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
   if (page === "registration") initRegistration();
   if (page === "pass") initPass();
   if (page === "live") initLive();
-  if (page === "checkin") initCheckin();
   if (page === "results") initResults();
   if (page === "archive") initArchive();
 });
