@@ -675,6 +675,20 @@
   });
 
   // Drag & drop reorder
+  el("programEditorList")?.addEventListener("admin:move-agenda", async (event) => {
+    const { id, direction } = event.detail;
+    if (!["superadmin", "organizer"].includes(currentActor?.role)) return;
+    const order = agendaItems.map((item) => item.id);
+    const index = order.indexOf(id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= order.length || ![-1, 1].includes(direction)) return;
+    [order[index], order[target]] = [order[target], order[index]];
+    try {
+      await adminFetch("/admin-live?action=reorder", { method: "POST", body: JSON.stringify({ order }) });
+      agendaItems = (await adminFetch("/admin-live")).agenda || [];
+      renderProgramEditorList();
+    } catch (error) { showToast(error.message); }
+  });
   let dragSourceId = null;
   el("programEditorList")?.addEventListener("dragstart", (event) => {
     const row = event.target.closest("[data-drag-id]");
@@ -1264,6 +1278,11 @@
     setText("participantsHeading", `${rows.length} reģistrēti dalībnieki`);
     updateParticipantSelectionUi(rows);
   }
+
+  document.addEventListener("admin:clear-selection", () => {
+    selectedParticipantIds.clear();
+    renderParticipants();
+  });
 
   async function refreshParticipants() {
     const container = el("participantsList");
