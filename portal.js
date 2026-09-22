@@ -1174,7 +1174,23 @@ async function fetchLiveState() {
 }
 
 function agendaSignature(agenda) {
-  return (agenda || []).map((item) => `${item.id}:${item.status}`).join("|");
+  return JSON.stringify(agenda || []);
+}
+
+function liveEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+}
+
+const pendingQuestionSupport = new Set();
+
+function supportedQuestions() {
+  try { return new Set(JSON.parse(localStorage.getItem(window.arcStorageKey("arcSupportedQuestions")) || "[]")); }
+  catch { return new Set(); }
+}
+
+function rememberQuestionSupport(id) {
+  const ids = supportedQuestions(); ids.add(id);
+  try { localStorage.setItem(window.arcStorageKey("arcSupportedQuestions"), JSON.stringify([...ids])); } catch { /* Backend still prevents duplicates. */ }
 }
 
 function renderLiveProgram(agenda) {
@@ -1194,7 +1210,7 @@ function renderLiveProgram(agenda) {
     const label = item.is_break
       ? "Pauze"
       : item.status === "now"
-        ? "Šobrīd"
+        ? "Tagad ēterā"
         : item.status === "next"
           ? "Tālāk"
           : item.status === "done"
@@ -1203,28 +1219,28 @@ function renderLiveProgram(agenda) {
     const meta = [item.speaker_name, item.speaker_company, item.speaker_role].filter(Boolean).join(" · ") || item.description;
     const actions = item.is_break ? "" : `
       <div class="agenda-actions">
-        <button class="agenda-action" type="button" data-agenda-action="questions" data-agenda-id="${item.id}" aria-expanded="false" aria-label="Jautāt par: ${item.title}">
-          <span class="agenda-action-icon" aria-hidden="true">?</span>Jautāt <b data-question-count="${item.id}">0</b>
+        <button class="agenda-action" type="button" data-agenda-action="questions" data-agenda-id="${item.id}" aria-expanded="false" aria-controls="agenda-panel-${item.id}" aria-label="Jautājumi par: ${liveEscape(item.title)}">
+          <span class="agenda-action-icon" aria-hidden="true">💬</span>Jautājumi <b data-question-count="${item.id}">0</b>
         </button>
-        <button class="agenda-action" type="button" data-agenda-action="polls" data-agenda-id="${item.id}" aria-expanded="false" aria-label="Balsot par: ${item.title}">
+        <button class="agenda-action" type="button" data-agenda-action="polls" data-agenda-id="${item.id}" aria-expanded="false" aria-controls="agenda-panel-${item.id}" aria-label="Balsot par: ${liveEscape(item.title)}">
           <span class="agenda-action-icon" aria-hidden="true">▤</span>Balsot <b class="agenda-live-badge" data-poll-live="${item.id}" hidden>LIVE</b>
         </button>
       </div>`;
     return `
       <article class="program-item ${cls}" data-agenda-item="${item.id}">
         <div class="program-item-row">
-          <span class="time">${item.time}</span>
+          <span class="time">${liveEscape(item.time)}${item.ends_at ? ` – ${new Intl.DateTimeFormat("lv-LV", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Riga" }).format(new Date(item.ends_at))}` : ""}</span>
           <div class="program-item-body">
             <span class="program-type">${item.is_break ? "Pauze" : item.status === "now" ? "Live" : item.category || "Programma"}</span>
-            <strong>${item.title}</strong>
-            <p>${meta || ""}</p>
+            <strong>${liveEscape(item.title)}</strong>
+            <p>${liveEscape(meta || "")}</p>
           </div>
           <div class="program-item-side">
             <span class="program-state">${item.status === "now" ? "<i></i>" : ""}${label}</span>
             ${actions}
           </div>
         </div>
-        ${item.is_break ? "" : `<div class="agenda-expand" data-agenda-expand="${item.id}" hidden></div>`}
+        ${item.is_break ? "" : `<div class="agenda-expand" id="agenda-panel-${item.id}" data-agenda-expand="${item.id}" hidden></div>`}
       </article>
     `;
   }).join("");
@@ -1232,13 +1248,14 @@ function renderLiveProgram(agenda) {
 
 function questionCardsMarkup(questions) {
   if (!questions.length) return `<p class="live-empty">Vēl nav apstiprinātu jautājumu.</p>`;
-  return questions.map((question) => `
+  const supported = supportedQuestions();
+  return [...questions].sort((a, b) => Number(b.vote_count || 0) - Number(a.vote_count || 0) || Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0)).map((question) => `
       <article class="question-card">
-        <button class="vote-btn" type="button" data-question-vote="${question.id}" aria-label="Atbalstīt jautājumu">
-          <span>▲</span><strong>${question.vote_count || 0}</strong>
+        <button class="vote-btn ${supported.has(question.id) ? "is-voted" : ""}" type="button" data-question-vote="${question.id}" aria-pressed="${supported.has(question.id)}" ${supported.has(question.id) || pendingQuestionSupport.has(question.id) ? "disabled" : ""} aria-label="${supported.has(question.id) ? "Jautājums jau atbalstīts" : "Atbalstīt jautājumu"}">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h6a2 2 0 0 1 2 2l-2 7a3 3 0 0 1-3 2H7"/></svg><strong>${Number(question.vote_count) || 0}</strong>
         </button>
         <div>
-          <strong>${question.body}</strong>
+          <strong>${liveEscape(question.body)}</strong>
           <span>${question.is_anonymous ? "Anonīms" : "Dalībnieks"} · ${question.status === "answered" ? "Atbildēts" : "Apstiprināts"}</span>
         </div>
       </article>
@@ -1409,6 +1426,7 @@ async function initLive() {
   let questionsByItem = new Map();
   let latestPollState = null;
   let openExpand = null;
+  const questionDrafts = new Map();
   let activeQuestionFilter = "top";
 
   setText("liveMode", p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja");
@@ -1434,18 +1452,16 @@ async function initLive() {
   }
 
   function agendaExpandQuestionsMarkup() {
+    const draft = questionDrafts.get(openExpand?.itemId) || "";
     return `
       <div class="live-question-layout">
         <article class="live-question-form">
-          <span class="live-kicker">Jautā runātājam</span>
-          <h2>Ko vēlies uzzināt?</h2>
-          <p>Jautājums automātiski tiks piesaistīts šim programmas punktam.</p>
-          <textarea data-role="question-input" maxlength="280" placeholder="Ieraksti savu jautājumu..."></textarea>
+          <label class="agenda-quick-input"><span class="sr-only">Jautājums runātājam</span><textarea rows="1" data-role="question-input" maxlength="280" placeholder="Uzdod jautājumu lektoram...">${liveEscape(draft)}</textarea></label>
           <div class="live-question-meta">
-            <span data-role="question-count">280 rakstzīmes</span>
+            <span data-role="question-count">${280 - draft.length} rakstzīmes</span>
             <label><input type="checkbox" data-role="question-anon" checked> Iesniegt anonīmi</label>
           </div>
-          <button class="live-submit" type="button" data-role="question-submit">Iesniegt jautājumu <span>→</span></button>
+          <button class="live-submit" type="button" data-role="question-submit">Iesniegt</button>
         </article>
         <section class="live-audience-questions">
           <div class="agenda-question-tabs">
@@ -1712,10 +1728,12 @@ async function initLive() {
       }
       const isAnonymous = form.querySelector('[data-role="question-anon"]')?.checked !== false;
       submitBtn.disabled = true;
-      submitQuestion(body, openExpand.itemId, isAnonymous)
+      const submittedItemId = openExpand.itemId;
+      submitQuestion(body, submittedItemId, isAnonymous)
         .then((data) => {
           if (data?.question?.id) rememberMyQuestion(data.question.id);
           textarea.value = "";
+          questionDrafts.delete(submittedItemId);
           const counter = form.querySelector('[data-role="question-count"]');
           if (counter) counter.textContent = "280 rakstzīmes";
           showToast("Jautājums iesniegts moderācijai.");
@@ -1728,6 +1746,7 @@ async function initLive() {
   document.getElementById("liveProgramList")?.addEventListener("input", (event) => {
     const input = event.target.closest('[data-role="question-input"]');
     if (!input) return;
+    if (openExpand) questionDrafts.set(openExpand.itemId, input.value);
     const counter = input.closest(".live-question-form")?.querySelector('[data-role="question-count"]');
     if (counter) counter.textContent = `${280 - input.value.length} rakstzīmes`;
   });
@@ -1735,16 +1754,21 @@ async function initLive() {
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-question-vote]");
     if (!button) return;
+    if (pendingQuestionSupport.has(button.dataset.questionVote) || supportedQuestions().has(button.dataset.questionVote)) return;
+    pendingQuestionSupport.add(button.dataset.questionVote);
     button.disabled = true;
     voteQuestion(button.dataset.questionVote)
       .then(() => {
+        rememberQuestionSupport(button.dataset.questionVote);
         button.classList.add("is-voted");
+        button.setAttribute("aria-pressed", "true");
         refreshQuestions();
       })
       .catch((error) => {
         showToast(error.message || "Balsojumu neizdevās iesniegt.");
         button.disabled = false;
-      });
+      })
+      .finally(() => pendingQuestionSupport.delete(button.dataset.questionVote));
   });
 
   document.addEventListener("click", (event) => {
