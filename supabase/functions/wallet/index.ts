@@ -166,7 +166,8 @@ Deno.serve(async (request) => {
     const provider = url.searchParams.get("provider") || "links";
     if (!token) return errorResponse("Token is required", 400);
 
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const participant = await resolveParticipant(db, token);
     if (!participant) return errorResponse("Participant not found", 404);
     const companyName = await resolveCompanyName(db, participant.company_id);

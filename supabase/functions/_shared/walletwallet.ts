@@ -222,6 +222,7 @@ export async function syncApplePassIfExists(
   participantId: string,
   fields: { attendeeName: string; companyName: string },
 ): Promise<void> {
+  if ((await db.event()).is_test) return;
   const existing = (await db.select<WalletPassRow>("wallet_passes", {
     participant_id: `eq.${participantId}`,
     provider: "eq.apple",

@@ -343,7 +343,8 @@ Deno.serve(async (request) => {
     const payload = await readJson<unknown>(request);
     const { action, token } = validateRequestPayload(payload);
 
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const tokenResult = await validateToken(token, db);
 
     if (!tokenResult) {

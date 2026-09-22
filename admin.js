@@ -28,6 +28,7 @@
   let currentActor = null;
   let lastActivity = Date.now();
   let agendaItems = [];
+  let serverClockOffset = 0;
   let dashboardPolls = [];
   let presentationState = null;
   let moderationStatus = "pending";
@@ -55,7 +56,7 @@
 
   async function adminFetch(path, options = {}) {
     const token = await getAccessToken();
-    const response = await fetch(`${API_BASE}${path}`, {
+    const response = await window.arcFetch(`${API_BASE}${path}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -175,8 +176,8 @@
     const next = agendaItems.find((item) => item.status === "next");
     if (next) return next;
     const current = currentAgendaItem();
-    if (!current) return agendaItems.find((item) => !item.is_break && item.status !== "done" && item.status !== "cancelled") || null;
-    const ordered = agendaItems.filter((item) => !item.is_break && item.status !== "cancelled");
+    if (!current) return agendaItems.find((item) => item.status !== "done" && item.status !== "cancelled") || null;
+    const ordered = agendaItems.filter((item) => item.status !== "cancelled");
     const index = ordered.findIndex((item) => item.id === current.id);
     return ordered[index + 1] || null;
   }
@@ -198,7 +199,7 @@
     setText("dashAgendaSpeaker", [current.speaker_name, current.speaker_company].filter(Boolean).join(" · "));
     const start = new Date(current.starts_at).getTime();
     const end = new Date(current.ends_at).getTime();
-    const now = Date.now();
+    const now = Date.now() + serverClockOffset;
     const percent = end > start ? Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100))) : 0;
     el("dashAgendaProgress").style.width = `${percent}%`;
     setText("dashAgendaStart", fmtTime(current.starts_at));
@@ -209,7 +210,7 @@
 
   async function renderDashboardPoll() {
     try {
-      const publicState = await (await fetch(`${API_BASE}/polls`)).json();
+      const publicState = await (await window.arcFetch(`${API_BASE}/polls`)).json();
       const active = publicState.active;
       if (!active) {
         setText("dashPollTitle", "Nav aktīva balsojuma");
@@ -246,9 +247,12 @@
       const [liveData, questionsData, statsData] = await Promise.all([
         adminFetch("/admin-live"),
         adminFetch("/admin-questions?status=pending"),
-        adminFetch("/admin-registrations?action=stats"),
+        adminFetch("/admin-registrations?action=stats").catch(() => ({})),
       ]);
       agendaItems = liveData.agenda || [];
+      serverClockOffset = Date.parse(liveData.server_time) - Date.now() || 0;
+      setText("agendaModeLabel", liveData.event?.agenda_mode === "manual" ? "Manuāla vadība — pulkstenis nepārslēdz" : "Pēc grafika");
+      el("createTestParticipant").hidden = !liveData.event?.is_test;
       renderDashboardAgenda();
       await renderDashboardPoll();
 
@@ -301,18 +305,76 @@
   el("dashExtend")?.addEventListener("click", async () => {
     const current = currentAgendaItem();
     if (!current) return;
-    const newEnd = new Date(new Date(current.ends_at).getTime() + 5 * 60000).toISOString();
     try {
-      await saveAgendaItem({ ...agendaItemToFormPayload(current), id: current.id, endsAt: newEnd });
-      showToast("Pievienotas 5 minūtes.");
+      await adminFetch(`/admin-live?action=set-current&agenda_item_id=${current.id}`, { method: "POST" });
+      showToast("Manuāla vadība: pašreizējais punkts paliks aktīvs.");
       await refreshDashboard();
     } catch (error) {
       showToast(error.message);
     }
   });
+  el("dashSchedule")?.addEventListener("click", async () => {
+    try {
+      await adminFetch("/admin-live?action=schedule", { method: "POST" });
+      await refreshDashboard();
+    } catch (error) { showToast(error.message); }
+  });
+  el("dashShift")?.addEventListener("click", async () => {
+    const minutes = Number(el("agendaShiftMinutes").value);
+    if (!Number.isInteger(minutes) || !minutes || Math.abs(minutes) > 1440) { showToast("Norādi veselu minūšu skaitu no -1440 līdz 1440 (ne 0)."); return; }
+    if (!confirm(`Pārbīdīt atlikušos programmas punktus par ${minutes} minūtēm? Pašreizējā punkta laiki nemainīsies.`)) return;
+    try {
+      const result = await adminFetch("/admin-live?action=shift", { method: "POST", body: JSON.stringify({ minutes }) });
+      showToast(`Pārbīdīti ${result.changed} punkti.`);
+      await refreshDashboard();
+    } catch (error) { showToast(error.message); }
+  });
+  el("createRehearsal")?.addEventListener("click", async () => {
+    const date = new Date(el("rehearsalStarts").value);
+    if (!Number.isFinite(date.getTime())) { showToast("Norādi mēģinājuma sākumu."); return; }
+    const button = el("createRehearsal");
+    button.disabled = true;
+    try {
+      const result = await adminFetch("/admin-rehearsal?action=create", { method: "POST", body: JSON.stringify({ startsAt: date.toISOString() }) });
+      const url = new URL(location.href);
+      url.searchParams.set("event", result.slug);
+      const link = document.createElement("a");
+      link.href = url.href; link.textContent = "Atvērt mēģinājuma administrāciju";
+      link.setAttribute("data-production-link", ""); // Keep the explicitly selected target event.
+      el("rehearsalLinks").replaceChildren(link);
+    } catch (error) { showToast(error.message); }
+    finally { button.disabled = false; }
+  });
+  el("createTestParticipant")?.addEventListener("click", async () => {
+    const button = el("createTestParticipant");
+    button.disabled = true;
+    try {
+      const result = await adminFetch("/admin-rehearsal?action=participant", { method: "POST", body: "{}" });
+      const pass = document.createElement("a");
+      pass.href = window.arcEventUrl(`../pass/?token=${encodeURIComponent(result.pass_token)}`);
+      pass.textContent = "Atvērt testa dalībnieka Pass (saite derīga 7 dienas)";
+      pass.target = "_blank"; pass.rel = "noopener";
+      const qr = document.createElement("img");
+      qr.width = 160; qr.height = 160; qr.alt = "Testa dalībnieka check-in QR";
+      qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(window.arcEventUrl(`../checkin/?token=${result.qr_token}`))}`;
+      el("rehearsalLinks").replaceChildren(pass, qr);
+      await refreshDashboard();
+    } catch (error) { showToast(error.message); }
+    finally { button.disabled = false; }
+  });
+  el("programEditorList")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-start-agenda]");
+    if (!button) return;
+    try {
+      await adminFetch(`/admin-live?action=set-current&agenda_item_id=${button.dataset.startAgenda}`, { method: "POST" });
+      await refreshDashboard();
+      renderProgramEditorList();
+      showToast("Punkts sākts. Ieslēgta manuāla vadība.");
+    } catch (error) { showToast(error.message); }
+  });
   async function fetchActivePoll() {
     try {
-      const data = await (await fetch(`${API_BASE}/polls`)).json();
+      const data = await (await window.arcFetch(`${API_BASE}/polls`)).json();
       return data.active?.poll || null;
     } catch {
       return null;
@@ -362,7 +424,7 @@
 
   async function refreshPresentationState() {
     try {
-      presentationState = await (await fetch(`${API_BASE}/presentation`)).json();
+      presentationState = await (await window.arcFetch(`${API_BASE}/presentation`)).json();
       highlightActiveMode();
       el("presentResultsVisible").checked = Boolean(presentationState.state?.results_visible);
       el("presentQrVisible").checked = presentationState.state?.qr_visible !== false;
@@ -459,11 +521,13 @@
         <div class="admin-program-row-body">
           <span class="admin-chip">${item.category || (item.is_break ? "Pauze" : "Programma")}</span>
           <strong>${item.title}</strong>
+          <span class="admin-fine">Plānots: ${fmtTime(item.planned_starts_at || item.starts_at)} · Faktiski sākts: ${item.actual_started_at ? fmtTime(item.actual_started_at) : "nav reģistrēts"}</span>
           <span class="admin-fine">${[item.speaker_name, item.speaker_company].filter(Boolean).join(" · ")}</span>
         </div>
         <span class="admin-status-pill admin-status-${item.status}">${item.status}</span>
         <span class="admin-fine">${item.question_count || 0} jaut. · ${item.poll_count || 0} balsoj.</span>
         <div class="admin-program-row-actions">
+          <button type="button" class="admin-link" data-start-agenda="${item.id}" ${item.status === "cancelled" ? "disabled" : ""}>Sākt šo punktu tagad</button>
           <button type="button" class="admin-link" data-edit-agenda="${item.id}">Rediģēt</button>
           <button type="button" class="admin-link" data-duplicate-agenda="${item.id}">Dublēt</button>
           <button type="button" class="admin-link is-destructive" data-cancel-agenda="${item.id}">Atcelt</button>
@@ -819,6 +883,7 @@
              <button type="button" data-poll-clear="${poll.id}">Notīrīt atbildes</button>
              <button type="button" data-poll-archive="${poll.id}">Arhivēt</button>
              <button type="button" data-poll-export="${poll.id}">Eksportēt CSV</button>
+             <button type="button" data-poll-delete="${poll.id}">Dzēst balsojumu</button>
            </div>
          </div>`;
     return `
@@ -889,6 +954,16 @@
       return;
     }
     const presentBtn = event.target.closest("[data-poll-present]");
+    const deleteBtn = event.target.closest("[data-poll-delete]");
+    if (deleteBtn) {
+      if (!window.confirm("Neatgriezeniski dzēst šo balsojumu un visas tā atbildes?")) return;
+      try {
+        await adminFetch(`/admin-polls?action=delete&poll_id=${deleteBtn.dataset.pollDelete}`, { method: "POST" });
+        showToast("Balsojums dzēsts.");
+        await refreshPollsPanel();
+      } catch (error) { showToast(error.message); }
+      return;
+    }
     if (presentBtn) {
       await setPresentationState({ mode: "poll_question", pollId: presentBtn.dataset.pollPresent });
       showToast("Balsojums parādīts uz ekrāna.");
@@ -1317,7 +1392,7 @@
 
   async function downloadCsv(path, filename) {
     const token = await getAccessToken();
-    const response = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+    const response = await window.arcFetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) { showToast("Eksportu neizdevās lejupielādēt."); return; }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);

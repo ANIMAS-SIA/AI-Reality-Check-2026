@@ -70,7 +70,8 @@ Deno.serve(async (request) => {
     const token = (requestUrl.searchParams.get("token") || "").trim();
     if (!token) return errorResponse("Token is required", 400);
 
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const tokenHash = await hashToken(token, requiredEnv("TOKEN_PEPPER"));
     const tokenRows = await db.select<TokenRow>("participant_tokens", {
       token_hash: `eq.${tokenHash}`,
@@ -102,6 +103,7 @@ Deno.serve(async (request) => {
 
     return jsonResponse({
       participant: {
+        event: (await db.select("events", { select: "slug,name,starts_at,ends_at,is_test", limit: 1 }))[0],
         id: participant.id,
         firstName: participant.first_name,
         lastName: participant.last_name,

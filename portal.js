@@ -1,4 +1,5 @@
-const STORE_KEY = "aiRealityParticipant";
+const STORE_KEY = window.arcStorageKey("aiRealityParticipant");
+const TOKEN_STORE_KEY = window.arcStorageKey("aiRealityParticipantToken");
 
 const companies = [
   { name: "SIA ANIMAS", reg: "40203377881", sector: "Tehnologijas", size: "Mazs uzņēmums", region: "Rīga", type: "Privātais sektors" },
@@ -8,18 +9,18 @@ const companies = [
 ];
 
 const API_BASE = (window.ARC_API_BASE || "").replace(/\/$/, "");
-const REALTIME_TOPIC = "live:ai-reality-check-2026";
+const REALTIME_TOPIC = `live:${window.ARC_EVENT_SLUG}`;
 
 const defaultParticipant = {
-  firstName: "Betija",
-  lastName: "Muižniece",
-  email: "betija@animas.lv",
-  role: "Dalībniece",
-  companyName: "SIA ANIMAS",
-  status: "Apstiprināts",
-  access: "Pilna pieeja",
-  aiStage: "Izmēģinām atsevišķus rīkus",
-  passId: "ARC26-0064"
+  firstName: "",
+  lastName: "",
+  email: "",
+  role: "",
+  companyName: "",
+  status: "",
+  access: "",
+  aiStage: "",
+  passId: ""
 };
 
 function fallbackCompanySearch(q) {
@@ -47,7 +48,7 @@ async function searchCompanies(q) {
     const url = new URL(`${API_BASE}/companies-search`);
     url.searchParams.set("q", q);
 
-    const response = await fetch(url);
+    const response = await window.arcFetch(url);
     if (!response.ok) throw new Error(`Company search failed: ${response.status}`);
     const data = await response.json();
     const items = data.companies || [];
@@ -73,7 +74,7 @@ async function createRegistration(payload) {
     };
   }
 
-  const response = await fetch(`${API_BASE}/registrations`, {
+  const response = await window.arcFetch(`${API_BASE}/registrations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
@@ -86,14 +87,60 @@ async function createRegistration(payload) {
 }
 
 async function fetchParticipantPass(token) {
-  if (!API_BASE || !token) return getParticipant();
+  if (!API_BASE || !token) throw new Error("Dalībnieka pieeja nav pieejama.");
 
   const url = new URL(`${API_BASE}/participant-pass`);
   url.searchParams.set("token", token);
-  const response = await fetch(url);
+  const response = await window.arcFetch(url);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "AI Pass neizdevās ielādēt.");
-  return { ...getParticipant(), ...data.participant };
+  const participant = data.participant || {};
+  const passId = participant.passId || (participant.id
+    ? `ARC-2026-${participant.id.replaceAll("-", "").slice(0, 8).toUpperCase()}`
+    : "");
+  return { ...defaultParticipant, ...participant, passId };
+}
+
+function storedParticipantToken() {
+  try {
+    return (localStorage.getItem(TOKEN_STORE_KEY) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function removeTokenFromAddressBar() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("token")) return;
+  url.searchParams.delete("token");
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+}
+
+async function authenticateParticipant() {
+  const urlToken = (new URLSearchParams(window.location.search).get("token") || "").trim();
+  const savedToken = storedParticipantToken();
+  const token = urlToken || savedToken;
+  if (!token) return null;
+
+  try {
+    const participant = await fetchParticipantPass(token);
+    localStorage.setItem(TOKEN_STORE_KEY, token);
+    saveParticipant(participant);
+    if (urlToken) removeTokenFromAddressBar();
+    return { participant, token };
+  } catch (error) {
+    if (!urlToken || urlToken === savedToken) {
+      localStorage.removeItem(TOKEN_STORE_KEY);
+      localStorage.removeItem(STORE_KEY);
+    }
+    console.warn(error);
+    return null;
+  }
+}
+
+function revealParticipantPortal() {
+  document.body.classList.remove("portal-auth-pending");
+  document.querySelector(".portal-access-gate")?.setAttribute("hidden", "");
 }
 
 function applyWalletLinks(token) {
@@ -113,7 +160,7 @@ function applyWalletLinks(token) {
       event.preventDefault();
       if (apple.getAttribute("aria-disabled") === "true") return;
       apple.setAttribute("aria-disabled", "true");
-      fetch(apple.href)
+      window.arcFetch(apple.href)
         .then(async (response) => {
           const data = await response.json().catch(() => ({}));
           if (!response.ok || !data.shareUrl) {
@@ -129,7 +176,7 @@ function applyWalletLinks(token) {
   if (qr) {
     const checkinUrl = new URL("../checkin/", window.location.href);
     checkinUrl.searchParams.set("token", token);
-    qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=18&data=${encodeURIComponent(checkinUrl.href)}`;
+    qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=18&data=${encodeURIComponent(window.arcEventUrl(checkinUrl))}`;
   }
 }
 
@@ -272,10 +319,10 @@ function initNetworkingPass(token) {
 }
 
 function getAnonSessionId() {
-  let id = localStorage.getItem("arcAnonymousSessionId");
+  let id = localStorage.getItem(window.arcStorageKey("arcAnonymousSessionId"));
   if (!id) {
     id = crypto.randomUUID ? crypto.randomUUID() : `anon-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    localStorage.setItem("arcAnonymousSessionId", id);
+    localStorage.setItem(window.arcStorageKey("arcAnonymousSessionId"), id);
   }
   return id;
 }
@@ -284,7 +331,7 @@ async function fetchQuestions(agendaItemId) {
   if (!API_BASE) return [];
   const url = new URL(`${API_BASE}/questions`);
   if (agendaItemId) url.searchParams.set("agenda_item_id", agendaItemId);
-  const response = await fetch(url);
+  const response = await window.arcFetch(url);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Jautājumus neizdevās ielādēt.");
   return data.questions || [];
@@ -292,7 +339,7 @@ async function fetchQuestions(agendaItemId) {
 
 async function submitQuestion(body, agendaItemId, isAnonymous = true) {
   const participantId = getParticipant().participantId || "";
-  const response = await fetch(`${API_BASE}/questions`, {
+  const response = await window.arcFetch(`${API_BASE}/questions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -305,12 +352,12 @@ async function submitQuestion(body, agendaItemId, isAnonymous = true) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Jautājumu neizdevās iesniegt.");
-  if (data.anonymousSessionId) localStorage.setItem("arcAnonymousSessionId", data.anonymousSessionId);
+  if (data.anonymousSessionId) localStorage.setItem(window.arcStorageKey("arcAnonymousSessionId"), data.anonymousSessionId);
   return data;
 }
 
 async function voteQuestion(questionId) {
-  const response = await fetch(`${API_BASE}/questions?action=vote`, {
+  const response = await window.arcFetch(`${API_BASE}/questions?action=vote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -320,13 +367,13 @@ async function voteQuestion(questionId) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Balsojumu neizdevās iesniegt.");
-  if (data.anonymousSessionId) localStorage.setItem("arcAnonymousSessionId", data.anonymousSessionId);
+  if (data.anonymousSessionId) localStorage.setItem(window.arcStorageKey("arcAnonymousSessionId"), data.anonymousSessionId);
   return data;
 }
 
 async function fetchPollState() {
   if (!API_BASE) return { active: null, activePolls: [], results: [] };
-  const response = await fetch(`${API_BASE}/polls`);
+  const response = await window.arcFetch(`${API_BASE}/polls`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Balsojumus neizdevās ielādēt.");
   return data;
@@ -334,7 +381,7 @@ async function fetchPollState() {
 
 async function fetchResults() {
   if (!API_BASE) return null;
-  const response = await fetch(`${API_BASE}/results`);
+  const response = await window.arcFetch(`${API_BASE}/results`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Rezultātus neizdevās ielādēt.");
   return data;
@@ -342,7 +389,7 @@ async function fetchResults() {
 
 async function fetchArchive() {
   if (!API_BASE) return null;
-  const response = await fetch(`${API_BASE}/archive`);
+  const response = await window.arcFetch(`${API_BASE}/archive`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Arhīvu neizdevās ielādēt.");
   return data;
@@ -350,14 +397,14 @@ async function fetchArchive() {
 
 async function fetchNetworking(token) {
   if (!API_BASE || !token) return null;
-  const response = await fetch(`${API_BASE}/networking?token=${encodeURIComponent(token)}`);
+  const response = await window.arcFetch(`${API_BASE}/networking?token=${encodeURIComponent(token)}`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Networking datus neizdevās ielādēt.");
   return data;
 }
 
 async function saveNetworking(token, payload) {
-  const response = await fetch(`${API_BASE}/networking?action=profile&token=${encodeURIComponent(token)}`, {
+  const response = await window.arcFetch(`${API_BASE}/networking?action=profile&token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -368,7 +415,7 @@ async function saveNetworking(token, payload) {
 }
 
 async function requestNetworkingContact(token, recipientId, message = "") {
-  const response = await fetch(`${API_BASE}/networking?action=request&token=${encodeURIComponent(token)}`, {
+  const response = await window.arcFetch(`${API_BASE}/networking?action=request&token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recipientId, message }),
@@ -379,7 +426,7 @@ async function requestNetworkingContact(token, recipientId, message = "") {
 }
 
 async function respondNetworkingContact(token, requestId, status) {
-  const response = await fetch(`${API_BASE}/networking?action=respond&token=${encodeURIComponent(token)}`, {
+  const response = await window.arcFetch(`${API_BASE}/networking?action=respond&token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ requestId, status }),
@@ -390,7 +437,7 @@ async function respondNetworkingContact(token, requestId, status) {
 }
 
 async function submitPollVote(pollId, answer) {
-  const response = await fetch(`${API_BASE}/polls`, {
+  const response = await window.arcFetch(`${API_BASE}/polls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -404,7 +451,7 @@ async function submitPollVote(pollId, answer) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Balsojumu neizdevās iesniegt.");
-  if (data.anonymousSessionId) localStorage.setItem("arcAnonymousSessionId", data.anonymousSessionId);
+  if (data.anonymousSessionId) localStorage.setItem(window.arcStorageKey("arcAnonymousSessionId"), data.anonymousSessionId);
   return data;
 }
 
@@ -480,7 +527,7 @@ function trackMaturityEvent(eventName, overrides = {}) {
     anonymous: overrides.anonymous ?? (document.getElementById("aiAnonymous")?.checked !== false),
   };
   try {
-    fetch(`${API_BASE}/analytics-events`, {
+    window.arcFetch(`${API_BASE}/analytics-events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventName, properties }),
@@ -1021,11 +1068,12 @@ function renderParticipantActions(participant) {
   }
 }
 
-function initPassCountdown() {
+function initPassCountdown(event) {
   const countdown = document.getElementById("passCountdown");
   if (!countdown) return;
 
-  const eventStartsAt = new Date("2026-09-30T09:00:00+03:00").getTime();
+  const eventStartsAt = Date.parse(event?.starts_at || "");
+  if (!Number.isFinite(eventStartsAt)) { countdown.hidden = true; return; }
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
@@ -1050,25 +1098,29 @@ function initPassCountdown() {
 }
 
 async function initPass() {
-  initPassCountdown();
-  const token = new URLSearchParams(window.location.search).get("token");
+  const session = await authenticateParticipant();
+  if (!session) return;
+  const { participant: p, token } = session;
+
+  initPassCountdown(p.event);
   applyWalletLinks(token);
   initAddToCalendar();
-  initNetworkingPass(token);
-  let p = getParticipant();
-  try {
-    p = await fetchParticipantPass(token);
-    saveParticipant(p);
-  } catch (error) {
-    showToast(error.message || "AI Pass neizdevās ielādēt.");
+  if (p.event?.is_test) {
+    ["appleWalletLink", "googleWalletLink", "addToCalendarLink"].forEach((id) => {
+      const link = document.getElementById(id);
+      if (link) { link.hidden = true; link.removeAttribute("href"); }
+    });
   }
+  initNetworkingPass(token);
   setText("passName", `${p.firstName} ${p.lastName}`);
   setText("passCompany", p.companyName);
   setText("passRole", p.role);
   setText("passStatus", p.statusLabel || p.status);
   setText("passAccess", p.access);
   setText("passId", p.passId);
+  setText("passNumber", p.passId ? `Dalībnieks · ${p.passId}` : "Dalībnieks");
   setText("aiStage", p.aiStage);
+  revealParticipantPortal();
 
   const qrImage = document.getElementById("passQrImage");
   const walletPanel = document.querySelector(".pass-wallet-panel");
@@ -1115,7 +1167,7 @@ function setActiveTab(name) {
 
 async function fetchLiveState() {
   if (!API_BASE) return null;
-  const response = await fetch(`${API_BASE}/live-state`);
+  const response = await window.arcFetch(`${API_BASE}/live-state`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Live programmu neizdevās ielādēt.");
   return data;
@@ -1347,8 +1399,11 @@ function renderResultsSection(data) {
   }
 }
 
-function initLive() {
-  const p = getParticipant();
+async function initLive() {
+  const session = await authenticateParticipant();
+  if (!session) return;
+  const { participant: p, token: participantToken } = session;
+  revealParticipantPortal();
   let agendaItems = [];
   let lastAgendaSignature = "";
   let questionsByItem = new Map();
@@ -1358,6 +1413,7 @@ function initLive() {
 
   setText("liveMode", p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja");
   setText("liveUser", `${p.firstName} ${p.lastName}`);
+  setText("passAccess", p.access);
 
   document.querySelectorAll(".tab-btn, [data-live-tab]").forEach((button) => {
     button.addEventListener("click", () => setActiveTab(button.dataset.liveTab || button.dataset.tab));
@@ -1365,7 +1421,7 @@ function initLive() {
 
   function myQuestionIds() {
     try {
-      return new Set(JSON.parse(localStorage.getItem("arcMyQuestionIds") || "[]"));
+      return new Set(JSON.parse(localStorage.getItem(window.arcStorageKey("arcMyQuestionIds")) || "[]"));
     } catch {
       return new Set();
     }
@@ -1374,7 +1430,7 @@ function initLive() {
   function rememberMyQuestion(id) {
     const ids = myQuestionIds();
     ids.add(id);
-    localStorage.setItem("arcMyQuestionIds", JSON.stringify([...ids]));
+    localStorage.setItem(window.arcStorageKey("arcMyQuestionIds"), JSON.stringify([...ids]));
   }
 
   function agendaExpandQuestionsMarkup() {
@@ -1749,7 +1805,7 @@ function initLive() {
   });
 
   const params = new URLSearchParams(window.location.search);
-  let networkingToken = params.get("token");
+  let networkingToken = participantToken;
   if (!networkingToken && p.passLink) {
     try {
       networkingToken = new URL(p.passLink, window.location.href).searchParams.get("token");
@@ -1819,7 +1875,7 @@ function initArchive() {
 
 async function callParticipantAction(action, token) {
   if (!API_BASE || !token) throw new Error("API nav konfigurēts.");
-  const response = await fetch(`${API_BASE}/participant-actions`, {
+  const response = await window.arcFetch(`${API_BASE}/participant-actions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, token }),

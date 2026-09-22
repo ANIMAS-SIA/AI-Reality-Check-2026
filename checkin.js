@@ -20,7 +20,7 @@
 
   async function checkinFetch(path, options = {}) {
     const token = await getAccessToken();
-    const response = await fetch(`${API_BASE}${path}`, {
+    const response = await window.arcFetch(`${API_BASE}${path}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",

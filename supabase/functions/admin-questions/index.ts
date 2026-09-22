@@ -63,7 +63,7 @@ async function setQuestionStatus(db: SupabaseRest, actor: AdminActor, questionId
   const updated = await db.update<QuestionRow>("questions", fields, { id: `eq.${questionId}` });
   if (!updated[0]) return errorResponse("Question not found", 404);
   await logAudit(db, actor, "question_status", "questions", questionId, { status });
-  await broadcast(TOPIC, "question_moderated", { question_id: questionId, status });
+  await broadcast(db.topic, "question_moderated", { question_id: questionId, status });
   return jsonResponse({ question: updated[0] });
 }
 
@@ -75,7 +75,7 @@ async function editQuestionBody(db: SupabaseRest, actor: AdminActor, questionId:
   const updated = (await db.update<QuestionRow>("questions", { body: text }, { id: `eq.${questionId}` }))[0];
   // The original wording is preserved here in the audit trail, not in the row itself.
   await logAudit(db, actor, "question_edit", "questions", questionId, { before: existing.body, after: text });
-  await broadcast(TOPIC, "question_moderated", { question_id: questionId, status: updated.status });
+  await broadcast(db.topic, "question_moderated", { question_id: questionId, status: updated.status });
   return jsonResponse({ question: updated });
 }
 
@@ -83,7 +83,7 @@ async function reassignAgenda(db: SupabaseRest, actor: AdminActor, questionId: s
   const updated = await db.update<QuestionRow>("questions", { agenda_item_id: agendaItemId }, { id: `eq.${questionId}` });
   if (!updated[0]) return errorResponse("Question not found", 404);
   await logAudit(db, actor, "question_reassign", "questions", questionId, { agenda_item_id: agendaItemId });
-  await broadcast(TOPIC, "question_moderated", { question_id: questionId, status: updated[0].status });
+  await broadcast(db.topic, "question_moderated", { question_id: questionId, status: updated[0].status });
   return jsonResponse({ question: updated[0] });
 }
 
@@ -103,7 +103,7 @@ async function mergeQuestions(db: SupabaseRest, actor: AdminActor, sourceId: str
   }, { id: `eq.${sourceId}` }))[0];
 
   await logAudit(db, actor, "question_merge", "questions", sourceId, { merged_into_id: targetId });
-  await broadcast(TOPIC, "question_moderated", { question_id: targetId, status: target[0].status });
+  await broadcast(db.topic, "question_moderated", { question_id: targetId, status: target[0].status });
   return jsonResponse({ question: updated });
 }
 
@@ -112,7 +112,7 @@ async function deleteQuestion(db: SupabaseRest, actor: AdminActor, questionId: s
   if (!existing) return errorResponse("Question not found", 404);
   await db.delete("questions", { id: `eq.${questionId}` });
   await logAudit(db, actor, "question_delete", "questions", questionId, { body: existing.body });
-  await broadcast(TOPIC, "question_moderated", { question_id: questionId, status: "deleted" });
+  await broadcast(db.topic, "question_moderated", { question_id: questionId, status: "deleted" });
   return jsonResponse({ ok: true });
 }
 
@@ -137,7 +137,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const url = new URL(request.url);
 
     if (request.method === "GET") {

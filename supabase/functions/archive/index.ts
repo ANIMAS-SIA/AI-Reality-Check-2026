@@ -23,9 +23,10 @@ Deno.serve(async (request) => {
   if (request.method !== "GET") return errorResponse("Method not allowed", 405);
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const url = new URL(request.url);
-    const slug = url.searchParams.get("event") || "ai-reality-check-2026";
+    const slug = db.eventSlug;
     const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
     if (!event) return errorResponse("Event not found", 404);
 
@@ -41,7 +42,7 @@ Deno.serve(async (request) => {
     });
 
     const functionsUrl = `${(Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "")}/functions/v1`;
-    const results = await fetch(`${functionsUrl}/results`).then((response) => response.json()).catch(() => null);
+    const results = await fetch(`${functionsUrl}/results?event=${encodeURIComponent(db.eventSlug)}`).then((response) => response.json()).catch(() => null);
 
     return jsonResponse({
       event,

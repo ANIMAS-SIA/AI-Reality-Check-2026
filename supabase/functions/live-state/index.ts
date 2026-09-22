@@ -1,11 +1,16 @@
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
+import { resolveAgenda } from "../_shared/agenda.ts";
 
 type EventRow = {
   id: string;
   name: string;
   capacity: number;
   current_agenda_item_id: string | null;
+  agenda_mode: string;
+  starts_at: string;
+  ends_at: string;
+  is_test: boolean;
 };
 
 type AgendaItem = {
@@ -47,26 +52,6 @@ function toPublicAgenda(item: AgendaItem) {
   };
 }
 
-function resolveCurrent(event: EventRow, agenda: AgendaItem[]): AgendaItem | null {
-  const now = Date.now();
-  const timed = agenda.find((item) => (
-    !item.is_break
-    && new Date(item.starts_at).getTime() <= now
-    && new Date(item.ends_at).getTime() > now
-  ));
-  return timed
-    || agenda.find((item) => item.id === event.current_agenda_item_id)
-    || agenda.find((item) => item.status === "now" && !item.is_break)
-    || null;
-}
-
-function resolveNext(agenda: AgendaItem[], current: AgendaItem | null): AgendaItem | null {
-  if (!agenda.length) return null;
-  if (!current) return agenda.find((item) => !item.is_break) || null;
-  const index = agenda.findIndex((item) => item.id === current.id);
-  return agenda.slice(index + 1).find((item) => !item.is_break) || null;
-}
-
 Deno.serve(async (request) => {
   const options = handleOptions(request);
   if (options) return options;
@@ -74,8 +59,9 @@ Deno.serve(async (request) => {
   if (request.method !== "GET") return errorResponse("Method not allowed", 405);
 
   try {
-    const db = new SupabaseRest();
-    const slug = new URL(request.url).searchParams.get("event") || "ai-reality-check-2026";
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
+    const slug = db.eventSlug;
     const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
     if (!event) return errorResponse("Event not found", 404);
 
@@ -89,24 +75,25 @@ Deno.serve(async (request) => {
       limit: event.capacity + 1,
     });
     const approvedCount = Math.min(approvedParticipants.length, event.capacity);
-    const current = resolveCurrent(event, agenda);
-    const next = resolveNext(agenda, current);
-    if (current && current.id !== event.current_agenda_item_id) {
-      await db.update("events", { current_agenda_item_id: current.id }, { id: `eq.${event.id}` });
-    }
+    const resolved = resolveAgenda(event, agenda);
+    const { current, next } = resolved;
 
     return jsonResponse({
       event: {
         id: event.id,
         name: event.name,
         slug,
+        starts_at: event.starts_at,
+        ends_at: event.ends_at,
+        is_test: event.is_test,
+        agenda_mode: event.agenda_mode,
         capacity: event.capacity,
         approved_count: approvedCount,
         available_seats: Math.max(0, event.capacity - approvedCount),
       },
       current: current ? toPublicAgenda(current) : null,
       next: next ? toPublicAgenda(next) : null,
-      agenda: agenda.map(toPublicAgenda),
+      agenda: resolved.agenda.map(toPublicAgenda),
       updated_at: new Date().toISOString(),
     });
   } catch (error) {

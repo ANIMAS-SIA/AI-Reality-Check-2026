@@ -34,7 +34,8 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") return errorResponse("Method not allowed", 405);
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const limited = await rateLimit(db, request, "analytics-events", 60, 60);
     if (limited) return limited;
 

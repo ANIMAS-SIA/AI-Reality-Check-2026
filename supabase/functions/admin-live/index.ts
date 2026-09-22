@@ -2,12 +2,15 @@ import { broadcast } from "../_shared/broadcast.ts";
 import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, logAudit } from "../_shared/auth.ts";
 import { errorResponse, handleOptions, jsonResponse, readJson } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
+import { resolveAgenda } from "../_shared/agenda.ts";
 
 const TOPIC = "live:ai-reality-check-2026";
 
 type EventRow = {
   id: string;
   slug: string;
+  agenda_mode: string;
+  current_agenda_item_id: string | null;
 };
 
 type AgendaItem = {
@@ -51,7 +54,7 @@ type AgendaPayload = Partial<{
 }>;
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
   if (!event) throw new Error(`Event not found: ${slug}`);
   return event;
@@ -83,7 +86,9 @@ async function listAgenda(db: SupabaseRest, event: EventRow): Promise<Response> 
   }
 
   return jsonResponse({
-    agenda: agenda.map((item) => ({
+    event,
+    server_time: new Date().toISOString(),
+    agenda: resolveAgenda(event, agenda).agenda.map((item) => ({
       ...item,
       question_count: questionCounts.get(item.id) || 0,
       poll_count: pollCounts.get(item.id) || 0,
@@ -98,28 +103,11 @@ async function setCurrent(db: SupabaseRest, actor: AdminActor, event: EventRow, 
   });
   const currentIndex = agenda.findIndex((item) => item.id === agendaItemId);
   if (currentIndex < 0) return errorResponse("Agenda item not found", 404);
-  const current = agenda[currentIndex];
-  if (current.is_break) return errorResponse("Break cannot be current live item", 400);
-
-  for (let index = 0; index < agenda.length; index += 1) {
-    const item = agenda[index];
-    if (item.is_break || item.status === "cancelled") continue;
-    const status = item.id === agendaItemId
-      ? "now"
-      : index < currentIndex
-        ? "done"
-        : index === currentIndex + 1
-          ? "next"
-          : "later";
-    if (item.status !== status) {
-      await db.update("agenda_items", { status }, { id: `eq.${item.id}` });
-    }
-  }
-
-  const updated = await db.update("events", { current_agenda_item_id: agendaItemId }, { id: `eq.${event.id}` });
+  if (agenda[currentIndex].status === "cancelled") return errorResponse("Cancelled item cannot be started", 400);
+  await db.rpc("control_event_agenda", { p_event_id: event.id, p_action: "manual", p_item_id: agendaItemId });
   await logAudit(db, actor, "agenda_set_current", "agenda_items", agendaItemId);
-  await broadcast(TOPIC, "state_changed", { current_agenda_item_id: agendaItemId });
-  return jsonResponse({ event: updated[0], current_agenda_item_id: agendaItemId });
+  await broadcast(db.topic, "state_changed", { current_agenda_item_id: agendaItemId });
+  return await listAgenda(db, await getEvent(db));
 }
 
 function agendaRow(eventId: string, payload: AgendaPayload) {
@@ -145,6 +133,7 @@ function agendaRow(eventId: string, payload: AgendaPayload) {
 async function upsertAgenda(db: SupabaseRest, actor: AdminActor, event: EventRow, payload: AgendaPayload): Promise<Response> {
   const row = agendaRow(event.id, payload);
   if (!row.starts_at || !row.ends_at || !row.title) return errorResponse("Start, end and title are required", 400);
+  if (!Number.isFinite(Date.parse(row.starts_at)) || !Number.isFinite(Date.parse(row.ends_at)) || Date.parse(row.ends_at) <= Date.parse(row.starts_at)) return errorResponse("End must be after start", 400);
 
   if (payload.id) {
     if (payload.expectedUpdatedAt) {
@@ -157,7 +146,7 @@ async function upsertAgenda(db: SupabaseRest, actor: AdminActor, event: EventRow
     const updated = await db.update<AgendaItem>("agenda_items", row, { id: `eq.${payload.id}` });
     if (!updated[0]) return errorResponse("Agenda item not found", 404);
     await logAudit(db, actor, "agenda_update", "agenda_items", payload.id, { fields: Object.keys(row) });
-    await broadcast(TOPIC, "state_changed", { agenda_item_id: payload.id, action: "update" });
+    await broadcast(db.topic, "state_changed", { agenda_item_id: payload.id, action: "update" });
     return jsonResponse({ agenda_item: updated[0] });
   }
 
@@ -171,7 +160,7 @@ async function upsertAgenda(db: SupabaseRest, actor: AdminActor, event: EventRow
   }
   const inserted = await db.insert<AgendaItem>("agenda_items", [{ ...row, status: row.is_break ? "break" : "later" }]);
   await logAudit(db, actor, "agenda_create", "agenda_items", inserted[0]?.id);
-  await broadcast(TOPIC, "state_changed", { agenda_item_id: inserted[0]?.id, action: "create" });
+  await broadcast(db.topic, "state_changed", { agenda_item_id: inserted[0]?.id, action: "create" });
   return jsonResponse({ agenda_item: inserted[0] }, 201);
 }
 
@@ -179,7 +168,7 @@ async function cancelAgendaItem(db: SupabaseRest, actor: AdminActor, agendaItemI
   const updated = await db.update<AgendaItem>("agenda_items", { status: "cancelled" }, { id: `eq.${agendaItemId}` });
   if (!updated[0]) return errorResponse("Agenda item not found", 404);
   await logAudit(db, actor, "agenda_cancel", "agenda_items", agendaItemId);
-  await broadcast(TOPIC, "state_changed", { agenda_item_id: agendaItemId, action: "cancel" });
+  await broadcast(db.topic, "state_changed", { agenda_item_id: agendaItemId, action: "cancel" });
   return jsonResponse({ agenda_item: updated[0] });
 }
 
@@ -206,7 +195,7 @@ async function duplicateAgendaItem(db: SupabaseRest, actor: AdminActor, event: E
     questions_enabled: source.questions_enabled !== false,
   }]);
   await logAudit(db, actor, "agenda_duplicate", "agenda_items", inserted[0]?.id, { source_id: agendaItemId });
-  await broadcast(TOPIC, "state_changed", { agenda_item_id: inserted[0]?.id, action: "create" });
+  await broadcast(db.topic, "state_changed", { agenda_item_id: inserted[0]?.id, action: "create" });
   return jsonResponse({ agenda_item: inserted[0] }, 201);
 }
 
@@ -219,7 +208,7 @@ async function reorderAgenda(db: SupabaseRest, actor: AdminActor, event: EventRo
     });
   }
   await logAudit(db, actor, "agenda_reorder", "agenda_items", undefined, { order: orderedIds });
-  await broadcast(TOPIC, "state_changed", { action: "reorder" });
+  await broadcast(db.topic, "state_changed", { action: "reorder" });
   return jsonResponse({ ok: true });
 }
 
@@ -232,7 +221,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const event = await getEvent(db);
     const url = new URL(request.url);
 
@@ -244,6 +234,18 @@ Deno.serve(async (request) => {
     if (request.method === "POST") {
       const action = url.searchParams.get("action");
       const agendaItemId = url.searchParams.get("agenda_item_id");
+
+      if (action === "schedule" || action === "shift") {
+        const actor = await authenticateAdmin(request, db, action === "shift" ? [...WRITE_ROLES] : [...LIVE_CONTROL_ROLES]);
+        const payload = action === "shift" ? await readJson<{ minutes: number }>(request) : { minutes: null };
+        if (action === "shift" && (!Number.isInteger(payload.minutes) || !payload.minutes || Math.abs(payload.minutes) > 1440)) return errorResponse("Invalid minutes", 400);
+        const items = await db.select<AgendaItem>("agenda_items", { order: "display_order.asc,starts_at.asc" });
+        const current = resolveAgenda(event, items).current;
+        const result = await db.rpc("control_event_agenda", { p_event_id: event.id, p_action: action, p_item_id: current?.id || null, p_minutes: payload.minutes });
+        await logAudit(db, actor, `agenda_${action}`, "events", event.id, { minutes: payload.minutes });
+        await broadcast(db.topic, "state_changed", { action });
+        return jsonResponse(result);
+      }
 
       if (action === "set-current" && agendaItemId) {
         const actor = await authenticateAdmin(request, db, [...LIVE_CONTROL_ROLES]);

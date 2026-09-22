@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.participant-actions]
 verify_jwt = false
+
+[functions.admin-rehearsal]
+verify_jwt = false

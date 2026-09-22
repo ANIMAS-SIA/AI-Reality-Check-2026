@@ -2,6 +2,7 @@ import { broadcast } from "../_shared/broadcast.ts";
 import { errorResponse, handleOptions, jsonResponse, readJson } from "../_shared/http.ts";
 import { rateLimit } from "../_shared/rate-limit.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
+import { resolveAgenda, TimedAgenda } from "../_shared/agenda.ts";
 
 type QuestionPayload = {
   agendaItemId?: string;
@@ -17,7 +18,7 @@ type VotePayload = {
   anonymousSessionId?: string;
 };
 
-type EventRow = { id: string; slug: string; current_agenda_item_id: string | null; auto_approve_enabled: boolean };
+type EventRow = { id: string; slug: string; agenda_mode: string; current_agenda_item_id: string | null; auto_approve_enabled: boolean };
 type AgendaRow = { id: string; title: string; speaker_name: string | null };
 type QuestionRow = {
   id: string;
@@ -37,7 +38,7 @@ function clean(value?: string): string {
 }
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
   if (!event) throw new Error(`Event not found: ${slug}`);
   return event;
@@ -60,7 +61,10 @@ async function createQuestion(db: SupabaseRest, event: EventRow, payload: Questi
   if (!body || body.length > 280) return errorResponse("Jautājumam jābūt 1-280 rakstzīmēm.", 400);
 
   const anonymousSessionId = clean(payload.anonymousSessionId) || crypto.randomUUID();
-  const agendaItemId = clean(payload.agendaItemId) || event.current_agenda_item_id;
+  const agenda = await db.select<TimedAgenda & { questions_enabled: boolean; is_break: boolean }>("agenda_items", { order: "display_order.asc,starts_at.asc" });
+  const agendaItemId = clean(payload.agendaItemId) || resolveAgenda(event, agenda).current?.id || null;
+  const item = agenda.find((row) => row.id === agendaItemId);
+  if (agendaItemId && (!item || !item.questions_enabled || item.is_break || item.status === "cancelled")) return errorResponse("Questions are not enabled for this agenda item", 400);
   const participantId = clean(payload.participantId);
   const isAnonymous = payload.isAnonymous !== false || !participantId;
   const inserted = await db.insert<QuestionRow>("questions", [{
@@ -73,7 +77,7 @@ async function createQuestion(db: SupabaseRest, event: EventRow, payload: Questi
     status: event.auto_approve_enabled ? "approved" : "pending",
   }]);
   const question = inserted[0];
-  await broadcast("live:ai-reality-check-2026", "question_created", { question_id: question.id });
+  await broadcast(db.topic, "question_created", { question_id: question.id });
   return jsonResponse({ question, anonymousSessionId }, 201);
 }
 
@@ -93,7 +97,7 @@ async function voteQuestion(db: SupabaseRest, payload: VotePayload): Promise<Res
     return errorResponse("Balsojums jau ir iesniegts.", 409, String(error));
   }
 
-  await broadcast("live:ai-reality-check-2026", "question_voted", { question_id: questionId });
+  await broadcast(db.topic, "question_voted", { question_id: questionId });
   return jsonResponse({ ok: true, anonymousSessionId });
 }
 
@@ -102,7 +106,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const event = await getEvent(db);
     const url = new URL(request.url);
 

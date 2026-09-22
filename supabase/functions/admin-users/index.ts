@@ -130,7 +130,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const url = new URL(request.url);
 
     if (request.method === "GET") {

@@ -161,7 +161,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const url = new URL(request.url);
     const participant = await currentParticipant(db, url.searchParams.get("token") || "");
     if (!participant) return errorResponse("Invalid token", 401);

@@ -9,6 +9,7 @@ type RegistrationPayload = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  phone?: string;
   role?: string;
   companyName?: string;
   company?: {
@@ -106,7 +107,7 @@ function companyRow(payload: RegistrationPayload) {
 }
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const events = await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 });
   if (!events[0]) throw new Error(`Event not found: ${slug}`);
   return events[0];
@@ -194,7 +195,8 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const limited = await rateLimit(db, request, "registrations", 8, 60);
     if (limited) return limited;
     const payload = await readJson<RegistrationPayload>(request);

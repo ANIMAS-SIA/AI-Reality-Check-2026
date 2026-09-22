@@ -168,7 +168,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const actor = await authenticateAdmin(request, db, [...CHECKIN_ROLES]);
 
     if (request.method === "GET") {

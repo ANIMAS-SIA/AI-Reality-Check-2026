@@ -151,10 +151,22 @@
                 <span id="dashAgendaEnd">--:--</span>
               </div>
             </button>
-            <div class="admin-card-actions">
-              <button type="button" class="btn secondary" id="dashExtend">+5 min</button>
-              <button type="button" class="live-submit" id="dashNextAgenda">Nākamais punkts <span>→</span></button>
+            <div class="admin-card-actions admin-program-controls">
+              <span id="agendaModeLabel" role="status">Pēc grafika</span>
+              <button type="button" class="btn secondary" id="dashExtend" data-requires-moderate>Paturēt pašreizējo</button>
+              <button type="button" class="btn secondary" id="dashSchedule" data-requires-moderate>Atgriezties pie grafika</button>
+              <button type="button" class="live-submit" id="dashNextAgenda" data-requires-moderate>Nākamais punkts <span>→</span></button>
             </div>
+            <details class="admin-event-settings" data-requires-write>
+              <summary>Laiku pārbīde un mēģinājums</summary>
+              <p>Pārbīde maina tikai punktus pēc pašreizējā; ja aktīva punkta nav — nākotnes punktus. Negatīvs skaitlis pārbīda agrāk.</p>
+              <label class="admin-field"><span>Minūtes</span><input id="agendaShiftMinutes" type="number" min="-1440" max="1440" step="1" value="5"></label>
+              <button type="button" class="btn secondary" id="dashShift">Pārbīdīt atlikušos laikus</button>
+              <label class="admin-field"><span>Mēģinājuma sākums (šīs ierīces laika joslā)</span><input id="rehearsalStarts" type="datetime-local"></label>
+              <button type="button" class="btn secondary" id="createRehearsal">Izveidot atsevišķu mēģinājumu</button>
+              <button type="button" class="btn secondary" id="createTestParticipant" hidden>Izveidot testa dalībnieku</button>
+              <div id="rehearsalLinks" role="status"></div>
+            </details>
           </article>
 
           <article class="admin-card admin-card-poll">

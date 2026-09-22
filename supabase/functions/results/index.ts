@@ -15,7 +15,7 @@ type ParticipantRow = {
 };
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
   if (!event) throw new Error(`Event not found: ${slug}`);
   return event;
@@ -58,7 +58,8 @@ Deno.serve(async (request) => {
   if (request.method !== "GET") return errorResponse("Method not allowed", 405);
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const event = await getEvent(db);
     const polls = await db.select<PollRow>("polls", {
       event_id: `eq.${event.id}`,

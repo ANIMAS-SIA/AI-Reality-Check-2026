@@ -34,7 +34,7 @@ function clean(value?: string): string {
 }
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
   if (!event) throw new Error(`Event not found: ${slug}`);
   return event;
@@ -82,7 +82,8 @@ async function listPolls(db: SupabaseRest, eventId: string): Promise<Response> {
     order: "created_at.asc",
   });
   const activePolls = polls.filter((poll) => poll.status === "active");
-  const published = polls.filter((poll) => poll.results_public || ["published", "closed"].includes(poll.status));
+  const published = polls.filter((poll) => poll.status !== "archived"
+    && (poll.results_public || ["published", "closed"].includes(poll.status)));
   const activeResults = [];
   for (const poll of activePolls) activeResults.push(await resultsForPoll(db, poll));
   const resultSets = [];
@@ -111,7 +112,7 @@ async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Respo
       anonymous_session_id: participantId ? null : anonymousSessionId,
       response_text: responseText,
     }]);
-    await broadcast("live:ai-reality-check-2026", "poll_voted", { poll_id: pollId });
+    await broadcast(db.topic, "poll_voted", { poll_id: pollId });
     return jsonResponse({ ok: true, anonymousSessionId, results: await resultsForPoll(db, poll) });
   }
 
@@ -132,7 +133,7 @@ async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Respo
     return errorResponse("Šajā balsojumā balss jau ir iesniegta.", 409, String(error));
   }
 
-  await broadcast("live:ai-reality-check-2026", "poll_voted", { poll_id: pollId });
+  await broadcast(db.topic, "poll_voted", { poll_id: pollId });
   return jsonResponse({ ok: true, anonymousSessionId, results: await resultsForPoll(db, poll) });
 }
 
@@ -141,7 +142,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const event = await getEvent(db);
 
     if (request.method === "GET") return await listPolls(db, event.id);

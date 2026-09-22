@@ -40,7 +40,7 @@ type QuestionRow = { id: string; body: string; is_anonymous: boolean; vote_count
 type ParticipantRow = { id: string };
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
   if (!event) throw new Error(`Event not found: ${slug}`);
   return event;
@@ -159,7 +159,7 @@ async function updateState(db: SupabaseRest, actor: AdminActor, payload: UpdateP
 
   await db.update("presentation_state", row, { id: `eq.${state.id}` });
   await logAudit(db, actor, "presentation_update", "presentation_state", state.id, payload);
-  await broadcast(TOPIC, "presentation_changed", { mode: row.mode || state.mode });
+  await broadcast(db.topic, "presentation_changed", { mode: row.mode || state.mode });
 
   const updated = (await db.select<StateRow>("presentation_state", { id: `eq.${state.id}`, limit: 1 }))[0];
   return jsonResponse(await buildSnapshot(db, event, updated));
@@ -176,7 +176,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
 
     // Presentation content has no participant PII by design, so reads stay
     // public — the same trust model the live portal's GET endpoints already use.

@@ -24,7 +24,13 @@
   </style>
   <script src="../site-chrome.js" defer></script>
 </head>
-<body data-page="pass">
+<body data-page="pass" class="portal-auth-pending">
+  <section class="portal-access-gate" aria-live="polite">
+    <div>
+      <h1>Slēgts pasākums</h1>
+      <p>Dalībnieka vide ir pieejama tikai ar personīgo saiti. Atver saiti savā apstiprinājuma e-pastā.</p>
+    </div>
+  </section>
   <main class="portal-shell pass-shell">
     <header class="topbar pass-topbar">
       <a class="brand" href="../">
@@ -69,7 +75,7 @@
           </div>
 
           <div class="pass-person">
-            <span class="pass-number">Dalībnieks #0064</span>
+            <span class="pass-number" id="passNumber">Dalībnieks</span>
             <strong id="passName">Dalībnieks Piemērs</strong>
             <p><span id="passCompany">Uzņēmums</span> · <span id="passRole">Vadītājs</span></p>
           </div>
@@ -82,7 +88,7 @@
             </div>
             <div>
               <span>Ieejas kods</span>
-              <strong id="passId">ARC26-0064</strong>
+              <strong id="passId">—</strong>
               <small>Parādi šo kodu pie ieejas</small>
             </div>
           </div>

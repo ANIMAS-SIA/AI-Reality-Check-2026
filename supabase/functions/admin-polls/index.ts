@@ -54,7 +54,7 @@ function clean(value?: string): string {
 }
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
-  const slug = Deno.env.get("EVENT_SLUG") || "ai-reality-check-2026";
+  const slug = db.eventSlug;
   const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
   if (!event) throw new Error(`Event not found: ${slug}`);
   return event;
@@ -121,7 +121,7 @@ async function createPoll(db: SupabaseRest, actor: AdminActor, event: EventRow, 
   }
 
   await logAudit(db, actor, "poll_create", "polls", poll.id, { poll_type: pollType });
-  await broadcast(TOPIC, "poll_changed", { poll_id: poll.id, action: "create" });
+  await broadcast(db.topic, "poll_changed", { poll_id: poll.id, action: "create" });
   return jsonResponse({ poll }, 201);
 }
 
@@ -165,7 +165,7 @@ async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, p
   }
 
   await logAudit(db, actor, "poll_update", "polls", pollId, { fields: Object.keys(payload) });
-  await broadcast(TOPIC, "poll_changed", { poll_id: pollId, action: "update" });
+  await broadcast(db.topic, "poll_changed", { poll_id: pollId, action: "update" });
   return jsonResponse({ poll: updated });
 }
 
@@ -203,13 +203,14 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
     fields.results_public = false;
   } else if (action === "archive") {
     fields.status = "archived";
+    fields.results_public = false;
   } else {
     return errorResponse("Unsupported poll action", 400);
   }
 
   const updated = (await db.update<PollRow>("polls", fields, { id: `eq.${pollId}` }))[0];
   await logAudit(db, actor, `poll_${action}`, "polls", pollId);
-  await broadcast(TOPIC, "poll_changed", { poll_id: pollId, action });
+  await broadcast(db.topic, "poll_changed", { poll_id: pollId, action });
   return jsonResponse({ poll: updated });
 }
 
@@ -221,7 +222,17 @@ async function clearResponses(db: SupabaseRest, actor: AdminActor, pollId: strin
   await db.delete("poll_text_responses", { poll_id: `eq.${pollId}` });
 
   await logAudit(db, actor, "poll_clear_responses", "polls", pollId);
-  await broadcast(TOPIC, "poll_changed", { poll_id: pollId, action: "clear-responses" });
+  await broadcast(db.topic, "poll_changed", { poll_id: pollId, action: "clear-responses" });
+  return jsonResponse({ ok: true });
+}
+
+async function deletePoll(db: SupabaseRest, actor: AdminActor, pollId: string): Promise<Response> {
+  const poll = (await db.select<PollRow>("polls", { id: `eq.${pollId}`, limit: 1 }))[0];
+  if (!poll) return errorResponse("Poll not found", 404);
+
+  await db.delete("polls", { id: `eq.${pollId}` });
+  await logAudit(db, actor, "poll_delete", "polls", pollId, { title: poll.title });
+  await broadcast(db.topic, "poll_changed", { poll_id: pollId, action: "delete" });
   return jsonResponse({ ok: true });
 }
 
@@ -270,7 +281,8 @@ Deno.serve(async (request) => {
   if (options) return options;
 
   try {
-    const db = new SupabaseRest();
+    const db = new SupabaseRest(request);
+    await db.assertRehearsalSafe(request);
     const event = await getEvent(db);
     const url = new URL(request.url);
 
@@ -309,6 +321,10 @@ Deno.serve(async (request) => {
       if (action === "clear-responses") {
         const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);
         return await clearResponses(db, actor, pollId);
+      }
+      if (action === "delete") {
+        const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);
+        return await deletePoll(db, actor, pollId);
       }
       return errorResponse("Unsupported poll action", 400);
     }

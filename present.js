@@ -49,7 +49,7 @@
     const visible = snapshot.state.qr_visible;
     el("presentWaitingQr").hidden = !visible;
     if (visible) {
-      const url = `${window.location.origin}/live/`;
+      const url = window.arcEventUrl(`${window.location.origin}/live/`);
       el("presentWaitingQrImg").src = qrUrl(url);
       el("presentWaitingUrl").textContent = url.replace(/^https?:\/\//, "");
     }
@@ -65,7 +65,7 @@
     setText("presentAgendaTime", `${fmtTime(item.starts_at)}–${fmtTime(item.ends_at)}`);
     const visible = snapshot.state.qr_visible;
     el("presentAgendaQr").hidden = !visible;
-    if (visible) el("presentAgendaQrImg").src = qrUrl(`${window.location.origin}/live/?view=program`);
+    if (visible) el("presentAgendaQrImg").src = qrUrl(window.arcEventUrl(`${window.location.origin}/live/?view=program`));
   }
 
   function renderPollQuestion(snapshot) {
@@ -84,7 +84,7 @@
     setText("presentPollVoteCount", String(poll.total_votes || 0));
     const visible = snapshot.state.qr_visible;
     el("presentPollQr").hidden = !visible;
-    if (visible) el("presentPollQrImg").src = qrUrl(`${window.location.origin}/live/?view=program`);
+    if (visible) el("presentPollQrImg").src = qrUrl(window.arcEventUrl(`${window.location.origin}/live/?view=program`));
   }
 
   function renderPollResults(snapshot) {
@@ -134,7 +134,7 @@
     const visible = snapshot.state.qr_visible;
     el("presentClosingQr").hidden = !visible;
     if (visible) {
-      const url = `${window.location.origin}/rezultati/`;
+      const url = window.arcEventUrl(`${window.location.origin}/rezultati/`);
       el("presentClosingQrImg").src = qrUrl(url);
       el("presentClosingUrl").textContent = url.replace(/^https?:\/\//, "");
     }
@@ -162,7 +162,7 @@
 
   async function refreshSnapshot() {
     try {
-      const response = await fetch(`${API_BASE}/presentation`);
+      const response = await window.arcFetch(`${API_BASE}/presentation`);
       if (!response.ok) throw new Error("bad status");
       applySnapshot(await response.json());
     } catch (error) {
