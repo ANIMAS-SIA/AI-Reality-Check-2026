@@ -306,6 +306,68 @@ body[data-page="registration"] .brand-mark,
     font-size: clamp(32px, 9vw, 36px);
     line-height: 1;
   }
+
+  body[data-page="live"] .pass-topbar,
+  body[data-page="pass"] .pass-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .75rem;
+    align-items: center;
+    min-height: 68px;
+  }
+
+  body[data-page="live"] .pass-nav,
+  body[data-page="pass"] .pass-nav,
+  body[data-page="live"] .pass-pill,
+  body[data-page="pass"] .pass-pill {
+    display: none;
+  }
+
+  body[data-page="live"] .pass-actions,
+  body[data-page="pass"] .pass-actions {
+    position: static;
+    width: auto;
+    min-width: 0;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  body[data-page="live"] .pass-actions .mode-chip,
+  body[data-page="pass"] .pass-actions .mode-chip {
+    display: inline-flex;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  body[data-page="live"],
+  body[data-page="pass"] {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  body[data-page="live"] .live-bottom-tabs,
+  body[data-page="pass"] .live-bottom-tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-height: calc(60px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    background: rgba(3, 3, 3, .98);
+    backdrop-filter: blur(18px);
+  }
+
+  body[data-page="live"] .live-bottom-tabs > *,
+  body[data-page="pass"] .live-bottom-tabs > * {
+    min-width: 0;
+    min-height: 60px;
+    padding: 8px 2px;
+    font-size: 8px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -346,6 +408,13 @@ body[data-page="registration"] .brand-mark,
   }
 
   body[data-page="admin"] .top-actions {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  body[data-page="live"] .pass-topbar .brand-text,
+  body[data-page="pass"] .pass-topbar .brand-text {
     display: none;
   }
 }
