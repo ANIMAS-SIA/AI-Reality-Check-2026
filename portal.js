@@ -120,7 +120,10 @@ async function authenticateParticipant() {
   const urlToken = (new URLSearchParams(window.location.search).get("token") || "").trim();
   const savedToken = storedParticipantToken();
   const token = urlToken || savedToken;
-  if (!token) return null;
+  if (!token) {
+    showClosedPortal();
+    return null;
+  }
 
   try {
     const participant = await fetchParticipantPass(token);
@@ -134,8 +137,13 @@ async function authenticateParticipant() {
       localStorage.removeItem(STORE_KEY);
     }
     console.warn(error);
+    showClosedPortal();
     return null;
   }
+}
+
+function showClosedPortal() {
+  document.querySelector(".portal-access-gate")?.removeAttribute("hidden");
 }
 
 function revealParticipantPortal() {
