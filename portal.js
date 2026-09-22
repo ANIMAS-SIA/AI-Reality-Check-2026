@@ -1105,7 +1105,7 @@ async function initPass() {
   initPassCountdown(p.event);
   applyWalletLinks(token);
   initAddToCalendar();
-  if (p.event?.is_test) {
+  if (p.event?.is_test || window.ARC_PREVIEW_READ_ONLY) {
     ["appleWalletLink", "googleWalletLink", "addToCalendarLink"].forEach((id) => {
       const link = document.getElementById(id);
       if (link) { link.hidden = true; link.removeAttribute("href"); }

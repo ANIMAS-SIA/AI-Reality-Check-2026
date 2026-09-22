@@ -3,6 +3,7 @@ begin;
 do $$
 declare source events; trial events; trial_id uuid; first_item agenda_items; last_item agenda_items;
   before_event jsonb; before_agenda jsonb; before_polls jsonb; control jsonb; count_before integer;
+  winter_id uuid; person_id uuid; token_id uuid; blocked boolean := false;
 begin
   select * into strict source from events where slug = 'ai-reality-check-2026';
   before_event := to_jsonb(source);
@@ -44,6 +45,17 @@ begin
   assert before_polls = (select jsonb_agg(to_jsonb(p) order by id) from polls p where event_id = source.id), 'Production polls changed';
   assert not has_function_privilege('anon', 'control_event_agenda(uuid,text,uuid,integer)', 'EXECUTE');
   assert not has_function_privilege('authenticated', 'create_event_rehearsal(uuid,text,timestamptz)', 'EXECUTE');
+  winter_id := create_event_rehearsal(source.id, 'rehearsal-winter-test', '2027-01-15T10:00:00+02');
+  assert not exists (select 1 from agenda_items a join agenda_items b on b.event_id = source.id and b.display_order = a.display_order
+    where a.event_id = winter_id and a.starts_at - '2027-01-15T10:00:00+02'::timestamptz <> b.starts_at - source.starts_at), 'DST shift changed offsets';
+  insert into participants(event_id, first_name, last_name, email) values (trial_id, 'Test', 'Only', 'test@example.invalid') returning id into person_id;
+  insert into participant_tokens(participant_id, purpose, token_hash) values (person_id, 'magic_link', 'local-test-token') returning id into token_id;
+  assert (select event_id = trial_id from participant_tokens where id = token_id), 'Legacy insert did not inherit event';
+  begin
+    insert into participant_tokens(event_id, participant_id, purpose, token_hash) values (source.id, person_id, 'magic_link', 'cross-event-test');
+  exception when raise_exception then blocked := true;
+  end;
+  assert blocked, 'Cross-event child insert was accepted';
   raise notice 'Rehearsal isolation, timing, manual control, shift and privileges passed';
 end $$;
 rollback;

@@ -98,3 +98,19 @@ test('frontend keeps explicit event context on API, QR/navigation links and stor
   await context.window.arcFetch('https://other.invalid/lookup');
   assert.equal(calls.at(-1)[0], 'https://other.invalid/lookup');
 });
+
+test('preview without a rehearsal fails closed for production writes; production hostname remains usable', async () => {
+  for (const hostname of ['preview.vercel.app', 'localhost', 'konference.animas.lv']) {
+    const calls = [];
+    const context = { URL, URLSearchParams, location: new URL(`https://${hostname}/admin/`), document: { addEventListener() {} }, window: { fetch: (...args) => { calls.push(args); } } };
+    vm.runInNewContext(readFileSync(new URL('../config.js', import.meta.url), 'utf8'), context);
+    const send = () => context.window.arcFetch(`${context.window.ARC_API_BASE}/admin-live?action=set-current`, { method: 'POST' });
+    if (hostname === 'konference.animas.lv') await send();
+    else {
+      await assert.rejects(send(), /Priekšskatījumā/);
+      assert.equal(calls.length, 0);
+      await context.window.arcFetch(`${context.window.ARC_API_BASE}/admin-rehearsal?action=create`, { method: 'POST' });
+      assert.equal(calls.length, 1);
+    }
+  }
+});
