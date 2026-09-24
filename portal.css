@@ -2787,6 +2787,48 @@ body[data-page="live"] .poll-option.is-selected > i {
   accent-color: var(--violet);
 }
 
+.poll-scale-control {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.poll-scale-control output {
+  color: var(--text);
+  font-size: clamp(34px, 10vw, 52px);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.poll-scale-control input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--violet);
+  cursor: grab;
+}
+
+.poll-scale-control input[type="range"]:active {
+  cursor: grabbing;
+}
+
+.poll-scale-limits {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.agenda-poll-card.is-deep-linked {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 1px var(--violet);
+}
+
 body[data-page="live"] .poll-option[data-multi="true"] > i {
   border-radius: 3px;
 }
@@ -6160,11 +6202,13 @@ body[data-page="present"] {
   text-align: left;
 }
 
+#presentAgendaQr,
 #presentPollQr {
   flex-direction: column;
   gap: 14px;
 }
 
+#presentAgendaQr span,
 #presentPollQr span {
   max-width: none;
   text-align: center;

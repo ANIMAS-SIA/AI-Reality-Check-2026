@@ -47,6 +47,7 @@ try {
     });
     await page.goto('https://mobile.test/admin/?event=rehearsal-mobile');
     await page.locator('#adminApp').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-present-mode="results"]').count(), 0, 'Retired overall results mode is absent');
     assert.equal(await page.evaluate(() => window.__supabaseClientCount), 1, 'Admin auth and Realtime share one Supabase client');
     assert.equal(await page.evaluate(() => window.__sessionRefreshCount), 1, 'A rejected access token is refreshed once');
     await page.locator('#dashAgendaTitle').filter({ hasText: 'Programmas punkts' }).waitFor();

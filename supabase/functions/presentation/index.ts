@@ -4,14 +4,15 @@ import { errorResponse, handleOptions, jsonResponse, readJson } from "../_shared
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 
 const TOPIC = "live:ai-reality-check-2026";
-const MODES = ["waiting", "agenda", "poll_question", "poll_results", "questions", "announcement", "results", "closing"] as const;
+const MODES = ["waiting", "agenda", "poll_question", "poll_results", "questions", "announcement", "closing"] as const;
 type Mode = typeof MODES[number];
+type StoredMode = Mode | "results";
 
 type EventRow = { id: string; slug: string; name: string };
 type StateRow = {
   id: string;
   event_id: string;
-  mode: Mode;
+  mode: StoredMode;
   agenda_item_id: string | null;
   poll_id: string | null;
   question_id: string | null;
@@ -37,7 +38,6 @@ type PollOptionRow = { id: string; poll_id: string; label: string; display_order
 type PollVoteRow = { id: string; poll_id: string; option_id: string };
 type TextResponseRow = { id: string; poll_id: string; response_text: string };
 type QuestionRow = { id: string; body: string; is_anonymous: boolean; guest_name: string | null; vote_count: number; agenda_item_id: string | null };
-type ParticipantRow = { id: string };
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {
   const slug = db.eventSlug;
@@ -79,7 +79,7 @@ async function pollSnapshot(db: SupabaseRest, pollId: string) {
 }
 
 async function buildSnapshot(db: SupabaseRest, event: EventRow, state: StateRow) {
-  const [agendaItem, poll, question] = await Promise.all([
+  const [agendaItem, poll, question, agendaQuestions] = await Promise.all([
     state.agenda_item_id
       ? (await db.select<AgendaItem>("agenda_items", { id: `eq.${state.agenda_item_id}`, limit: 1 }))[0] || null
       : null,
@@ -87,6 +87,13 @@ async function buildSnapshot(db: SupabaseRest, event: EventRow, state: StateRow)
     state.question_id
       ? (await db.select<QuestionRow>("questions", { id: `eq.${state.question_id}`, limit: 1 }))[0] || null
       : null,
+    state.agenda_item_id
+      ? db.select<{ id: string }>("questions", {
+        agenda_item_id: `eq.${state.agenda_item_id}`,
+        status: "in.(pending,approved,highlighted,shown_on_screen,answered)",
+        select: "id",
+      })
+      : Promise.resolve([]),
   ]);
 
   let topQuestions: QuestionRow[] = [];
@@ -99,29 +106,21 @@ async function buildSnapshot(db: SupabaseRest, event: EventRow, state: StateRow)
     });
   }
 
-  let summary: Record<string, unknown> | null = null;
-  if (state.mode === "results") {
-    const participants = await db.select<ParticipantRow>("participants", {
-      event_id: `eq.${event.id}`,
-      status: "in.(approved,arrived)",
-      select: "id",
-    });
-    summary = { event_name: event.name, participant_count: participants.length };
-  }
-
   return {
     state: {
-      mode: state.mode,
+      // Older deployments could leave this retired mode in the database.
+      // Keep the schema compatible, but never send an empty screen to clients.
+      mode: state.mode === "results" ? "waiting" : state.mode,
       results_visible: state.results_visible,
       qr_visible: state.qr_visible,
       announcement_text: state.announcement_text,
       updated_at: state.updated_at,
     },
     agenda_item: agendaItem,
+    question_count: agendaQuestions.length,
     poll,
     question,
     top_questions: topQuestions,
-    summary,
   };
 }
 
