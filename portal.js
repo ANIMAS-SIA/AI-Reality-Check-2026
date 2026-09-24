@@ -1,5 +1,6 @@
 const STORE_KEY = window.arcStorageKey("aiRealityParticipant");
 const TOKEN_STORE_KEY = window.arcStorageKey("aiRealityParticipantToken");
+const GUEST_STORE_KEY = window.arcStorageKey("aiRealityGuestAccess");
 
 const companies = [
   { name: "SIA ANIMAS", reg: "40203377881", sector: "Tehnologijas", size: "Mazs uzņēmums", region: "Rīga", type: "Privātais sektors" },
@@ -109,6 +110,27 @@ function storedParticipantToken() {
   }
 }
 
+function storedGuestAccess() {
+  try {
+    const guest = JSON.parse(localStorage.getItem(GUEST_STORE_KEY) || "null");
+    return guest?.enabled ? { enabled: true, name: String(guest.name || "").trim().slice(0, 80) } : null;
+  } catch {
+    return null;
+  }
+}
+
+function guestParticipant(name = "") {
+  const guestName = String(name || "").trim().slice(0, 80);
+  return {
+    ...defaultParticipant,
+    firstName: guestName || "Anonīms",
+    access: "Anonīma pieeja",
+    status: "guest",
+    isGuest: true,
+    guestName,
+  };
+}
+
 function removeTokenFromAddressBar() {
   const url = new URL(window.location.href);
   if (!url.searchParams.has("token")) return;
@@ -121,6 +143,10 @@ async function authenticateParticipant() {
   const savedToken = storedParticipantToken();
   const token = urlToken || savedToken;
   if (!token) {
+    const guest = storedGuestAccess();
+    if (document.body.dataset.page === "live" && guest) {
+      return { participant: guestParticipant(guest.name), token: null };
+    }
     showClosedPortal();
     return null;
   }
@@ -143,7 +169,17 @@ async function authenticateParticipant() {
 }
 
 function showClosedPortal() {
-  document.querySelector(".portal-access-gate")?.removeAttribute("hidden");
+  const gate = document.querySelector(".portal-access-gate");
+  gate?.removeAttribute("hidden");
+  const form = gate?.querySelector("[data-guest-access-form]");
+  if (!form || form.dataset.bound === "true") return;
+  form.dataset.bound = "true";
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = String(new FormData(form).get("guestName") || "").trim().slice(0, 80);
+    localStorage.setItem(GUEST_STORE_KEY, JSON.stringify({ enabled: true, name }));
+    window.location.href = window.arcEventUrl("../live/");
+  });
 }
 
 function revealParticipantPortal() {
@@ -345,8 +381,8 @@ async function fetchQuestions(agendaItemId) {
   return data.questions || [];
 }
 
-async function submitQuestion(body, agendaItemId, isAnonymous = true) {
-  const participantId = getParticipant().participantId || "";
+async function submitQuestion(body, agendaItemId, isAnonymous = true, identity = {}) {
+  const participantId = identity.participantId || getParticipant().participantId || "";
   const response = await window.arcFetch(`${API_BASE}/questions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -355,6 +391,7 @@ async function submitQuestion(body, agendaItemId, isAnonymous = true) {
       agendaItemId,
       isAnonymous,
       participantId: isAnonymous ? undefined : participantId,
+      guestName: isAnonymous ? undefined : identity.guestName,
       anonymousSessionId: getAnonSessionId(),
     }),
   });
@@ -1264,7 +1301,7 @@ function questionCardsMarkup(questions) {
         </button>
         <div>
           <strong>${liveEscape(question.body)}</strong>
-          <span>${question.is_anonymous ? "Anonīms" : "Dalībnieks"} · ${question.status === "answered" ? "Atbildēts" : "Apstiprināts"}</span>
+          <span>${question.is_anonymous ? "Anonīms" : liveEscape(question.guest_name || "Dalībnieks")} · ${question.status === "answered" ? "Atbildēts" : "Apstiprināts"}</span>
         </div>
       </article>
     `).join("");
@@ -1437,9 +1474,13 @@ async function initLive() {
   const questionDrafts = new Map();
   let activeQuestionFilter = "top";
 
-  setText("liveMode", p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja");
-  setText("liveUser", `${p.firstName} ${p.lastName}`);
+  setText("liveMode", p.isGuest ? "Anonīma pieeja" : (p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja"));
+  setText("liveUser", `${p.firstName} ${p.lastName}`.trim());
   setText("passAccess", p.access);
+
+  if (p.isGuest) {
+    document.querySelectorAll('[data-live-tab="networking"], a[href*="view=networking"]').forEach((item) => { item.hidden = true; });
+  }
 
   document.querySelectorAll(".tab-btn, [data-live-tab]").forEach((button) => {
     button.addEventListener("click", () => setActiveTab(button.dataset.liveTab || button.dataset.tab));
@@ -1467,7 +1508,7 @@ async function initLive() {
           <label class="agenda-quick-input"><span class="sr-only">Jautājums runātājam</span><textarea rows="1" data-role="question-input" maxlength="280" placeholder="Uzdod jautājumu lektoram...">${liveEscape(draft)}</textarea></label>
           <div class="live-question-meta">
             <span data-role="question-count">${280 - draft.length} rakstzīmes</span>
-            <label><input type="checkbox" data-role="question-anon" checked> Iesniegt anonīmi</label>
+            <label><input type="checkbox" data-role="question-anon" ${p.isGuest && p.guestName ? "" : "checked"} ${p.isGuest && !p.guestName ? "disabled" : ""}> Iesniegt anonīmi</label>
           </div>
           <button class="live-submit" type="button" data-role="question-submit">Iesniegt</button>
         </article>
@@ -1737,7 +1778,7 @@ async function initLive() {
       const isAnonymous = form.querySelector('[data-role="question-anon"]')?.checked !== false;
       submitBtn.disabled = true;
       const submittedItemId = openExpand.itemId;
-      submitQuestion(body, submittedItemId, isAnonymous)
+      submitQuestion(body, submittedItemId, isAnonymous, { participantId: p.participantId, guestName: p.guestName })
         .then((data) => {
           if (data?.question?.id) rememberMyQuestion(data.question.id);
           textarea.value = "";
@@ -1801,8 +1842,9 @@ async function initLive() {
     if (!selected.length) return;
     const pollId = selected[0].dataset.pollId;
     const optionIds = selected.map((item) => item.dataset.optionId);
+    const isMulti = selected[0].dataset.multi === "true";
     submit.disabled = true;
-    submitPollVote(pollId, optionIds.length > 1 ? { optionIds } : { optionId: optionIds[0] })
+    submitPollVote(pollId, isMulti ? { optionIds } : { optionId: optionIds[0] })
       .then(() => {
         showToast("Balsojums iesniegts.");
         refreshPolls();
@@ -1852,7 +1894,7 @@ async function initLive() {
     initNetworkingPass(networkingToken);
   }
 
-  const availableViews = ["program", "results", "networking"];
+  const availableViews = p.isGuest ? ["program", "results"] : ["program", "results", "networking"];
   const requestedView = params.get("view");
   setActiveTab(availableViews.includes(requestedView) ? requestedView : "program");
 }

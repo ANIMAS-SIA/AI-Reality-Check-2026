@@ -11,6 +11,7 @@ type QuestionRow = {
   event_id: string;
   agenda_item_id: string | null;
   participant_id: string | null;
+  guest_name: string | null;
   body: string;
   is_anonymous: boolean;
   status: string;
@@ -44,7 +45,9 @@ async function listQuestions(db: SupabaseRest, url: URL): Promise<Response> {
   const search = clean(url.searchParams.get("search") || "").toLowerCase();
   if (search) {
     questions = questions.filter((question) => {
-      const authorName = question.participants ? `${question.participants.first_name} ${question.participants.last_name}`.toLowerCase() : "";
+      const authorName = question.participants
+        ? `${question.participants.first_name} ${question.participants.last_name}`.toLowerCase()
+        : (question.guest_name || "").toLowerCase();
       return question.body.toLowerCase().includes(search) || authorName.includes(search);
     });
   }

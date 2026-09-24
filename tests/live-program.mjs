@@ -43,7 +43,7 @@ try {
             data = { ok: true };
           } else if (body) data = { question: { id: 'new-question' } };
         }
-        if (url.pathname.endsWith('/polls')) data = { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'single_choice' }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
+        if (url.pathname.endsWith('/polls')) data = { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'multiple_choice' }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
         return route.fulfill({ json: data });
       }
       return route.abort();
@@ -64,6 +64,21 @@ try {
     await page.locator('[data-role="question-input"]').fill('Mans vēl neiesniegtais jautājums');
     await page.locator('[data-agenda-action="polls"]').click();
     await page.locator('[data-option-id="yes"]').waitFor();
+    await page.locator('[data-option-id="yes"]').click();
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/functions/v1/polls') && response.request().method() === 'POST'),
+      page.waitForResponse((response) => response.url().includes('/functions/v1/polls') && response.request().method() === 'GET'),
+      page.locator('[data-role="poll-option-submit"]').click(),
+    ]);
+    assert.deepEqual(writes.findLast((write) => write.body.pollId === 'poll').body.optionIds, ['yes'], 'Multiple choice submits one selected option as an array');
+    await page.locator('[data-option-id="yes"]').click();
+    await page.locator('[data-option-id="no"]').click();
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/functions/v1/polls') && response.request().method() === 'POST'),
+      page.waitForResponse((response) => response.url().includes('/functions/v1/polls') && response.request().method() === 'GET'),
+      page.locator('[data-role="poll-option-submit"]').click(),
+    ]);
+    assert.deepEqual(writes.findLast((write) => write.body.pollId === 'poll').body.optionIds, ['yes', 'no'], 'Multiple choice submits several selected options as an array');
     await page.locator('[data-agenda-action="questions"]').click();
     assert.equal(await page.locator('[data-role="question-input"]').inputValue(), 'Mans vēl neiesniegtais jautājums');
     await page.locator('[data-role="question-submit"]').click();
@@ -81,4 +96,45 @@ try {
     console.log(`PASS ${width}px compact program, vote failure/retry, ordering, persistence, draft and submission`);
     await page.close();
   }
+
+  const guestPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const guestWrites = [];
+  await guestPage.route('**/*', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.hostname === 'mobile.test') {
+      const file = resolve(root, `.${url.pathname.endsWith('/') ? `${url.pathname}index.html` : url.pathname}`);
+      const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[extname(file)];
+      try { return await route.fulfill({ body: await readFile(file), contentType: type || 'application/octet-stream' }); } catch { return route.fulfill({ status: 404 }); }
+    }
+    if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.supabase={createClient(){return {channel(){return {on(){return this},subscribe(){return this}}}}}};` });
+    if (url.pathname.includes('/functions/v1/')) {
+      const body = route.request().method() === 'POST' ? route.request().postDataJSON() : null;
+      if (body) guestWrites.push({ path: url.pathname, body });
+      if (url.pathname.endsWith('/live-state')) return route.fulfill({ json: { agenda: [{ id: 'guest-talk', starts_at: '2026-09-30T07:00:00Z', ends_at: '2026-09-30T07:45:00Z', title: 'Viesu jautājumi', status: 'now', is_break: false }] } });
+      if (url.pathname.endsWith('/questions')) return route.fulfill({ json: body ? { question: { id: 'guest-question' }, anonymousSessionId: 'guest-session' } : { questions: [] } });
+      if (url.pathname.endsWith('/polls')) return route.fulfill({ json: { activePolls: [], results: [] } });
+      if (url.pathname.endsWith('/results')) return route.fulfill({ json: { summary: {}, polls: [], maturity: {}, segments: {} } });
+      if (url.pathname.endsWith('/participant-pass')) return route.fulfill({ status: 500, json: { error: 'Guest flow must not request a pass' } });
+      return route.fulfill({ json: {} });
+    }
+    return route.abort();
+  });
+  await guestPage.goto('https://mobile.test/pass/?event=rehearsal-ui');
+  await guestPage.locator('[data-guest-access-form]').waitFor();
+  assert.match(await guestPage.locator('.portal-access-help').textContent(), /AI Pass/);
+  await guestPage.locator('[name="guestName"]').fill('Anna');
+  await guestPage.locator('[data-guest-access-form] button[type="submit"]').click();
+  await guestPage.waitForURL(/\/live\//);
+  await guestPage.locator('#passAccess').filter({ hasText: 'Anonīma pieeja' }).waitFor();
+  assert.equal(await guestPage.locator('[data-live-tab="networking"]').isHidden(), true);
+  await guestPage.locator('[data-agenda-action="questions"]').click();
+  assert.equal(await guestPage.locator('[data-role="question-anon"]').isChecked(), false);
+  await guestPage.locator('[data-role="question-input"]').fill('Anonīma dalībnieka jautājums');
+  await guestPage.locator('[data-role="question-submit"]').click();
+  await guestPage.waitForFunction(() => document.querySelector('[data-role="question-input"]')?.value === '');
+  const guestQuestion = guestWrites.find((write) => write.path.endsWith('/questions'))?.body;
+  assert.equal(guestQuestion.guestName, 'Anna');
+  assert.equal(guestQuestion.isAnonymous, false);
+  console.log('PASS guest access without token and optional display name');
+  await guestPage.close();
 } finally { await browser.close(); }

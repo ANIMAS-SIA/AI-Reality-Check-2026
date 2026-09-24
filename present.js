@@ -104,7 +104,7 @@
       single.hidden = false;
       list.innerHTML = "";
       setText("presentQuestionBody", `"${snapshot.question.body}"`);
-      setText("presentQuestionMeta", `${snapshot.question.is_anonymous ? "Anonīms" : "Dalībnieks"} · ▲ ${snapshot.question.vote_count || 0}`);
+      setText("presentQuestionMeta", `${snapshot.question.is_anonymous ? "Anonīms" : (snapshot.question.guest_name || "Dalībnieks")} · ▲ ${snapshot.question.vote_count || 0}`);
       return;
     }
     single.hidden = true;

@@ -741,12 +741,20 @@
   }
 
   function questionRowMarkup(question) {
-    const author = question.is_anonymous ? "Anonīms" : `${question.participants?.first_name || ""} ${question.participants?.last_name || ""}`.trim() || "Dalībnieks";
+    const author = question.is_anonymous
+      ? "Anonīms"
+      : (`${question.participants?.first_name || ""} ${question.participants?.last_name || ""}`.trim() || question.guest_name || "Dalībnieks");
+    const agendaItem = agendaItems.find((item) => item.id === question.agenda_item_id);
+    const agendaLabel = agendaItem?.title || (question.agenda_item_id ? "Nezināms programmas punkts" : "Nav piesaistīts");
+    const agendaClass = agendaItem ? "" : " is-unassigned";
     return `
       <article class="admin-question-row" data-question-id="${question.id}">
         <span class="admin-vote-badge">▲ ${question.vote_count || 0}</span>
         <div class="admin-question-row-body">
-          <span class="admin-fine">${author} · ${new Date(question.created_at).toLocaleTimeString("lv-LV")}</span>
+          <div class="admin-question-meta">
+            <span class="admin-fine">${esc(author)} · ${new Date(question.created_at).toLocaleTimeString("lv-LV")}</span>
+            <span class="admin-question-agenda${agendaClass}"><span aria-hidden="true">◆</span> Programmas punkts: ${esc(agendaLabel)}</span>
+          </div>
           <p>${question.body}</p>
         </div>
         <div class="admin-question-row-actions">
@@ -885,8 +893,10 @@
     const isActive = poll.status === "active";
     const statusLabel = { draft: "Melnraksts", ready: "Plānots", active: "Aktīvs", paused: "Apturēts", closed: "Pabeigts", archived: "Arhivēts" }[poll.status] || poll.status;
     const typeLabel = POLL_TYPES.find((type) => type.id === poll.poll_type)?.label || poll.poll_type;
+    const agendaItem = agendaItems.find((item) => item.id === poll.agenda_item_id);
+    const agendaLabel = agendaItem?.title || (poll.agenda_item_id ? "Nezināms programmas punkts" : "Nav piesaistīts programmas punktam");
     const actions = isActive
-      ? `<button type="button" class="btn secondary" data-poll-present="${poll.id}">Prezentēt</button>
+      ? `<button type="button" class="btn secondary" data-poll-results="${poll.id}">Atbildes</button>
          <button type="button" class="live-submit is-pink" data-poll-close="${poll.id}">Noslēgt</button>`
       : `${["draft", "ready"].includes(poll.status) ? `<button type="button" class="btn secondary" data-poll-activate="${poll.id}">Aktivizēt</button>` : ""}
          <div class="admin-more-menu">
@@ -905,8 +915,9 @@
         <span class="admin-poll-icon">${pollTypeIcon()}</span>
         <div class="admin-poll-row-body">
           <span class="admin-status-pill admin-status-${poll.status}">${statusLabel}</span>
-          <strong>${poll.title}</strong>
+          <strong>${esc(poll.title)}</strong>
           <span class="admin-fine">${typeLabel}</span>
+          <span class="admin-poll-agenda"><span aria-hidden="true">◆</span> ${esc(agendaLabel)}</span>
         </div>
         <strong class="admin-poll-count">${poll.response_count || 0}<span>atbildes</span></strong>
         <div class="admin-poll-row-actions">${actions}</div>
@@ -930,7 +941,8 @@
     if (activateBtn) {
       try {
         await adminFetch(`/admin-polls?action=activate&poll_id=${activateBtn.dataset.pollActivate}`, { method: "POST" });
-        showToast("Balsojums aktivizēts.");
+        showToast("Balsojums aktivizēts un parādīts prezentācijā.");
+        await refreshPresentationState();
         await refreshPollsPanel();
       } catch (error) { showToast(error.message); }
       return;
@@ -950,6 +962,7 @@
     const reopenBtn = event.target.closest("[data-poll-reopen]");
     if (reopenBtn) {
       await adminFetch(`/admin-polls?action=reopen&poll_id=${reopenBtn.dataset.pollReopen}`, { method: "POST" }).catch((error) => showToast(error.message));
+      await refreshPresentationState();
       await refreshPollsPanel();
       return;
     }
@@ -967,7 +980,7 @@
       await refreshPollsPanel();
       return;
     }
-    const presentBtn = event.target.closest("[data-poll-present]");
+    const resultsBtn = event.target.closest("[data-poll-results]");
     const deleteBtn = event.target.closest("[data-poll-delete]");
     if (deleteBtn) {
       if (!window.confirm("Neatgriezeniski dzēst šo balsojumu un visas tā atbildes?")) return;
@@ -978,9 +991,9 @@
       } catch (error) { showToast(error.message); }
       return;
     }
-    if (presentBtn) {
-      await setPresentationState({ mode: "poll_question", pollId: presentBtn.dataset.pollPresent });
-      showToast("Balsojums parādīts uz ekrāna.");
+    if (resultsBtn) {
+      await setPresentationState({ mode: "poll_results", pollId: resultsBtn.dataset.pollResults });
+      showToast("Atbildes parādītas prezentācijā.");
       return;
     }
     const exportBtn = event.target.closest("[data-poll-export]");

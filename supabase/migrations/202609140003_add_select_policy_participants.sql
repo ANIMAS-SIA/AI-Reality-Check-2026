@@ -1,7 +1,8 @@
--- Add RLS select policy to participants table
--- This allows authenticated users to read participant data (themselves or all if admin)
-
-create policy "Allow authenticated users to select participants"
-  on participants
-  for select
-  using (auth.role() = 'authenticated');
+-- Intentionally left as a no-op.
+--
+-- The original migration granted SELECT on every participants row to every
+-- authenticated Supabase user. The application does not need that access:
+-- participant and administrator operations use authenticated Edge Functions
+-- with the service role.
+--
+-- Keep this migration version so migration ordering remains stable.

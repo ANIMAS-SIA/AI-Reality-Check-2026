@@ -48,6 +48,7 @@ type PollRow = {
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string };
 type TextResponseRow = { id: string; poll_id: string; response_text: string; hidden: boolean };
+type PresentationStateRow = { id: string; event_id: string };
 
 function clean(value?: string): string {
   return (value || "").trim();
@@ -181,17 +182,12 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
     }
     fields.status = "active";
     fields.activated_at = new Date().toISOString();
-    if (actor.role !== "superadmin") {
-      await db.update("polls", { status: "closed", closed_at: new Date().toISOString() }, {
-        event_id: `eq.${poll.event_id}`,
-        status: "eq.active",
-      });
-    }
   } else if (action === "pause") {
     fields.status = "paused";
   } else if (action === "reopen") {
     if (!["paused", "closed"].includes(poll.status)) return errorResponse("Only a paused or closed poll can be reopened", 409);
     fields.status = "active";
+    fields.activated_at = new Date().toISOString();
   } else if (action === "close") {
     fields.status = "closed";
     fields.closed_at = new Date().toISOString();
@@ -208,7 +204,30 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
     return errorResponse("Unsupported poll action", 400);
   }
 
+  if (["activate", "reopen"].includes(action)) {
+    await db.update("polls", { status: "closed", closed_at: new Date().toISOString() }, {
+      event_id: `eq.${poll.event_id}`,
+      status: "eq.active",
+      id: `neq.${pollId}`,
+    });
+  }
+
   const updated = (await db.update<PollRow>("polls", fields, { id: `eq.${pollId}` }))[0];
+  if (["activate", "reopen"].includes(action)) {
+    const presentation = (await db.select<PresentationStateRow>("presentation_state", {
+      event_id: `eq.${poll.event_id}`,
+      limit: 1,
+    }))[0];
+    const presentationFields = {
+      mode: "poll_question",
+      poll_id: pollId,
+      updated_by: actor.userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (presentation) await db.update("presentation_state", presentationFields, { id: `eq.${presentation.id}` });
+    else await db.insert("presentation_state", [{ event_id: poll.event_id, ...presentationFields }]);
+    await broadcast(db.topic, "presentation_changed", { mode: "poll_question", poll_id: pollId });
+  }
   await logAudit(db, actor, `poll_${action}`, "polls", pollId);
   await broadcast(db.topic, "poll_changed", { poll_id: pollId, action });
   return jsonResponse({ poll: updated });
