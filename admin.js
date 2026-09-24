@@ -36,6 +36,8 @@
   let wizardStep = 1;
   let wizardOptions = ["", ""];
   let currentParticipants = [];
+  let sessionRefreshPromise = null;
+  let sessionExpiryHandled = false;
   const selectedParticipantIds = new Set();
 
   function el(id) { return document.getElementById(id); }
@@ -50,13 +52,35 @@
 
   async function getAccessToken() {
     if (!supabaseClient) return null;
-    const { data } = await supabaseClient.auth.getSession();
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
     return data.session?.access_token || null;
   }
 
-  async function adminFetch(path, options = {}) {
-    const token = await getAccessToken();
-    const response = await window.arcFetch(`${API_BASE}${path}`, {
+  async function refreshAccessToken() {
+    if (!supabaseClient) return null;
+    if (!sessionRefreshPromise) {
+      sessionRefreshPromise = supabaseClient.auth.refreshSession()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data.session?.access_token || null;
+        })
+        .finally(() => { sessionRefreshPromise = null; });
+    }
+    return await sessionRefreshPromise;
+  }
+
+  async function expireAdminSession() {
+    if (sessionExpiryHandled) return;
+    sessionExpiryHandled = true;
+    await supabaseClient?.auth.signOut({ scope: "local" }).catch(() => null);
+    showLogin();
+    setText("adminLoginStatus", "Sesija beigusies. Lūdzu, pieslēdzies vēlreiz.");
+    window.setTimeout(() => window.location.reload(), 0);
+  }
+
+  async function adminFetch(path, options = {}, allowRefresh = true) {
+    const send = (token) => window.arcFetch(`${API_BASE}${path}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -64,8 +88,22 @@
         ...(options.headers || {}),
       },
     });
+
+    let response = await send(await getAccessToken());
+    if (response.status === 401 && allowRefresh) {
+      const refreshedToken = await refreshAccessToken().catch(() => null);
+      if (refreshedToken) response = await send(refreshedToken);
+    }
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Pieprasījumu neizdevās izpildīt.");
+    if (!response.ok) {
+      if (response.status === 401) {
+        await expireAdminSession();
+        const error = new Error("Sesija beigusies. Lūdzu, pieslēdzies vēlreiz.");
+        error.code = "SESSION_EXPIRED";
+        throw error;
+      }
+      throw new Error(data.error || "Pieprasījumu neizdevās izpildīt.");
+    }
     return data;
   }
 
@@ -1587,7 +1625,7 @@
       refreshPresentationState();
       if (document.querySelector(".admin-panel.is-active")?.dataset.adminPanel === "moderation") refreshModeration();
       if (document.querySelector(".admin-panel.is-active")?.dataset.adminPanel === "polls") refreshPollsPanel();
-    });
+    }, supabaseClient);
     window.setInterval(() => {
       refreshDashboard();
       refreshPresentationState();

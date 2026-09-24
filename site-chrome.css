@@ -42,6 +42,13 @@ select {
   max-width: 100%;
 }
 
+.arc-environment-banner {
+  width: 100%;
+  max-width: 100vw;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 /* Homepage cursor, shared by every participant and organiser view. */
 #arc-cursor,
 #arc-cursor-ring {
@@ -377,6 +384,11 @@ body[data-page="registration"] .brand-mark,
 }
 
 @media (max-width: 520px) {
+  .arc-environment-banner {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+
   .topbar,
   .live-topbar,
   body[data-page="registration"] .registration-topbar,

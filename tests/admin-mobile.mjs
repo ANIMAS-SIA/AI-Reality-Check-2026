@@ -27,9 +27,12 @@ try {
         try { return await route.fulfill({ body: await readFile(file), contentType: types[extname(file)] || 'application/octet-stream' }); }
         catch { return route.fulfill({ status: 404 }); }
       }
-      if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.supabase={createClient(){return {auth:{getSession:async()=>({data:{session:{access_token:'offline-test'}}}),signOut:async()=>({})},channel(){return {on(){return this},subscribe(){return this}}}}}};` });
+      if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.__supabaseClientCount=0;window.__sessionRefreshCount=0;window.supabase={createClient(){window.__supabaseClientCount++;let token='offline-stale';return {auth:{getSession:async()=>({data:{session:{access_token:token}}}),refreshSession:async()=>{window.__sessionRefreshCount++;token='offline-refreshed';return {data:{session:{access_token:token}}}},signOut:async()=>({})},channel(){return {on(){return this},subscribe(){return this}}}}}};` });
       if (url.pathname.includes('/functions/v1/')) {
         if (route.request().method() === 'POST') writes.push({ path: url.pathname, action: url.searchParams.get('action'), body: route.request().postDataJSON() });
+        if (url.pathname.endsWith('/admin-users') && url.searchParams.get('action') === 'whoami' && route.request().headers().authorization === 'Bearer offline-stale') {
+          return route.fulfill({ status: 401, json: { error: 'Invalid or expired session' } });
+        }
         let data = {};
         if (url.pathname.endsWith('/admin-users')) data = { email: 'test@example.invalid', role: 'superadmin' };
         if (url.pathname.endsWith('/admin-live')) data = { agenda, event: { agenda_mode: 'schedule', is_test: true }, server_time: new Date().toISOString() };
@@ -44,6 +47,8 @@ try {
     });
     await page.goto('https://mobile.test/admin/?event=rehearsal-mobile');
     await page.locator('#adminApp').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => window.__supabaseClientCount), 1, 'Admin auth and Realtime share one Supabase client');
+    assert.equal(await page.evaluate(() => window.__sessionRefreshCount), 1, 'A rejected access token is refreshed once');
     await page.locator('#dashAgendaTitle').filter({ hasText: 'Programmas punkts' }).waitFor();
     const noOverflow = async (label) => {
       const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));

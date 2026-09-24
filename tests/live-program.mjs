@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-const { chromium } = await import(process.env.ARC_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.ARC_PLAYWRIGHT_MODULE).href : 'playwright');
+const { chromium, devices } = await import(process.env.ARC_PLAYWRIGHT_MODULE ? pathToFileURL(process.env.ARC_PLAYWRIGHT_MODULE).href : 'playwright');
 const root = resolve(import.meta.dirname, '..');
 const out = resolve(root, 'supabase/.temp/live-program');
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true, ...(process.env.ARC_CHROME_PATH ? { executablePath: process.env.ARC_CHROME_PATH } : {}) });
 try {
-  for (const width of [360, 390, 1280]) {
+  for (const width of [320, 360, 390, 430, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const errors = []; const writes = []; let failedVote = true;
     const questions = [
@@ -97,7 +97,8 @@ try {
     await page.close();
   }
 
-  const guestPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const guestContext = await browser.newContext({ ...devices['Pixel 5'], viewport: { width: 320, height: 700 } });
+  const guestPage = await guestContext.newPage();
   const guestWrites = [];
   await guestPage.route('**/*', async (route) => {
     const url = new URL(route.request().url());
@@ -121,6 +122,16 @@ try {
   });
   await guestPage.goto('https://mobile.test/pass/?event=rehearsal-ui');
   await guestPage.locator('[data-guest-access-form]').waitFor();
+  const guestGateLayout = await guestPage.evaluate(() => {
+    const card = document.querySelector('.portal-access-card').getBoundingClientRect();
+    return { viewport: innerWidth, pageWidth: document.documentElement.scrollWidth, cardLeft: card.left, cardRight: card.right };
+  });
+  assert.ok(guestGateLayout.cardLeft >= 0 && guestGateLayout.cardRight <= guestGateLayout.viewport + 1, 'Guest access card fits the mobile viewport');
+  assert.ok(guestGateLayout.pageWidth <= guestGateLayout.viewport + 1, 'Guest access page has no horizontal overflow');
+  const enlargedText = await guestPage.addStyleTag({ content: ':root { font-size: 200%; }' });
+  assert.ok(await guestPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Guest access remains usable with 200% text');
+  await enlargedText.evaluate((style) => style.remove());
+  await guestPage.screenshot({ path: resolve(out, 'guest-access-320.png'), fullPage: true });
   assert.match(await guestPage.locator('.portal-access-help').textContent(), /AI Pass/);
   await guestPage.locator('[name="guestName"]').fill('Anna');
   await guestPage.locator('[data-guest-access-form] button[type="submit"]').click();
@@ -136,5 +147,42 @@ try {
   assert.equal(guestQuestion.guestName, 'Anna');
   assert.equal(guestQuestion.isAnonymous, false);
   console.log('PASS guest access without token and optional display name');
-  await guestPage.close();
+  await guestContext.close();
+
+  const presentationPage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  let presentationMode = 'poll_question';
+  await presentationPage.route('**/*', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.hostname === 'mobile.test') {
+      const file = resolve(root, `.${url.pathname.endsWith('/') ? `${url.pathname}index.html` : url.pathname}`);
+      const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[extname(file)];
+      try { return await route.fulfill({ body: await readFile(file), contentType: type || 'application/octet-stream' }); } catch { return route.fulfill({ status: 404 }); }
+    }
+    if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.supabase={createClient(){return {channel(){return {on(){return this},subscribe(){return this}}}}}};` });
+    if (url.pathname.endsWith('/presentation')) {
+      return route.fulfill({ json: {
+        state: { mode: presentationMode, qr_visible: true },
+        agenda_item: { id: 'talk', title: 'Testa programmas punkts', starts_at: '2026-09-30T07:00:00Z', ends_at: '2026-09-30T07:45:00Z' },
+        poll: presentationMode === 'poll_results'
+          ? { poll: { id: 'poll', title: 'Testa balsojuma jautājums?', poll_type: 'word_cloud' }, options: [], text_responses: ['Mākslīgais intelekts palīdz', 'mākslīgais   intelekts palīdz', 'Cilvēks paliek centrā'], total_votes: 3 }
+          : { poll: { id: 'poll', title: 'Testa balsojuma jautājums?' }, options: [], total_votes: 0 },
+      } });
+    }
+    return route.fulfill({ status: 204 });
+  });
+  await presentationPage.goto('https://mobile.test/present/?event=rehearsal-ui');
+  await presentationPage.locator('#presentPollQr').waitFor({ state: 'visible' });
+  assert.ok((await presentationPage.locator('#presentPollQrImg').boundingBox()).width >= 180, 'Poll QR is large enough to scan');
+  presentationMode = 'agenda';
+  await presentationPage.reload();
+  await presentationPage.locator('#presentAgendaQr').waitFor({ state: 'visible' });
+  assert.ok((await presentationPage.locator('#presentAgendaQrImg').boundingBox()).width >= 180, 'Question QR is large enough to scan');
+  presentationMode = 'poll_results';
+  await presentationPage.reload();
+  await presentationPage.locator('.present-word-cloud').waitFor();
+  assert.equal(await presentationPage.locator('.present-word-cloud span').count(), 2, 'Each submitted phrase remains one cloud item and matching phrases are grouped');
+  assert.equal((await presentationPage.locator('.present-word-cloud span').first().textContent()).trim(), 'Mākslīgais intelekts palīdz');
+  assert.ok(await presentationPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Presentation has no horizontal overflow');
+  console.log('PASS presentation QR size and whole-phrase word cloud');
+  await presentationPage.close();
 } finally { await browser.close(); }

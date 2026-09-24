@@ -21,6 +21,7 @@ window.arcStorageKey = (key) => window.ARC_EVENT_SLUG === "ai-reality-check-2026
 document.addEventListener("DOMContentLoaded", () => {
   if (window.ARC_EVENT_SLUG === "ai-reality-check-2026" && !window.ARC_PREVIEW_READ_ONLY) return;
   const banner = document.createElement("aside");
+  banner.className = "arc-environment-banner";
   banner.textContent = window.ARC_PREVIEW_READ_ONLY
     ? "PRIEKŠSKATĪJUMS · Izveido vai atver mēģinājumu administrācijā. Īstā pasākuma izmaiņas bloķētas."
     : `MĒĢINĀJUMS · ${window.ARC_EVENT_SLUG} · E-pasti, kalendārs un Wallet atslēgti`;
