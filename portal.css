@@ -6160,6 +6160,16 @@ body[data-page="present"] {
   text-align: left;
 }
 
+#presentPollQr {
+  flex-direction: column;
+  gap: 14px;
+}
+
+#presentPollQr span {
+  max-width: none;
+  text-align: center;
+}
+
 .present-agenda-time {
   color: var(--pink);
   font-size: clamp(16px, 1.8vw, 24px);
