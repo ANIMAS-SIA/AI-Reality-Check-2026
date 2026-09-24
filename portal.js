@@ -500,9 +500,16 @@ async function submitPollVote(pollId, answer) {
   return data;
 }
 
-function subscribeLiveRealtime(onMessage) {
+function subscribeLiveRealtime(onMessage, existingClient = null) {
   if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
-  const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const client = existingClient || window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: `arc-realtime-${window.ARC_EVENT_SLUG}`,
+    },
+  });
   const channel = client.channel(REALTIME_TOPIC);
   channel
     .on("broadcast", { event: "state_changed" }, onMessage)
@@ -1311,15 +1318,18 @@ function wordCloudMarkup(responses) {
   if (!responses.length) return `<p class="live-empty">Vēl nav atbilžu.</p>`;
   const counts = new Map();
   responses.forEach((text) => {
-    text.toLowerCase().split(/\s+/).filter((word) => word.length > 2).forEach((word) => {
-      counts.set(word, (counts.get(word) || 0) + 1);
-    });
+    const label = String(text || "").trim().replace(/\s+/g, " ");
+    if (!label) return;
+    const key = label.toLocaleLowerCase("lv-LV");
+    const current = counts.get(key);
+    counts.set(key, { label: current?.label || label, count: (current?.count || 0) + 1 });
   });
-  const max = Math.max(1, ...counts.values());
-  const words = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40);
-  return `<div class="word-cloud">${words.map(([word, count]) => {
-    const size = 12 + Math.round((count / max) * 28);
-    return `<span style="font-size:${size}px">${word}</span>`;
+  const phrases = [...counts.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "lv-LV")).slice(0, 40);
+  const max = Math.max(1, ...phrases.map((phrase) => phrase.count));
+  return `<div class="word-cloud">${phrases.map(({ label, count }) => {
+    const frequencySize = 14 + Math.round((count / max) * 26);
+    const size = Math.max(14, Math.min(frequencySize, Math.round(480 / Math.max(label.length, 12))));
+    return `<span style="font-size:${size}px">${liveEscape(label)}</span>`;
   }).join(" ")}</div>`;
 }
 
