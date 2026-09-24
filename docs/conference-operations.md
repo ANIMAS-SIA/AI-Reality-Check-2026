@@ -268,4 +268,3 @@ Ja kamera nedarbojas, pārbaudīt pārlūka kameras atļauju. Ja internets nav p
 | Nākamais runātājs | Nākamais punkts vai grafiks | Izvēlas drošu ekrāna režīmu | Sagatavo un rāda nākamo PPT |
 | Kavējums | Manuāla vadība/pārbīde | Informē skatuvi | Sagatavo drošu pāreju |
 | Tehniska kļūme | Turpina programmas koordinēšanu | Aptur ekrāna satura maiņas | Rāda drošo slaidu/skatu |
-
