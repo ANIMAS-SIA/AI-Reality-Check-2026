@@ -9,6 +9,14 @@
     return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(targetUrl)}`;
   }
 
+  function livePortalUrl(params = {}) {
+    const url = new URL(`${window.location.origin}/live/`);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) url.searchParams.set(key, value);
+    });
+    return window.arcEventUrl(url);
+  }
+
   function fmtTime(iso) {
     if (!iso) return "";
     return new Intl.DateTimeFormat("lv-LV", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Riga" }).format(new Date(iso));
@@ -66,9 +74,10 @@
     setText("presentAgendaTitle", item.title);
     setText("presentAgendaSpeaker", [item.speaker_name, item.speaker_role, item.speaker_company].filter(Boolean).join(" · "));
     setText("presentAgendaTime", `${fmtTime(item.starts_at)}–${fmtTime(item.ends_at)}`);
+    setText("presentAgendaQuestionCount", String(snapshot.question_count || 0));
     const visible = snapshot.state.qr_visible;
     el("presentAgendaQr").hidden = !visible;
-    if (visible) el("presentAgendaQrImg").src = qrUrl(window.arcEventUrl(`${window.location.origin}/live/?view=program`));
+    if (visible) el("presentAgendaQrImg").src = qrUrl(livePortalUrl({ view: "program" }));
   }
 
   function renderPollQuestion(snapshot) {
@@ -87,7 +96,11 @@
     setText("presentPollVoteCount", String(poll.total_votes || 0));
     const visible = snapshot.state.qr_visible;
     el("presentPollQr").hidden = !visible;
-    if (visible) el("presentPollQrImg").src = qrUrl(window.arcEventUrl(`${window.location.origin}/live/?view=program`));
+    if (visible) el("presentPollQrImg").src = qrUrl(livePortalUrl({
+      view: "program",
+      poll: poll.poll.id,
+      agenda: poll.poll.agenda_item_id,
+    }));
   }
 
   function renderPollResults(snapshot) {
@@ -126,13 +139,6 @@
     setText("presentAnnouncementText", snapshot.state.announcement_text || "—");
   }
 
-  function renderResults(snapshot) {
-    const summary = snapshot.summary;
-    setText("presentResultsSummary", summary
-      ? `${summary.participant_count || 0} dalībnieki dalījās ar savu MI gatavību konferences laikā.`
-      : "Rezultāti tiek apkopoti...");
-  }
-
   function renderClosing(snapshot) {
     const visible = snapshot.state.qr_visible;
     el("presentClosingQr").hidden = !visible;
@@ -150,7 +156,6 @@
     poll_results: renderPollResults,
     questions: renderQuestions,
     announcement: renderAnnouncement,
-    results: renderResults,
     closing: renderClosing,
   };
 

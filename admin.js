@@ -9,7 +9,6 @@
     { id: "poll_results", label: "Balsojuma rezultāti" },
     { id: "questions", label: "Auditorijas jautājumi" },
     { id: "announcement", label: "Informatīvs paziņojums" },
-    { id: "results", label: "Kopējie rezultāti" },
     { id: "closing", label: "Noslēguma ekrāns" },
   ];
   const POLL_TYPES = [

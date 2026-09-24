@@ -11,7 +11,7 @@ const browser = await chromium.launch({ headless: true, ...(process.env.ARC_CHRO
 try {
   for (const width of [320, 360, 390, 430, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
-    const errors = []; const writes = []; let failedVote = true;
+    const errors = []; const writes = []; let failedVote = true; let pollMode = 'multiple';
     const questions = [
       { id: 'q1', agenda_item_id: 'talk', body: 'Kā ieviest MI droši?', vote_count: 4, is_anonymous: true, status: 'approved' },
       { id: 'q2', agenda_item_id: 'talk', body: 'Vai pieejami praktiski piemēri?', vote_count: 4, is_anonymous: true, status: 'approved' },
@@ -43,7 +43,9 @@ try {
             data = { ok: true };
           } else if (body) data = { question: { id: 'new-question' } };
         }
-        if (url.pathname.endsWith('/polls')) data = { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'multiple_choice' }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
+        if (url.pathname.endsWith('/polls')) data = pollMode === 'scale'
+          ? { activePolls: [{ poll: { id: 'scale-poll', agenda_item_id: 'talk', title: 'Novērtē no 1 līdz 5', poll_type: 'scale' }, options: [1, 2, 3, 4, 5].map((value) => ({ id: `scale-${value}`, label: String(value) })) }], results: [] }
+          : { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'multiple_choice' }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
         return route.fulfill({ json: data });
       }
       return route.abort();
@@ -90,6 +92,19 @@ try {
     assert.equal(await page.locator('[data-question-vote="q2"]').isDisabled(), true, 'Supported state survives reload');
     assert.equal(await page.locator('[data-agenda-item="break"] .agenda-action').count(), 0);
     assert.equal(await page.locator('.vote-btn svg').count(), 2);
+    pollMode = 'scale';
+    await page.reload();
+    await page.locator('[data-agenda-action="polls"]').click();
+    const scale = page.locator('[data-role="poll-scale-input"]');
+    await scale.waitFor();
+    assert.equal(await page.locator('.agenda-poll-card .poll-option').count(), 0, 'Scale poll is not rendered as answer buttons');
+    await scale.fill('4');
+    assert.equal(await page.locator('[data-role="poll-scale-value"]').textContent(), '5');
+    await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/functions/v1/polls') && response.request().method() === 'POST'),
+      page.locator('[data-role="poll-scale-submit"]').click(),
+    ]);
+    assert.equal(writes.findLast((write) => write.body.pollId === 'scale-poll').body.optionId, 'scale-5', 'Scale submits the selected value option');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'No horizontal overflow');
     await page.screenshot({ path: resolve(out, `questions-${width}.png`), fullPage: true });
     assert.deepEqual(errors, []);
@@ -113,7 +128,7 @@ try {
       if (body) guestWrites.push({ path: url.pathname, body });
       if (url.pathname.endsWith('/live-state')) return route.fulfill({ json: { agenda: [{ id: 'guest-talk', starts_at: '2026-09-30T07:00:00Z', ends_at: '2026-09-30T07:45:00Z', title: 'Viesu jautājumi', status: 'now', is_break: false }] } });
       if (url.pathname.endsWith('/questions')) return route.fulfill({ json: body ? { question: { id: 'guest-question' }, anonymousSessionId: 'guest-session' } : { questions: [] } });
-      if (url.pathname.endsWith('/polls')) return route.fulfill({ json: { activePolls: [], results: [] } });
+      if (url.pathname.endsWith('/polls')) return route.fulfill({ json: { activePolls: [{ poll: { id: 'guest-poll', agenda_item_id: 'guest-talk', title: 'Viesa balsojums', poll_type: 'yes_no' }, options: [{ id: 'guest-yes', label: 'Jā' }, { id: 'guest-no', label: 'Nē' }] }], results: [] } });
       if (url.pathname.endsWith('/results')) return route.fulfill({ json: { summary: {}, polls: [], maturity: {}, segments: {} } });
       if (url.pathname.endsWith('/participant-pass')) return route.fulfill({ status: 500, json: { error: 'Guest flow must not request a pass' } });
       return route.fulfill({ json: {} });
@@ -146,7 +161,13 @@ try {
   const guestQuestion = guestWrites.find((write) => write.path.endsWith('/questions'))?.body;
   assert.equal(guestQuestion.guestName, 'Anna');
   assert.equal(guestQuestion.isAnonymous, false);
-  console.log('PASS guest access without token and optional display name');
+  await guestPage.evaluate(() => localStorage.clear());
+  await guestPage.goto('https://mobile.test/live/?event=rehearsal-ui&view=program&poll=guest-poll&agenda=guest-talk');
+  await guestPage.locator('[data-guest-access-form]').waitFor();
+  await guestPage.locator('[data-guest-access-form] button[type="submit"]').click();
+  await guestPage.waitForURL((url) => url.searchParams.get('poll') === 'guest-poll');
+  await guestPage.locator('[data-poll-card="guest-poll"]').waitFor({ state: 'visible' });
+  console.log('PASS guest access, optional display name and direct poll link');
   await guestContext.close();
 
   const presentationPage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
@@ -163,24 +184,34 @@ try {
       return route.fulfill({ json: {
         state: { mode: presentationMode, qr_visible: true },
         agenda_item: { id: 'talk', title: 'Testa programmas punkts', starts_at: '2026-09-30T07:00:00Z', ends_at: '2026-09-30T07:45:00Z' },
+        question_count: 4,
         poll: presentationMode === 'poll_results'
           ? { poll: { id: 'poll', title: 'Testa balsojuma jautājums?', poll_type: 'word_cloud' }, options: [], text_responses: ['Mākslīgais intelekts palīdz', 'mākslīgais   intelekts palīdz', 'Cilvēks paliek centrā'], total_votes: 3 }
-          : { poll: { id: 'poll', title: 'Testa balsojuma jautājums?' }, options: [], total_votes: 0 },
+          : { poll: { id: 'poll', agenda_item_id: 'talk', title: 'Testa balsojuma jautājums?' }, options: [], total_votes: 0 },
       } });
     }
     return route.fulfill({ status: 204 });
   });
   await presentationPage.goto('https://mobile.test/present/?event=rehearsal-ui');
+  assert.equal(await presentationPage.locator('[data-present-mode="results"]').count(), 0, 'Retired overall results screen is absent');
   await presentationPage.locator('#presentPollQr').waitFor({ state: 'visible' });
   const pollQrBox = await presentationPage.locator('#presentPollQrImg').boundingBox();
   const pollCountBox = await presentationPage.locator('#presentPollQr span').boundingBox();
   assert.ok(pollQrBox.width >= 180, 'Poll QR is large enough to scan');
   assert.ok(pollCountBox.y >= pollQrBox.y + pollQrBox.height, 'Poll response count is below the QR');
   assert.ok(Math.abs((pollCountBox.x + pollCountBox.width / 2) - (pollQrBox.x + pollQrBox.width / 2)) <= 1, 'Poll response count is centered under the QR');
+  const pollQrTarget = new URL(new URL(await presentationPage.locator('#presentPollQrImg').getAttribute('src')).searchParams.get('data'));
+  assert.equal(pollQrTarget.searchParams.get('poll'), 'poll', 'Poll QR links directly to the active poll');
+  assert.equal(pollQrTarget.searchParams.get('agenda'), 'talk', 'Poll QR keeps its agenda context');
   presentationMode = 'agenda';
   await presentationPage.reload();
   await presentationPage.locator('#presentAgendaQr').waitFor({ state: 'visible' });
-  assert.ok((await presentationPage.locator('#presentAgendaQrImg').boundingBox()).width >= 180, 'Question QR is large enough to scan');
+  const agendaQrBox = await presentationPage.locator('#presentAgendaQrImg').boundingBox();
+  const agendaCountBox = await presentationPage.locator('#presentAgendaQr span').boundingBox();
+  assert.ok(agendaQrBox.width >= 180, 'Question QR is large enough to scan');
+  assert.equal(await presentationPage.locator('#presentAgendaQuestionCount').textContent(), '4', 'Agenda QR shows the current question count');
+  assert.ok(agendaCountBox.y >= agendaQrBox.y + agendaQrBox.height, 'Question count is below the QR');
+  assert.ok(Math.abs((agendaCountBox.x + agendaCountBox.width / 2) - (agendaQrBox.x + agendaQrBox.width / 2)) <= 1, 'Question count is centered under the QR');
   presentationMode = 'poll_results';
   await presentationPage.reload();
   await presentationPage.locator('.present-word-cloud').waitFor();

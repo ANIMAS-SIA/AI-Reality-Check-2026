@@ -178,7 +178,11 @@ function showClosedPortal() {
     event.preventDefault();
     const name = String(new FormData(form).get("guestName") || "").trim().slice(0, 80);
     localStorage.setItem(GUEST_STORE_KEY, JSON.stringify({ enabled: true, name }));
-    window.location.href = window.arcEventUrl("../live/");
+    const target = document.body.dataset.page === "live"
+      ? new URL(window.location.href)
+      : new URL("../live/", window.location.href);
+    target.searchParams.delete("token");
+    window.location.href = window.arcEventUrl(target);
   });
 }
 
@@ -1475,6 +1479,9 @@ async function initLive() {
   const session = await authenticateParticipant();
   if (!session) return;
   const { participant: p, token: participantToken } = session;
+  const liveParams = new URLSearchParams(window.location.search);
+  const requestedPollId = liveParams.get("poll");
+  let requestedPollHandled = false;
   revealParticipantPortal();
   let agendaItems = [];
   let lastAgendaSignature = "";
@@ -1562,11 +1569,24 @@ async function initLive() {
       const pollType = active.poll.poll_type;
       const isText = pollType === "open_text" || pollType === "word_cloud";
       const isMulti = pollType === "multiple_choice";
+      const isScale = pollType === "scale";
+      const scaleIndex = Math.floor(Math.max(0, active.options.length - 1) / 2);
+      const scaleOption = active.options[scaleIndex];
       const body = isText
         ? `
           <textarea class="poll-text-input" maxlength="280" placeholder="Ieraksti savu atbildi..."></textarea>
           <button class="live-submit" type="button" data-role="poll-text-submit" data-poll-id="${active.poll.id}">Iesniegt atbildi <span>→</span></button>
         `
+        : isScale
+          ? `
+            <div class="poll-scale-control">
+              <output data-role="poll-scale-value">${liveEscape(scaleOption?.label || "")}</output>
+              <input type="range" min="0" max="${Math.max(0, active.options.length - 1)}" step="1" value="${scaleIndex}" data-role="poll-scale-input" data-poll-id="${active.poll.id}" aria-label="Izvēlies vērtējumu">
+              <div class="poll-scale-limits"><span>${liveEscape(active.options[0]?.label || "")}</span><span>${liveEscape(active.options.at(-1)?.label || "")}</span></div>
+            </div>
+            <label class="poll-anonymous"><input type="checkbox" checked disabled> Atbilde vienmēr anonīma</label>
+            <button class="live-submit" type="button" data-role="poll-scale-submit" data-poll-id="${active.poll.id}" data-option-id="${scaleOption?.id || ""}">Iesniegt vērtējumu <span>→</span></button>
+          `
         : `
           ${active.options.map((option, index) => `
             <button class="poll-option" type="button" data-poll-id="${active.poll.id}" data-option-id="${option.id}" data-multi="${isMulti}">
@@ -1579,7 +1599,7 @@ async function initLive() {
           <button class="live-submit" type="button" disabled data-role="poll-option-submit">Iesniegt atbildi <span>→</span></button>
         `;
       cards.push(`
-        <article class="agenda-poll-card">
+        <article class="agenda-poll-card" data-poll-card="${active.poll.id}">
           <span class="live-status-label"><i></i> Aktīvs balsojums</span>
           <h3>${active.poll.title}</h3>
           ${body}
@@ -1673,6 +1693,21 @@ async function initLive() {
     fillExpandContent(itemId, mode);
   }
 
+  async function openRequestedPoll() {
+    if (requestedPollHandled || !requestedPollId || !latestPollState) return;
+    const active = (latestPollState.activePolls || []).find((result) => result.poll?.id === requestedPollId);
+    const itemId = active?.poll?.agenda_item_id || liveParams.get("agenda");
+    if (!active || !itemId || !document.querySelector(`.program-item[data-agenda-item="${itemId}"]`)) return;
+    requestedPollHandled = true;
+    setActiveTab("program");
+    await openAgendaExpand(itemId, "polls");
+    window.requestAnimationFrame(() => {
+      const target = [...document.querySelectorAll("[data-poll-card]")].find((card) => card.dataset.pollCard === requestedPollId);
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      target?.classList.add("is-deep-linked");
+    });
+  }
+
   function restoreOpenExpandAfterRerender() {
     if (!openExpand) return;
     const { itemId, mode } = openExpand;
@@ -1720,6 +1755,7 @@ async function initLive() {
       latestPollState = await fetchPollState();
       updateAgendaBadges();
       if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
+      await openRequestedPoll();
     } catch (error) {
       console.warn(error);
     }
@@ -1803,6 +1839,17 @@ async function initLive() {
   });
 
   document.getElementById("liveProgramList")?.addEventListener("input", (event) => {
+    const scale = event.target.closest('[data-role="poll-scale-input"]');
+    if (scale) {
+      const card = scale.closest(".agenda-poll-card");
+      const poll = (latestPollState?.activePolls || []).find((result) => result.poll?.id === scale.dataset.pollId);
+      const option = poll?.options?.[Number(scale.value)];
+      const output = card?.querySelector('[data-role="poll-scale-value"]');
+      const submit = card?.querySelector('[data-role="poll-scale-submit"]');
+      if (output) output.textContent = option?.label || "";
+      if (submit) submit.dataset.optionId = option?.id || "";
+      return;
+    }
     const input = event.target.closest('[data-role="question-input"]');
     if (!input) return;
     if (openExpand) questionDrafts.set(openExpand.itemId, input.value);
@@ -1842,6 +1889,21 @@ async function initLive() {
     }
     const submit = card?.querySelector('[data-role="poll-option-submit"]');
     if (submit) submit.disabled = !card?.querySelector(".poll-option.is-selected");
+  });
+
+  document.addEventListener("click", (event) => {
+    const submit = event.target.closest('[data-role="poll-scale-submit"]');
+    if (!submit || !submit.dataset.optionId) return;
+    submit.disabled = true;
+    submitPollVote(submit.dataset.pollId, { optionId: submit.dataset.optionId })
+      .then(() => {
+        showToast("Vērtējums iesniegts.");
+        refreshPolls();
+      })
+      .catch((error) => {
+        showToast(error.message || "Vērtējumu neizdevās iesniegt.");
+        submit.disabled = false;
+      });
   });
 
   document.addEventListener("click", (event) => {
@@ -1888,7 +1950,6 @@ async function initLive() {
       .finally(() => { submit.disabled = false; });
   });
 
-  const params = new URLSearchParams(window.location.search);
   let networkingToken = participantToken;
   if (!networkingToken && p.passLink) {
     try {
@@ -1905,7 +1966,7 @@ async function initLive() {
   }
 
   const availableViews = p.isGuest ? ["program", "results"] : ["program", "results", "networking"];
-  const requestedView = params.get("view");
+  const requestedView = liveParams.get("view");
   setActiveTab(availableViews.includes(requestedView) ? requestedView : "program");
 }
 
