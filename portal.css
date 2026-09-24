@@ -5256,6 +5256,33 @@ body[data-page="registration"] .confirmation-pass .btn {
   line-height: 1.5;
 }
 
+.admin-question-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+}
+
+.admin-question-agenda {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.admin-question-agenda > span {
+  color: var(--violet);
+  font-size: 7px;
+}
+
+.admin-question-agenda.is-unassigned {
+  color: var(--muted);
+}
+
 .admin-question-row-actions {
   display: flex;
   align-items: center;
@@ -5384,6 +5411,21 @@ body[data-page="registration"] .confirmation-pass .btn {
   display: block;
   margin-top: 6px;
   font-size: 14px;
+}
+
+.admin-poll-agenda {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.admin-poll-agenda > span {
+  color: var(--violet);
+  font-size: 7px;
 }
 
 .admin-poll-count {
@@ -6418,8 +6460,12 @@ body.portal-auth-pending > .bottom-tabs {
   display: none;
 }
 
-.portal-access-gate div {
-  max-width: 34rem;
+.portal-access-gate .portal-access-card {
+  width: min(100%, 38rem);
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid #302d36;
+  background: #111014;
+  text-align: left;
 }
 
 .portal-access-gate h1 {
@@ -6435,4 +6481,46 @@ body.portal-auth-pending > .bottom-tabs {
   margin: 0;
   color: #b9b5bf;
   line-height: 1.65;
+}
+
+.portal-guest-form {
+  display: grid;
+  gap: 10px;
+  margin: 28px 0 22px;
+}
+
+.portal-guest-form label {
+  color: #f2ede6;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.portal-guest-form label small {
+  color: #918d99;
+  font-weight: 500;
+}
+
+.portal-guest-form input {
+  min-height: 52px;
+  border: 1px solid #3b3743;
+  border-radius: 0;
+  background: #09090b;
+  color: #f2ede6;
+  padding: 0 16px;
+  font: inherit;
+}
+
+.portal-guest-form input:focus {
+  border-color: var(--violet);
+  outline: 2px solid color-mix(in srgb, var(--violet) 35%, transparent);
+}
+
+.portal-access-gate .portal-access-help {
+  padding-top: 18px;
+  border-top: 1px solid #302d36;
+  font-size: 13px;
+}
+
+.portal-access-help strong {
+  color: #f2ede6;
 }

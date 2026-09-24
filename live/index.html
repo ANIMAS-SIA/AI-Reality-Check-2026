@@ -16,9 +16,16 @@
 </head>
 <body data-page="live" class="portal-auth-pending">
   <section class="portal-access-gate" aria-live="polite" hidden>
-    <div>
-      <h1>Slēgts pasākums</h1>
-      <p>Konferences dalībnieku vide ir pieejama tikai ar personīgo saiti. Atver saiti savā apstiprinājuma e-pastā.</p>
+    <div class="portal-access-card">
+      <span class="live-kicker">AI Reality Check Live</span>
+      <h1>Piedalies arī anonīmi</h1>
+      <p>Uzdod jautājumus un balso arī tad, ja šajā ierīcē nav saglabāts personīgais AI Pass.</p>
+      <form class="portal-guest-form" data-guest-access-form>
+        <label for="liveGuestName">Vārds <small>(nav obligāts)</small></label>
+        <input id="liveGuestName" name="guestName" maxlength="80" autocomplete="name" placeholder="Piemēram, Anna">
+        <button class="live-submit" type="submit">Piedalīties <span>→</span></button>
+      </form>
+      <p class="portal-access-help">Lai piedalītos kā reģistrēts dalībnieks, atrodi apstiprinājuma e-pastā savu personīgo <strong>AI Pass</strong> saiti.</p>
     </div>
   </section>
   <header class="topbar pass-topbar">

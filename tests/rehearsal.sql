@@ -5,6 +5,14 @@ declare source events; trial events; trial_id uuid; first_item agenda_items; las
   before_event jsonb; before_agenda jsonb; before_polls jsonb; control jsonb; count_before integer;
   winter_id uuid; person_id uuid; token_id uuid; blocked boolean := false;
 begin
+  assert exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'questions' and column_name = 'guest_name'
+  ), 'Guest question name column is missing';
+  assert exists (
+    select 1 from pg_indexes
+    where schemaname = 'public' and tablename = 'polls' and indexname = 'idx_polls_one_active_per_event'
+  ), 'Single-active-poll constraint is missing';
   select * into strict source from events where slug = 'ai-reality-check-2026';
   before_event := to_jsonb(source);
   select jsonb_agg(to_jsonb(a) order by id) into before_agenda from agenda_items a where event_id = source.id;

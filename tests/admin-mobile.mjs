@@ -10,9 +10,9 @@ const out = resolve(root, 'supabase/.temp/admin-mobile');
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true, ...(process.env.ARC_CHROME_PATH ? { executablePath: process.env.ARC_CHROME_PATH } : {}) });
 const agenda = [0, 1, 2].map((i) => ({ id: `agenda-${i}`, starts_at: '2026-09-30T06:00:00Z', ends_at: '2026-09-30T06:30:00Z', title: `Programmas punkts ${i + 1} — mākslīgais intelekts uzņēmumu ikdienā`, speaker_name: 'Testa Runātājs', status: i === 0 ? 'now' : 'later', display_order: i, is_break: i === 1 }));
-const questions = [{ id: 'question-1', body: 'Kā ieviest mākslīgo intelektu uzņēmuma ikdienas darbā, saglabājot datu drošību?', is_anonymous: true, vote_count: 12, created_at: new Date().toISOString() }];
+const questions = [{ id: 'question-1', agenda_item_id: 'agenda-0', body: 'Kā ieviest mākslīgo intelektu uzņēmuma ikdienas darbā, saglabājot datu drošību?', is_anonymous: true, vote_count: 12, created_at: new Date().toISOString() }];
 const participants = [{ id: 'person-1', first_name: 'Testa', last_name: 'Dalībnieks', email: 'garaks.testetaja.epasts@example.invalid', role: 'Uzņēmuma vadītājs', status: 'approved', access_mode: 'full', consents: { networking: true }, attendance_reconfirmed_at: new Date().toISOString() }];
-const polls = [{ id: 'poll-1', title: 'Kā vērtējat sava uzņēmuma gatavību izmantot MI?', status: 'active', poll_type: 'single_choice', response_count: 32 }];
+const polls = [{ id: 'poll-1', agenda_item_id: 'agenda-0', title: 'Kā vērtējat sava uzņēmuma gatavību izmantot MI?', status: 'active', poll_type: 'single_choice', response_count: 32 }];
 try {
   for (const width of [360, 390, 768, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
@@ -51,11 +51,14 @@ try {
     };
     await noOverflow('dashboard');
     await page.screenshot({ path: resolve(out, `dashboard-${width}.png`), fullPage: true });
+    if (width <= 860) await page.locator('.admin-bottom-tabs [data-admin-nav="moderation"]').click();
+    else await page.locator('.admin-nav [data-admin-nav="moderation"]').click();
+    await page.locator('.admin-question-row').waitFor(); await noOverflow('moderation');
+    assert.match(await page.locator('.admin-question-agenda').first().textContent(), /Programmas punkts 1/);
+    await page.screenshot({ path: resolve(out, `moderation-${width}.png`), fullPage: true });
     if (width <= 860) {
       const tabs = page.locator('.admin-bottom-tabs');
       assert.ok((await tabs.boundingBox()).height >= 56);
-      await tabs.locator('[data-admin-nav="moderation"]').click();
-      await page.locator('.admin-question-row').waitFor(); await noOverflow('moderation');
       assert.ok((await page.locator('[data-question-action="approved"]').first().boundingBox()).height >= 44);
       await tabs.getByRole('button', { name: 'Vairāk' }).click();
       await page.locator('#adminMobileMore').getByRole('button', { name: 'Dalībnieki', exact: true }).click();
@@ -88,6 +91,10 @@ try {
       await page.locator('[data-close-modal="programModal"]').click();
       await tabs.locator('[data-admin-nav="polls"]').click();
       await page.locator('.admin-poll-row').waitFor(); await noOverflow('polls');
+      assert.match(await page.locator('.admin-poll-agenda').textContent(), /Programmas punkts 1/);
+      await page.locator('[data-poll-results]').click();
+      await page.waitForFunction(() => document.querySelector('[data-poll-results]'));
+      assert.ok(writes.some((entry) => entry.path.endsWith('/presentation') && entry.body.mode === 'poll_results' && entry.body.pollId === 'poll-1'));
       const before = writes.length;
       page.once('dialog', (dialog) => dialog.dismiss());
       await page.locator('[data-poll-close]').click();

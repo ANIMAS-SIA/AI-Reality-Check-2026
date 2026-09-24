@@ -9,6 +9,7 @@ type QuestionPayload = {
   body?: string;
   isAnonymous?: boolean;
   participantId?: string;
+  guestName?: string;
   anonymousSessionId?: string;
 };
 
@@ -25,6 +26,7 @@ type QuestionRow = {
   event_id: string;
   agenda_item_id: string | null;
   participant_id: string | null;
+  guest_name: string | null;
   anonymous_session_id: string | null;
   body: string;
   is_anonymous: boolean;
@@ -66,12 +68,15 @@ async function createQuestion(db: SupabaseRest, event: EventRow, payload: Questi
   const item = agenda.find((row) => row.id === agendaItemId);
   if (agendaItemId && (!item || !item.questions_enabled || item.is_break || item.status === "cancelled")) return errorResponse("Questions are not enabled for this agenda item", 400);
   const participantId = clean(payload.participantId);
-  const isAnonymous = payload.isAnonymous !== false || !participantId;
+  const guestName = clean(payload.guestName);
+  if (guestName.length > 80) return errorResponse("Vārds nedrīkst pārsniegt 80 rakstzīmes.", 422);
+  const isAnonymous = payload.isAnonymous !== false || (!participantId && !guestName);
   const inserted = await db.insert<QuestionRow>("questions", [{
     event_id: event.id,
     agenda_item_id: agendaItemId,
-    participant_id: isAnonymous ? null : participantId,
-    anonymous_session_id: isAnonymous ? anonymousSessionId : null,
+    participant_id: participantId || null,
+    guest_name: !isAnonymous && !participantId ? guestName : null,
+    anonymous_session_id: participantId ? null : anonymousSessionId,
     body,
     is_anonymous: isAnonymous,
     status: event.auto_approve_enabled ? "approved" : "pending",

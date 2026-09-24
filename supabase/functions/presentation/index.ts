@@ -36,7 +36,7 @@ type PollRow = { id: string; title: string; poll_type: string; status: string; a
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string };
 type TextResponseRow = { id: string; poll_id: string; response_text: string };
-type QuestionRow = { id: string; body: string; is_anonymous: boolean; vote_count: number; agenda_item_id: string | null };
+type QuestionRow = { id: string; body: string; is_anonymous: boolean; guest_name: string | null; vote_count: number; agenda_item_id: string | null };
 type ParticipantRow = { id: string };
 
 async function getEvent(db: SupabaseRest): Promise<EventRow> {

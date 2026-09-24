@@ -7,7 +7,7 @@
 - **Manuāla vadība:** “Sākt šo punktu tagad”, “Paturēt pašreizējo” un “Nākamais punkts” saglabā izvēli. Tā pati nepārslēdzas, arī pēc plānotajām beigām. “Atgriezties pie grafika” atkal izmanto laiku.
 - **Pārbīdīt atlikušos laikus:** atsevišķa, apstiprināma darbība. Pārbīda sākumu un beigas punktiem pēc pašreizējā; ja tā nav — punktiem, kas vēl nav sākušies. Pašreizējā punkta laiki un sākotnējais plāns nemainās. Atļautas arī negatīvas minūtes.
 - `planned_starts_at` / `planned_ends_at` ir sākotnējais plāns, `starts_at` / `ends_at` — pašreizējais grafiks. `actual_started_at` reģistrē pirmo organizatora manuālo sākšanu. Automātiska izvēle nav pierādījums faktiskai uzstāšanās sākšanai, tādēļ šo lauku automātiski neaizpilda.
-- Balsojumu atvēršana/aizvēršana un prezentācijas saturs paliek moderatora kontrolē. Programmas pārslēgšana tos nemaina.
+- Programmas pārslēgšana balsojumus nemaina. Aktivizējot balsojumu, iepriekšējais aktīvais balsojums tiek aizvērts un prezentācijā automātiski parādās jaunā balsojuma jautājums; moderators var uzreiz pārslēgt uz dzīvajām atbildēm, balsojumu neaizverot.
 - Live atjauno datus aptuveni ik pēc 10 sekundēm, administrācija — 15 sekundēm; manuālās izmaiņas papildus paziņo attiecīgā pasākuma Realtime kanālā.
 
 ## Mēģinājuma izveide
@@ -32,11 +32,11 @@ Laiks netiek apturēts vai paātrināts: tiek pārbīdīta programmas kopija un 
 Lokālās izmaiņas atrodas zarā `feature/event-rehearsal`. Pirms izvietošanas pārskatīt diff un saglabāt arī iepriekšējās necommitotās portāla izmaiņas.
 
 1. Pārbaudīt piesaistīto Supabase projektu un nodrošināt datubāzes rezerves kopiju.
-2. Piemērot `202609220001_event_rehearsal.sql` migrāciju. Tā ir papildinoša; dzēšanas nav. Veco funkciju bērnierakstu rakstīšanu atbalsta automātiska `event_id` mantošana no vecāka.
+2. Piemērot neizpildītās migrācijas, tostarp `202609220001_event_rehearsal.sql` un `202609240001_guest_access_single_active_poll.sql`. Tās ir papildinošas. Ja vecajos datos vienam pasākumam ir vairāki aktīvi balsojumi, jaunāk aktivizētais paliek aktīvs, bet pārējie tiek korekti aizvērti; jautājumi un atbildes netiek dzēsti.
 3. Izvietot **visas** šā zara Supabase funkcijas (ne tikai `admin-live`): kopīgais REST slānis un pasākuma konteksts mainīti visām. Arī jauno `admin-rehearsal`; konfigurācijā JWT pārbaudi veic pati funkcija ar administratora autentifikāciju.
 4. Izvietot zara Vercel Preview, neatstājot to par Production un nemainot domēna piesaisti. GitHub Pages veiksmīgs build nav Vercel izvietojuma apstiprinājums.
 5. Tikai pēc visu funkciju izvietošanas izveidot pirmo mēģinājumu. Daļēji atjaunināts backend nav drošs mēģinājuma darbībai.
-6. Pārbaudīt divās ierīcēs: automātisku pāreju uz pauzi/runātāju, agrāku manuālu sākumu, pārsniegtu laiku, atgriešanos grafikā, laiku pārbīdi, jautājumu moderēšanu, balsojumus, prezentāciju un atkārtotu check-in. Produkcijas atskaitēs testa ieraksti nedrīkst parādīties.
+6. Pārbaudīt divās ierīcēs: anonīmo ieeju bez tokena, izvēles vārdu, automātisku pāreju uz pauzi/runātāju, agrāku manuālu sākumu, pārsniegtu laiku, atgriešanos grafikā, laiku pārbīdi, viena aktīva balsojuma principu, dzīvo atbilžu rādīšanu prezentācijā, jautājumu moderēšanu un atkārtotu check-in. Produkcijas atskaitēs testa ieraksti nedrīkst parādīties.
 
 Rollback: kamēr tajā pašā Supabase ir testa dati, **neatgriezt vecās nenodalītās Edge Functions** — tās varētu iekļaut testa ierakstus kopīgajos sarakstos. Frontendu var atgriezt uz iepriekšējo deployment, saglabājot jauno, nodalīto backend. Migrācijas kolonnas un oriģinālos datus nedzēst.
 
