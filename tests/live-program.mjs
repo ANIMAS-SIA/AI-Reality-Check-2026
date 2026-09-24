@@ -172,7 +172,11 @@ try {
   });
   await presentationPage.goto('https://mobile.test/present/?event=rehearsal-ui');
   await presentationPage.locator('#presentPollQr').waitFor({ state: 'visible' });
-  assert.ok((await presentationPage.locator('#presentPollQrImg').boundingBox()).width >= 180, 'Poll QR is large enough to scan');
+  const pollQrBox = await presentationPage.locator('#presentPollQrImg').boundingBox();
+  const pollCountBox = await presentationPage.locator('#presentPollQr span').boundingBox();
+  assert.ok(pollQrBox.width >= 180, 'Poll QR is large enough to scan');
+  assert.ok(pollCountBox.y >= pollQrBox.y + pollQrBox.height, 'Poll response count is below the QR');
+  assert.ok(Math.abs((pollCountBox.x + pollCountBox.width / 2) - (pollQrBox.x + pollQrBox.width / 2)) <= 1, 'Poll response count is centered under the QR');
   presentationMode = 'agenda';
   await presentationPage.reload();
   await presentationPage.locator('#presentAgendaQr').waitFor({ state: 'visible' });
