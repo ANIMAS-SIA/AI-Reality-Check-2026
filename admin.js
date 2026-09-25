@@ -930,6 +930,9 @@
     const isActive = poll.status === "active";
     const statusLabel = { draft: "Melnraksts", ready: "Plānots", active: "Aktīvs", paused: "Apturēts", closed: "Pabeigts", archived: "Arhivēts" }[poll.status] || poll.status;
     const typeLabel = POLL_TYPES.find((type) => type.id === poll.poll_type)?.label || poll.poll_type;
+    const allowsMultiple = typeof poll.settings?.allowMultipleSubmissions === "boolean"
+      ? poll.settings.allowMultipleSubmissions
+      : ["open_text", "word_cloud"].includes(poll.poll_type);
     const agendaItem = agendaItems.find((item) => item.id === poll.agenda_item_id);
     const agendaLabel = agendaItem?.title || (poll.agenda_item_id ? "Nezināms programmas punkts" : "Nav piesaistīts programmas punktam");
     const actions = isActive
@@ -954,6 +957,7 @@
           <span class="admin-status-pill admin-status-${poll.status}">${statusLabel}</span>
           <strong>${esc(poll.title)}</strong>
           <span class="admin-fine">${typeLabel}</span>
+          <span class="admin-fine">${allowsMultiple ? "Var iesniegt vairākkārt" : "Viena atbilde no dalībnieka"}</span>
           <span class="admin-poll-agenda"><span aria-hidden="true">◆</span> ${esc(agendaLabel)}</span>
         </div>
         <strong class="admin-poll-count">${poll.response_count || 0}<span>atbildes</span></strong>
@@ -1054,6 +1058,7 @@
     wizardType = "single_choice";
     wizardOptions = ["", ""];
     el("wizardTitle").value = "";
+    el("wizardMultipleSubmissions").checked = false;
     populateWizardAgendaSelect();
     renderPollTypeGrid();
     updateWizardStepView();
@@ -1073,6 +1078,7 @@
       const isChoice = ["single_choice", "multiple_choice"].includes(wizardType);
       el("wizardOptionsBox").hidden = !isChoice;
       el("wizardScaleBox").hidden = wizardType !== "scale";
+      el("wizardMultipleSubmissions").checked = ["open_text", "word_cloud"].includes(wizardType);
     }
   });
 
@@ -1119,6 +1125,7 @@
         <span class="live-status-label"><i></i> Priekšskatījums</span>
         <h3>${el("wizardTitle").value || "Balsojuma jautājums"}</h3>
         <p class="admin-fine">${typeLabel}</p>
+        <p class="admin-fine">${el("wizardMultipleSubmissions").checked ? "Atbildes var iesniegt vairākkārt" : "Katrs dalībnieks var atbildēt vienu reizi"}</p>
         ${["single_choice", "multiple_choice"].includes(wizardType)
           ? wizardOptions.filter(Boolean).map((option, index) => `<div class="poll-option"><span class="poll-letter">${String.fromCharCode(65 + index)}</span><strong>${option}</strong></div>`).join("")
           : ""}
@@ -1139,7 +1146,7 @@
   el("wizardSubmit")?.addEventListener("click", async () => {
     const settings = {
       anonymous: el("wizardAnonymous").checked,
-      allowAnswerChange: el("wizardAllowChange").checked,
+      allowMultipleSubmissions: el("wizardMultipleSubmissions").checked,
       resultsVisibleLive: el("wizardResultsLive").checked,
       showRespondentCount: el("wizardShowCount").checked,
       shuffleOptions: el("wizardShuffle").checked,

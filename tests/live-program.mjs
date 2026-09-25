@@ -44,8 +44,10 @@ try {
           } else if (body) data = { question: { id: 'new-question' } };
         }
         if (url.pathname.endsWith('/polls')) data = pollMode === 'scale'
-          ? { activePolls: [{ poll: { id: 'scale-poll', agenda_item_id: 'talk', title: 'Novērtē no 1 līdz 5', poll_type: 'scale' }, options: [1, 2, 3, 4, 5].map((value) => ({ id: `scale-${value}`, label: String(value) })) }], results: [] }
-          : { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'multiple_choice' }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
+          ? { activePolls: [{ poll: { id: 'scale-poll', agenda_item_id: 'talk', title: 'Novērtē no 1 līdz 5', poll_type: 'scale', settings: { allowMultipleSubmissions: false } }, options: [1, 2, 3, 4, 5].map((value) => ({ id: `scale-${value}`, label: String(value) })) }], results: [] }
+          : pollMode === 'locked'
+            ? { activePolls: [{ poll: { id: 'locked-poll', agenda_item_id: 'talk', title: 'Vienreizējs balsojums', poll_type: 'yes_no', settings: { allowMultipleSubmissions: false } }, options: [{ id: 'locked-yes', label: 'Jā' }, { id: 'locked-no', label: 'Nē' }], has_submitted: true }], results: [] }
+            : { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'multiple_choice', settings: { allowMultipleSubmissions: true } }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
         return route.fulfill({ json: data });
       }
       return route.abort();
@@ -73,6 +75,7 @@ try {
       page.locator('[data-role="poll-option-submit"]').click(),
     ]);
     assert.deepEqual(writes.findLast((write) => write.body.pollId === 'poll').body.optionIds, ['yes'], 'Multiple choice submits one selected option as an array');
+    assert.equal(writes.findLast((write) => write.body.pollId === 'poll').body.token, 'test-only', 'Registered poll submission carries the pass token');
     await page.locator('[data-option-id="yes"]').click();
     await page.locator('[data-option-id="no"]').click();
     await Promise.all([
@@ -105,6 +108,11 @@ try {
       page.locator('[data-role="poll-scale-submit"]').click(),
     ]);
     assert.equal(writes.findLast((write) => write.body.pollId === 'scale-poll').body.optionId, 'scale-5', 'Scale submits the selected value option');
+    pollMode = 'locked';
+    await page.reload();
+    await page.locator('[data-agenda-action="polls"]').click();
+    await page.locator('.poll-submitted-message').waitFor();
+    assert.equal(await page.locator('[data-role^="poll-"][data-role$="submit"]').count(), 0, 'One-time poll controls stay hidden after submission');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'No horizontal overflow');
     await page.screenshot({ path: resolve(out, `questions-${width}.png`), fullPage: true });
     assert.deepEqual(errors, []);

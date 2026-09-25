@@ -10,6 +10,7 @@ type PollTypeValue = typeof POLL_TYPES[number];
 type PollSettings = Partial<{
   anonymous: boolean;
   allowAnswerChange: boolean;
+  allowMultipleSubmissions: boolean;
   resultsVisibleLive: boolean;
   resultsAfterClose: boolean;
   showRespondentCount: boolean;
@@ -92,11 +93,21 @@ function optionsForType(pollType: PollTypeValue, provided: string[], settings: P
   return provided.map(clean).filter(Boolean).slice(0, 8);
 }
 
+function settingsForType(pollType: PollTypeValue, provided: PollSettings): PollSettings {
+  const hasSubmissionSetting = Object.prototype.hasOwnProperty.call(provided, "allowMultipleSubmissions");
+  return {
+    ...provided,
+    allowMultipleSubmissions: hasSubmissionSetting
+      ? provided.allowMultipleSubmissions === true
+      : ["open_text", "word_cloud"].includes(pollType),
+  };
+}
+
 async function createPoll(db: SupabaseRest, actor: AdminActor, event: EventRow, payload: PollPayload): Promise<Response> {
   const title = clean(payload.title);
   if (!title) return errorResponse("Poll title is required", 400);
   const pollType = POLL_TYPES.includes(payload.pollType as PollTypeValue) ? (payload.pollType as PollTypeValue) : "single_choice";
-  const settings = payload.settings || {};
+  const settings = settingsForType(pollType, payload.settings || {});
   const options = optionsForType(pollType, payload.options || [], settings);
   if (["single_choice", "multiple_choice", "scale"].includes(pollType) && options.length < 2) {
     return errorResponse("At least two options are required", 422);
@@ -139,7 +150,7 @@ async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, p
   const title = payload.title !== undefined ? clean(payload.title) : poll.title;
   if (!title) return errorResponse("Poll title is required", 400);
   const pollType = POLL_TYPES.includes(payload.pollType as PollTypeValue) ? (payload.pollType as PollTypeValue) : poll.poll_type;
-  const settings = { ...poll.settings, ...(payload.settings || {}) };
+  const settings = settingsForType(pollType, { ...poll.settings, ...(payload.settings || {}) });
 
   const updated = (await db.update<PollRow>("polls", {
     title,
@@ -239,6 +250,7 @@ async function clearResponses(db: SupabaseRest, actor: AdminActor, pollId: strin
 
   await db.delete("poll_votes", { poll_id: `eq.${pollId}` });
   await db.delete("poll_text_responses", { poll_id: `eq.${pollId}` });
+  await db.delete("poll_submission_guards", { poll_id: `eq.${pollId}` });
 
   await logAudit(db, actor, "poll_clear_responses", "polls", pollId);
   await broadcast(db.topic, "poll_changed", { poll_id: pollId, action: "clear-responses" });
