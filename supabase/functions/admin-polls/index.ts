@@ -47,11 +47,18 @@ type PollRow = {
   auto_activate_with_agenda: boolean;
   settings: PollSettings;
   updated_at: string;
+  options?: PollOptionRow[];
 };
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string };
 type TextResponseRow = { id: string; poll_id: string; response_text: string; hidden: boolean };
-type PresentationStateRow = { id: string; event_id: string };
+type PresentationStateRow = {
+  id: string;
+  event_id: string;
+  mode: string;
+  agenda_item_id: string | null;
+  poll_id: string | null;
+};
 
 function clean(value?: string): string {
   return (value || "").trim();
@@ -71,12 +78,17 @@ async function listPolls(db: SupabaseRest, eventId: string): Promise<Response> {
   });
   const votes = await db.select<{ poll_id: string }>("poll_votes", { select: "poll_id" });
   const textResponses = await db.select<{ poll_id: string }>("poll_text_responses", { select: "poll_id" });
+  const options = await db.select<PollOptionRow>("poll_options", { order: "display_order.asc" });
   const counts = new Map<string, number>();
   for (const row of votes) counts.set(row.poll_id, (counts.get(row.poll_id) || 0) + 1);
   for (const row of textResponses) counts.set(row.poll_id, (counts.get(row.poll_id) || 0) + 1);
 
   return jsonResponse({
-    polls: polls.map((poll) => ({ ...poll, response_count: counts.get(poll.id) || 0 })),
+    polls: polls.map((poll) => ({
+      ...poll,
+      options: options.filter((option) => option.poll_id === poll.id),
+      response_count: counts.get(poll.id) || 0,
+    })),
   });
 }
 
@@ -164,8 +176,8 @@ async function createPoll(db: SupabaseRest, actor: AdminActor, event: EventRow, 
 async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, payload: PollPayload): Promise<Response> {
   const poll = (await db.select<PollRow>("polls", { id: `eq.${pollId}`, limit: 1 }))[0];
   if (!poll) return errorResponse("Poll not found", 404);
-  if (!["draft", "ready"].includes(poll.status)) {
-    return errorResponse("Only draft or ready polls can be edited — pause or archive first", 409);
+  if (!["draft", "ready", "paused", "closed"].includes(poll.status)) {
+    return errorResponse("Aktīvu vai arhivētu balsojumu rediģēt nevar. Vispirms to deaktivizē.", 409);
   }
   if (payload.expectedUpdatedAt && poll.updated_at !== payload.expectedUpdatedAt) {
     return jsonResponse({ error: "conflict", poll }, 409);
@@ -184,6 +196,32 @@ async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, p
     return errorResponse("Šim programmas punktam jau ir automātiski aktivizējams balsojums.", 409);
   }
 
+  const scaleChanged = pollType === "scale"
+    && (settings.scaleMin !== poll.settings.scaleMin || settings.scaleMax !== poll.settings.scaleMax);
+  const replaceOptions = payload.options !== undefined || pollType !== poll.poll_type || scaleChanged;
+  const options = replaceOptions ? optionsForType(pollType, payload.options || [], settings) : null;
+  if (options && ["single_choice", "multiple_choice", "scale"].includes(pollType) && options.length < 2) {
+    return errorResponse("At least two options are required", 422);
+  }
+
+  const currentOptions = replaceOptions
+    ? await db.select<PollOptionRow>("poll_options", { poll_id: `eq.${pollId}`, order: "display_order.asc" })
+    : [];
+  const optionsChanged = options !== null && (
+    currentOptions.length !== options.length
+    || currentOptions.some((option, index) => option.label !== options[index])
+  );
+  const submissionPolicyChanged = settings.allowMultipleSubmissions !== poll.settings.allowMultipleSubmissions;
+  if (pollType !== poll.poll_type || optionsChanged || submissionPolicyChanged) {
+    const [votes, textResponses] = await Promise.all([
+      db.select<{ id: string }>("poll_votes", { poll_id: `eq.${pollId}`, select: "id", limit: 1 }),
+      db.select<{ id: string }>("poll_text_responses", { poll_id: `eq.${pollId}`, select: "id", limit: 1 }),
+    ]);
+    if (votes.length || textResponses.length) {
+      return errorResponse("Lai mainītu balsojuma veidu, atbilžu variantus vai iesniegšanas reižu skaitu, vispirms notīri testa atbildes.", 409);
+    }
+  }
+
   const updated = (await db.update<PollRow>("polls", {
     title,
     poll_type: pollType,
@@ -193,12 +231,9 @@ async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, p
     settings,
   }, { id: `eq.${pollId}` }))[0];
 
-  if (payload.options) {
-    const options = optionsForType(pollType, payload.options, settings);
-    if (["single_choice", "multiple_choice", "scale"].includes(pollType) && options.length < 2) {
-      return errorResponse("At least two options are required", 422);
-    }
-    // Safe to replace outright: edits are only allowed while draft/ready, i.e. before any votes exist.
+  if (optionsChanged && options) {
+    // Structural edits are only allowed without responses, so replacing the
+    // rows cannot silently change the meaning of existing votes.
     await db.delete("poll_options", { poll_id: `eq.${pollId}` });
     if (options.length) {
       await db.insert("poll_options", options.map((label, index) => ({
@@ -219,19 +254,21 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
   if (!poll) return errorResponse("Poll not found", 404);
 
   const fields: Record<string, unknown> = {};
-  if (action === "activate") {
+  const activates = ["activate", "reopen"].includes(action);
+  if (activates) {
+    if (!["draft", "ready", "paused", "closed"].includes(poll.status)) {
+      return errorResponse("Šo balsojumu nevar aktivizēt.", 409);
+    }
     if (["single_choice", "multiple_choice", "scale"].includes(poll.poll_type)) {
       const options = await db.select<PollOptionRow>("poll_options", { poll_id: `eq.${pollId}` });
       if (options.length < 2) return errorResponse("Poll needs at least two options before it can go live", 422);
     }
     fields.status = "active";
     fields.activated_at = new Date().toISOString();
+    fields.closed_at = null;
   } else if (action === "pause") {
+    if (poll.status !== "active") return errorResponse("Deaktivizēt var tikai aktīvu balsojumu.", 409);
     fields.status = "paused";
-  } else if (action === "reopen") {
-    if (!["paused", "closed"].includes(poll.status)) return errorResponse("Only a paused or closed poll can be reopened", 409);
-    fields.status = "active";
-    fields.activated_at = new Date().toISOString();
   } else if (action === "close") {
     fields.status = "closed";
     fields.closed_at = new Date().toISOString();
@@ -248,7 +285,7 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
     return errorResponse("Unsupported poll action", 400);
   }
 
-  if (["activate", "reopen"].includes(action)) {
+  if (activates) {
     await db.update("polls", { status: "closed", closed_at: new Date().toISOString() }, {
       event_id: `eq.${poll.event_id}`,
       status: "eq.active",
@@ -257,20 +294,38 @@ async function setStatus(db: SupabaseRest, actor: AdminActor, pollId: string, ac
   }
 
   const updated = (await db.update<PollRow>("polls", fields, { id: `eq.${pollId}` }))[0];
-  if (["activate", "reopen"].includes(action)) {
+  if (activates) {
     const presentation = (await db.select<PresentationStateRow>("presentation_state", {
       event_id: `eq.${poll.event_id}`,
       limit: 1,
     }))[0];
     const presentationFields = {
       mode: "poll_question",
+      agenda_item_id: poll.agenda_item_id,
       poll_id: pollId,
+      question_id: null,
       updated_by: actor.userId,
       updated_at: new Date().toISOString(),
     };
     if (presentation) await db.update("presentation_state", presentationFields, { id: `eq.${presentation.id}` });
     else await db.insert("presentation_state", [{ event_id: poll.event_id, ...presentationFields }]);
     await broadcast(db.topic, "presentation_changed", { mode: "poll_question", poll_id: pollId });
+  } else if (action === "pause") {
+    const presentation = (await db.select<PresentationStateRow>("presentation_state", {
+      event_id: `eq.${poll.event_id}`,
+      limit: 1,
+    }))[0];
+    if (presentation?.poll_id === pollId && ["poll_question", "poll_results"].includes(presentation.mode)) {
+      await db.update("presentation_state", {
+        mode: "waiting",
+        agenda_item_id: null,
+        poll_id: null,
+        question_id: null,
+        updated_by: actor.userId,
+        updated_at: new Date().toISOString(),
+      }, { id: `eq.${presentation.id}` });
+      await broadcast(db.topic, "presentation_changed", { mode: "waiting", poll_id: null });
+    }
   }
   await logAudit(db, actor, `poll_${action}`, "polls", pollId);
   await broadcast(db.topic, "poll_changed", { poll_id: pollId, action });

@@ -12,7 +12,10 @@ const browser = await chromium.launch({ headless: true, ...(process.env.ARC_CHRO
 const agenda = [0, 1, 2].map((i) => ({ id: `agenda-${i}`, starts_at: '2026-09-30T06:00:00Z', ends_at: '2026-09-30T06:30:00Z', title: `Programmas punkts ${i + 1} — mākslīgais intelekts uzņēmumu ikdienā`, speaker_name: 'Testa Runātājs', status: i === 0 ? 'now' : 'later', display_order: i, is_break: i === 1 }));
 const questions = [{ id: 'question-1', agenda_item_id: 'agenda-0', body: 'Kā ieviest mākslīgo intelektu uzņēmuma ikdienas darbā, saglabājot datu drošību?', is_anonymous: true, vote_count: 12, created_at: new Date().toISOString() }];
 const participants = [{ id: 'person-1', first_name: 'Testa', last_name: 'Dalībnieks', email: 'garaks.testetaja.epasts@example.invalid', role: 'Uzņēmuma vadītājs', status: 'approved', access_mode: 'full', consents: { networking: true }, attendance_reconfirmed_at: new Date().toISOString() }];
-const polls = [{ id: 'poll-1', agenda_item_id: 'agenda-0', title: 'Kā vērtējat sava uzņēmuma gatavību izmantot MI?', status: 'active', poll_type: 'single_choice', response_count: 32 }];
+const polls = [
+  { id: 'poll-1', agenda_item_id: 'agenda-0', title: 'Kā vērtējat sava uzņēmuma gatavību izmantot MI?', status: 'active', poll_type: 'single_choice', response_count: 32, settings: { allowMultipleSubmissions: false }, options: [{ id: 'option-1', poll_id: 'poll-1', label: 'Jā', display_order: 1 }, { id: 'option-2', poll_id: 'poll-1', label: 'Nē', display_order: 2 }], updated_at: '2026-09-25T09:00:00Z' },
+  { id: 'poll-2', agenda_item_id: 'agenda-0', title: 'Sagatavots testa balsojums', status: 'paused', poll_type: 'single_choice', response_count: 0, allow_anonymous: true, auto_activate_with_agenda: true, settings: { anonymous: true, allowMultipleSubmissions: false, autoActivateWithAgenda: true, resultsVisibleLive: false, showRespondentCount: true, shuffleOptions: false, resultsFormat: 'count' }, options: [{ id: 'option-3', poll_id: 'poll-2', label: 'Variants A', display_order: 1 }, { id: 'option-4', poll_id: 'poll-2', label: 'Variants B', display_order: 2 }], updated_at: '2026-09-25T10:00:00Z' },
+];
 try {
   for (const width of [360, 390, 768, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
@@ -29,7 +32,7 @@ try {
       }
       if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.__supabaseClientCount=0;window.__sessionRefreshCount=0;window.supabase={createClient(){window.__supabaseClientCount++;let token='offline-stale';return {auth:{getSession:async()=>({data:{session:{access_token:token}}}),refreshSession:async()=>{window.__sessionRefreshCount++;token='offline-refreshed';return {data:{session:{access_token:token}}}},signOut:async()=>({})},channel(){return {on(){return this},subscribe(){return this}}}}}};` });
       if (url.pathname.includes('/functions/v1/')) {
-        if (route.request().method() === 'POST') writes.push({ path: url.pathname, action: url.searchParams.get('action'), body: route.request().postDataJSON() });
+        if (route.request().method() === 'POST') writes.push({ path: url.pathname, action: url.searchParams.get('action'), pollId: url.searchParams.get('poll_id'), body: route.request().postDataJSON() });
         if (url.pathname.endsWith('/admin-users') && url.searchParams.get('action') === 'whoami' && route.request().headers().authorization === 'Bearer offline-stale') {
           return route.fulfill({ status: 401, json: { error: 'Invalid or expired session' } });
         }
@@ -96,15 +99,43 @@ try {
       await page.getByRole('button', { name: '← Grafiks', exact: true }).click();
       await page.locator('[data-close-modal="programModal"]').click();
       await tabs.locator('[data-admin-nav="polls"]').click();
-      await page.locator('.admin-poll-row').waitFor(); await noOverflow('polls');
-      assert.match(await page.locator('.admin-poll-agenda').textContent(), /Programmas punkts 1/);
+      await page.locator('.admin-poll-row').first().waitFor(); await noOverflow('polls');
+      assert.match(await page.locator('.admin-poll-agenda').first().textContent(), /Programmas punkts 1/);
       await page.locator('[data-poll-results]').click();
       await page.waitForFunction(() => document.querySelector('[data-poll-results]'));
       assert.ok(writes.some((entry) => entry.path.endsWith('/presentation') && entry.body.mode === 'poll_results' && entry.body.pollId === 'poll-1'));
       const before = writes.length;
+      await page.locator('.admin-poll-row.is-active .admin-more-toggle').click();
       page.once('dialog', (dialog) => dialog.dismiss());
       await page.locator('[data-poll-close]').click();
       assert.equal(writes.length, before, 'Cancelled close must not send API write');
+      await page.locator('[data-poll-pause="poll-1"]').click();
+      assert.ok(writes.some((entry) => entry.action === 'pause' && entry.pollId === 'poll-1'), 'Active poll can be deactivated without deleting responses');
+
+      await page.locator('[data-poll-edit="poll-2"]').click();
+      assert.equal(await page.locator('#pollWizardHeading').textContent(), 'Rediģēt balsojumu');
+      assert.equal(await page.locator('#wizardTitle').inputValue(), 'Sagatavots testa balsojums');
+      assert.equal(await page.locator('#wizardAutoActivate').isChecked(), true);
+      assert.equal(await page.locator('#wizardResultsLive').isChecked(), false);
+      await page.locator('#wizardNext').click();
+      await page.locator('#wizardTitle').fill('Labots testa balsojums');
+      await page.locator('[data-option-index="1"]').fill('Labots variants');
+      await page.locator('#wizardNext').click();
+      await page.locator('#wizardMultipleSubmissions').check();
+      await page.locator('#wizardResultsLive').check();
+      await page.locator('#wizardNext').click();
+      await page.locator('#wizardSubmit').click();
+      await page.waitForFunction(() => document.querySelector('#pollWizardModal').hidden);
+      const updateWrite = writes.findLast((entry) => entry.path.endsWith('/admin-polls') && entry.action === 'update');
+      assert.equal(updateWrite.pollId, 'poll-2');
+      assert.equal(updateWrite.body.title, 'Labots testa balsojums');
+      assert.deepEqual(updateWrite.body.options, ['Variants A', 'Labots variants']);
+      assert.equal(updateWrite.body.settings.allowMultipleSubmissions, true);
+      assert.equal(updateWrite.body.settings.resultsVisibleLive, true);
+      assert.equal(updateWrite.body.expectedUpdatedAt, '2026-09-25T10:00:00Z');
+
+      await page.locator('[data-poll-activate="poll-2"]').click();
+      assert.ok(writes.some((entry) => entry.action === 'activate' && entry.pollId === 'poll-2'), 'Paused poll can be activated again');
       await page.locator('#pollsOpenWizard').click();
       assert.equal(Math.round((await page.locator('#pollWizardModal .admin-modal-panel').boundingBox()).width), width);
       assert.equal(await page.locator('#wizardMultipleSubmissions').isChecked(), false, 'Choice polls default to one submission');

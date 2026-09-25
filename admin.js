@@ -34,6 +34,8 @@
   let pollsFilter = "all";
   let wizardStep = 1;
   let wizardOptions = ["", ""];
+  let wizardPollId = null;
+  let wizardExpectedUpdatedAt = null;
   let currentParticipants = [];
   let sessionRefreshPromise = null;
   let sessionExpiryHandled = false;
@@ -936,22 +938,27 @@
     const activationLabel = poll.auto_activate_with_agenda ? "Automātiski ar programmas punktu" : "Manuāla aktivizēšana";
     const agendaItem = agendaItems.find((item) => item.id === poll.agenda_item_id);
     const agendaLabel = agendaItem?.title || (poll.agenda_item_id ? "Nezināms programmas punkts" : "Nav piesaistīts programmas punktam");
+    const canEdit = ["draft", "ready", "paused", "closed"].includes(poll.status);
+    const moreActions = isActive
+      ? `<button type="button" data-poll-close="${poll.id}">Noslēgt balsojumu</button>
+         <button type="button" data-poll-export="${poll.id}">Eksportēt CSV</button>`
+      : `${poll.response_count ? `<button type="button" data-poll-results="${poll.id}">Rādīt atbildes</button>` : ""}
+         ${poll.agenda_item_id && poll.status !== "archived" ? `<button type="button" data-poll-automation="${poll.id}" data-automation-enabled="${!poll.auto_activate_with_agenda}">${poll.auto_activate_with_agenda ? "Pārslēgt uz manuālu aktivizēšanu" : "Aktivizēt automātiski ar programmu"}</button>` : ""}
+         ${poll.status !== "archived" ? `<button type="button" data-poll-clear="${poll.id}">Notīrīt atbildes</button>
+         <button type="button" data-poll-archive="${poll.id}">Arhivēt</button>
+         <button type="button" data-poll-delete="${poll.id}">Dzēst balsojumu</button>` : ""}
+         <button type="button" data-poll-export="${poll.id}">Eksportēt CSV</button>`;
+    const moreMenu = `<div class="admin-more-menu">
+      <button type="button" class="admin-more-toggle" aria-label="Vairāk darbību">⋯</button>
+      <div class="admin-more-dropdown" hidden>${moreActions}</div>
+    </div>`;
     const actions = isActive
       ? `<button type="button" class="btn secondary" data-poll-results="${poll.id}">Atbildes</button>
-         <button type="button" class="live-submit is-pink" data-poll-close="${poll.id}">Noslēgt</button>`
-      : `${["draft", "ready"].includes(poll.status) ? `<button type="button" class="btn secondary" data-poll-activate="${poll.id}">Aktivizēt</button>` : ""}
-         <div class="admin-more-menu">
-           <button type="button" class="admin-more-toggle">⋯</button>
-           <div class="admin-more-dropdown" hidden>
-             ${poll.status === "paused" ? `<button type="button" data-poll-reopen="${poll.id}">Atkārtoti atvērt</button>` : ""}
-             ${poll.status === "active" ? `<button type="button" data-poll-pause="${poll.id}">Apturēt</button>` : ""}
-             ${poll.agenda_item_id && poll.status !== "archived" ? `<button type="button" data-poll-automation="${poll.id}" data-automation-enabled="${!poll.auto_activate_with_agenda}">${poll.auto_activate_with_agenda ? "Pārslēgt uz manuālu aktivizēšanu" : "Aktivizēt automātiski ar programmu"}</button>` : ""}
-             <button type="button" data-poll-clear="${poll.id}">Notīrīt atbildes</button>
-             <button type="button" data-poll-archive="${poll.id}">Arhivēt</button>
-             <button type="button" data-poll-export="${poll.id}">Eksportēt CSV</button>
-             <button type="button" data-poll-delete="${poll.id}">Dzēst balsojumu</button>
-           </div>
-         </div>`;
+         <button type="button" class="live-submit is-pink" data-poll-pause="${poll.id}">Deaktivizēt</button>
+         ${moreMenu}`
+      : `${canEdit ? `<button type="button" class="btn secondary" data-poll-edit="${poll.id}">Rediģēt</button>
+         <button type="button" class="live-submit" data-poll-activate="${poll.id}">Aktivizēt</button>` : ""}
+         ${moreMenu}`;
     return `
       <article class="admin-poll-row ${isActive ? "is-active" : ""}">
         <span class="admin-poll-icon">${pollTypeIcon()}</span>
@@ -981,6 +988,12 @@
   }
 
   document.addEventListener("click", async (event) => {
+    const editBtn = event.target.closest("[data-poll-edit]");
+    if (editBtn) {
+      const poll = dashboardPolls.find((item) => item.id === editBtn.dataset.pollEdit);
+      if (poll) openPollWizard(poll);
+      return;
+    }
     const activateBtn = event.target.closest("[data-poll-activate]");
     if (activateBtn) {
       try {
@@ -993,13 +1006,17 @@
     }
     const closeBtn = event.target.closest("[data-poll-close]");
     if (closeBtn) {
+      if (!window.confirm("Noslēgt šo balsojumu? To vēlāk varēs aktivizēt atkārtoti.")) return;
       await adminFetch(`/admin-polls?action=close&poll_id=${closeBtn.dataset.pollClose}`, { method: "POST" }).catch((error) => showToast(error.message));
       await refreshPollsPanel();
       return;
     }
     const pauseBtn = event.target.closest("[data-poll-pause]");
     if (pauseBtn) {
-      await adminFetch(`/admin-polls?action=pause&poll_id=${pauseBtn.dataset.pollPause}`, { method: "POST" }).catch((error) => showToast(error.message));
+      await adminFetch(`/admin-polls?action=pause&poll_id=${pauseBtn.dataset.pollPause}`, { method: "POST" })
+        .then(() => showToast("Balsojums deaktivizēts. Atbildes ir saglabātas."))
+        .catch((error) => showToast(error.message));
+      await refreshPresentationState();
       await refreshPollsPanel();
       return;
     }
@@ -1066,29 +1083,48 @@
 
   function renderPollTypeGrid() {
     el("pollTypeGrid").innerHTML = POLL_TYPES.map((type) => `
-      <button type="button" class="admin-poll-type-option" data-wizard-type="${type.id}">${type.label}</button>
+      <button type="button" class="admin-poll-type-option ${type.id === wizardType ? "is-active" : ""}" data-wizard-type="${type.id}">${type.label}</button>
     `).join("");
   }
 
   let wizardType = "single_choice";
 
-  el("pollsOpenWizard")?.addEventListener("click", () => {
+  function openPollWizard(poll = null) {
+    const settings = poll?.settings || {};
+    wizardPollId = poll?.id || null;
+    wizardExpectedUpdatedAt = poll?.updated_at || null;
     wizardStep = 1;
-    wizardType = "single_choice";
-    wizardOptions = ["", ""];
-    el("wizardTitle").value = "";
-    el("wizardMultipleSubmissions").checked = false;
-    el("wizardAutoActivate").checked = false;
-    populateWizardAgendaSelect();
+    wizardType = poll?.poll_type || "single_choice";
+    wizardOptions = (poll?.options || []).map((option) => option.label);
+    if (["single_choice", "multiple_choice"].includes(wizardType) && wizardOptions.length < 2) wizardOptions = ["", ""];
+    el("wizardTitle").value = poll?.title || "";
+    populateWizardAgendaSelect(poll?.agenda_item_id || "");
+    el("wizardAnonymous").checked = settings.anonymous ?? poll?.allow_anonymous ?? true;
+    el("wizardMultipleSubmissions").checked = typeof settings.allowMultipleSubmissions === "boolean"
+      ? settings.allowMultipleSubmissions
+      : ["open_text", "word_cloud"].includes(wizardType);
+    el("wizardAutoActivate").checked = Boolean(poll?.auto_activate_with_agenda);
+    el("wizardResultsLive").checked = settings.resultsVisibleLive !== false;
+    el("wizardShowCount").checked = settings.showRespondentCount !== false;
+    el("wizardShuffle").checked = settings.shuffleOptions === true;
+    el("wizardResultsFormat").value = ["percent", "count", "both"].includes(settings.resultsFormat) ? settings.resultsFormat : "percent";
+    el("wizardScaleMin").value = Number(settings.scaleMin) || 1;
+    el("wizardScaleMax").value = Number(settings.scaleMax) || 5;
+    el("pollWizardHeading").textContent = poll ? "Rediģēt balsojumu" : "Jauns balsojums";
+    el("wizardSubmit").innerHTML = poll ? "Saglabāt izmaiņas <span>→</span>" : "Izveidot balsojumu <span>→</span>";
+    syncWizardAutoActivation();
     renderPollTypeGrid();
+    syncWizardTypeFields();
     updateWizardStepView();
     openModal("pollWizardModal");
-  });
+  }
 
-  function populateWizardAgendaSelect() {
+  el("pollsOpenWizard")?.addEventListener("click", () => openPollWizard());
+
+  function populateWizardAgendaSelect(selectedId = "") {
     const select = el("wizardAgendaItem");
     select.innerHTML = `<option value="">Nav piesaistīts</option>` + agendaItems.filter((item) => !item.is_break).map((item) => `<option value="${item.id}">${item.title}</option>`).join("");
-    syncWizardAutoActivation();
+    select.value = selectedId;
   }
 
   function syncWizardAutoActivation() {
@@ -1100,22 +1136,29 @@
 
   el("wizardAgendaItem")?.addEventListener("change", syncWizardAutoActivation);
 
+  function syncWizardTypeFields() {
+    el("wizardOptionsBox").hidden = !["single_choice", "multiple_choice"].includes(wizardType);
+    el("wizardScaleBox").hidden = wizardType !== "scale";
+  }
+
   document.addEventListener("click", (event) => {
     const typeBtn = event.target.closest("[data-wizard-type]");
     if (typeBtn && typeBtn.closest("#pollTypeGrid")) {
+      const changed = wizardType !== typeBtn.dataset.wizardType;
       wizardType = typeBtn.dataset.wizardType;
       document.querySelectorAll("[data-wizard-type]").forEach((btn) => btn.classList.toggle("is-active", btn === typeBtn));
-      const isChoice = ["single_choice", "multiple_choice"].includes(wizardType);
-      el("wizardOptionsBox").hidden = !isChoice;
-      el("wizardScaleBox").hidden = wizardType !== "scale";
-      el("wizardMultipleSubmissions").checked = ["open_text", "word_cloud"].includes(wizardType);
+      if (changed) {
+        if (["single_choice", "multiple_choice"].includes(wizardType) && wizardOptions.length < 2) wizardOptions = ["", ""];
+        el("wizardMultipleSubmissions").checked = ["open_text", "word_cloud"].includes(wizardType);
+      }
+      syncWizardTypeFields();
     }
   });
 
   function renderWizardOptions() {
     el("wizardOptionsList").innerHTML = wizardOptions.map((value, index) => `
       <div class="admin-wizard-option-row">
-        <input type="text" value="${value.replace(/"/g, "&quot;")}" data-option-index="${index}" placeholder="Variants ${index + 1}">
+        <input type="text" value="${esc(value)}" data-option-index="${index}" placeholder="Variants ${index + 1}">
         ${wizardOptions.length > 2 ? `<button type="button" class="admin-link" data-remove-option="${index}">✕</button>` : ""}
       </div>
     `).join("");
@@ -1153,12 +1196,12 @@
     el("wizardPreview").innerHTML = `
       <article class="agenda-poll-card">
         <span class="live-status-label"><i></i> Priekšskatījums</span>
-        <h3>${el("wizardTitle").value || "Balsojuma jautājums"}</h3>
+        <h3>${esc(el("wizardTitle").value || "Balsojuma jautājums")}</h3>
         <p class="admin-fine">${typeLabel}</p>
         <p class="admin-fine">${el("wizardMultipleSubmissions").checked ? "Atbildes var iesniegt vairākkārt" : "Katrs dalībnieks var atbildēt vienu reizi"}</p>
         <p class="admin-fine">${el("wizardAutoActivate").checked ? "Aktivizēsies automātiski ar programmas punktu" : "Moderators aktivizēs manuāli"}</p>
         ${["single_choice", "multiple_choice"].includes(wizardType)
-          ? wizardOptions.filter(Boolean).map((option, index) => `<div class="poll-option"><span class="poll-letter">${String.fromCharCode(65 + index)}</span><strong>${option}</strong></div>`).join("")
+          ? wizardOptions.filter(Boolean).map((option, index) => `<div class="poll-option"><span class="poll-letter">${String.fromCharCode(65 + index)}</span><strong>${esc(option)}</strong></div>`).join("")
           : ""}
       </article>
     `;
@@ -1188,14 +1231,18 @@
     };
     const payload = {
       title: el("wizardTitle").value.trim(),
-      agendaItemId: el("wizardAgendaItem").value || undefined,
+      agendaItemId: el("wizardAgendaItem").value,
       pollType: wizardType,
       options: wizardOptions.filter(Boolean),
       settings,
+      expectedUpdatedAt: wizardExpectedUpdatedAt || undefined,
     };
     try {
-      await adminFetch("/admin-polls?action=create", { method: "POST", body: JSON.stringify(payload) });
-      showToast("Balsojums izveidots.");
+      const path = wizardPollId
+        ? `/admin-polls?action=update&poll_id=${wizardPollId}`
+        : "/admin-polls?action=create";
+      await adminFetch(path, { method: "POST", body: JSON.stringify(payload) });
+      showToast(wizardPollId ? "Balsojuma izmaiņas saglabātas." : "Balsojums izveidots.");
       closeModal("pollWizardModal");
       await refreshPollsPanel();
     } catch (error) {

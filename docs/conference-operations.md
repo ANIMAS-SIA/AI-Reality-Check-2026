@@ -171,6 +171,8 @@ Jautājumus konferences laikā labāk paslēpt vai arhivēt, nevis dzēst. Dzē�
 
 Vienlaikus drīkst būt tikai viens aktīvs balsojums. Nav atsevišķi jāspiež **Prezentēt**, nav jāaizver balsojums pirms rezultātu rādīšanas un nav jāizmanto bulttaustiņš, lai atrastu pareizo rezultātu skatu.
 
+Pirms konferences balsojumu var aktivizēt pārbaudei un pēc tam izvēlēties **Deaktivizēt**. Tas saglabā testa atbildes, noņem balsojumu no dalībnieku un prezentācijas aktīvā skata un ļauj to rediģēt vai vēlāk aktivizēt atkārtoti. Rediģēt var melnraksta, plānotu, deaktivizētu un noslēgtu balsojumu. Ja jau ir atbildes, jautājuma tekstu un rezultātu attēlošanas iestatījumus var labot, bet pirms balsojuma veida, atbilžu variantu vai atļautā iesniegumu skaita maiņas jāizvēlas **Notīrīt atbildes**.
+
 ## Tehniskā operatora darbs
 
 Tehniskais operators ir vienīgais, kurš pārslēdz auditorijai redzamo video avotu.
