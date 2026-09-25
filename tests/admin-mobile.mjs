@@ -107,6 +107,11 @@ try {
       assert.equal(writes.length, before, 'Cancelled close must not send API write');
       await page.locator('#pollsOpenWizard').click();
       assert.equal(Math.round((await page.locator('#pollWizardModal .admin-modal-panel').boundingBox()).width), width);
+      assert.equal(await page.locator('#wizardMultipleSubmissions').isChecked(), false, 'Choice polls default to one submission');
+      await page.locator('[data-wizard-type="word_cloud"]').click();
+      assert.equal(await page.locator('#wizardMultipleSubmissions').isChecked(), true, 'Word clouds default to repeated submissions');
+      await page.locator('[data-wizard-type="single_choice"]').click();
+      assert.equal(await page.locator('#wizardMultipleSubmissions').isChecked(), false, 'Switching back restores the safer choice default');
       await noOverflow('wizard');
       if (width === 390) await page.screenshot({ path: resolve(out, 'wizard-390.png'), fullPage: true });
       await page.locator('#wizardNext').click();
@@ -117,7 +122,9 @@ try {
       await page.locator('#wizardNext').click();
       await page.locator('#wizardSubmit').waitFor({ state: 'visible' });
       await noOverflow('wizard preview');
-      await page.keyboard.press('Escape');
+      await page.locator('#wizardSubmit').click();
+      await page.waitForFunction(() => document.querySelector('#pollWizardModal').hidden);
+      assert.equal(writes.findLast((entry) => entry.path.endsWith('/admin-polls') && entry.action === 'create').body.settings.allowMultipleSubmissions, false);
       assert.equal(await page.locator('#pollWizardModal').isVisible(), false);
       await page.setViewportSize({ width: 1280, height: 900 });
       assert.equal(await page.locator('.admin-bottom-tabs').isVisible(), false);

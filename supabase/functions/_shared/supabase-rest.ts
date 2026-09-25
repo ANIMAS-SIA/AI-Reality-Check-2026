@@ -8,7 +8,8 @@ const PARENTS: Record<string, [string, string]> = {
   wallet_passes: ["participant_id", "participants"], email_deliveries: ["participant_id", "participants"],
   networking_profiles: ["participant_id", "participants"], calendar_invites: ["participant_id", "participants"],
   poll_options: ["poll_id", "polls"], poll_votes: ["poll_id", "polls"],
-  poll_text_responses: ["poll_id", "polls"], question_votes: ["question_id", "questions"],
+  poll_text_responses: ["poll_id", "polls"], poll_submission_guards: ["poll_id", "polls"],
+  question_votes: ["question_id", "questions"],
 };
 const REFERENCES: Record<string, string> = {
   agenda_item_id: "agenda_items", current_agenda_item_id: "agenda_items", participant_id: "participants",

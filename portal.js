@@ -420,9 +420,11 @@ async function voteQuestion(questionId) {
   return data;
 }
 
-async function fetchPollState() {
+async function fetchPollState(token = "") {
   if (!API_BASE) return { active: null, activePolls: [], results: [] };
-  const response = await window.arcFetch(`${API_BASE}/polls`);
+  const url = new URL(`${API_BASE}/polls`);
+  if (!token) url.searchParams.set("anonymous_session_id", getAnonSessionId());
+  const response = await window.arcFetch(url, token ? { headers: { "X-Participant-Token": token } } : undefined);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Balsojumus neizdevās ielādēt.");
   return data;
@@ -485,7 +487,7 @@ async function respondNetworkingContact(token, requestId, status) {
   return data;
 }
 
-async function submitPollVote(pollId, answer) {
+async function submitPollVote(pollId, answer, token = "") {
   const response = await window.arcFetch(`${API_BASE}/polls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -494,6 +496,7 @@ async function submitPollVote(pollId, answer) {
       optionId: answer?.optionId,
       optionIds: answer?.optionIds,
       responseText: answer?.responseText,
+      token: token || undefined,
       anonymousSessionId: getAnonSessionId(),
       isAnonymous: true,
     }),
@@ -1570,9 +1573,15 @@ async function initLive() {
       const isText = pollType === "open_text" || pollType === "word_cloud";
       const isMulti = pollType === "multiple_choice";
       const isScale = pollType === "scale";
+      const allowsMultiple = typeof active.poll.settings?.allowMultipleSubmissions === "boolean"
+        ? active.poll.settings.allowMultipleSubmissions
+        : isText;
+      const alreadySubmitted = active.has_submitted && !allowsMultiple;
       const scaleIndex = Math.floor(Math.max(0, active.options.length - 1) / 2);
       const scaleOption = active.options[scaleIndex];
-      const body = isText
+      const body = alreadySubmitted
+        ? `<p class="live-empty poll-submitted-message">Atbilde jau iesniegta. Šajā balsojumā var piedalīties vienu reizi.</p>`
+        : isText
         ? `
           <textarea class="poll-text-input" maxlength="280" placeholder="Ieraksti savu atbildi..."></textarea>
           <button class="live-submit" type="button" data-role="poll-text-submit" data-poll-id="${active.poll.id}">Iesniegt atbildi <span>→</span></button>
@@ -1679,7 +1688,7 @@ async function initLive() {
 
     if (mode === "polls" && !latestPollState) {
       try {
-        latestPollState = await fetchPollState();
+        latestPollState = await fetchPollState(participantToken);
       } catch (error) {
         console.warn(error);
       }
@@ -1752,7 +1761,7 @@ async function initLive() {
 
   async function refreshPolls() {
     try {
-      latestPollState = await fetchPollState();
+      latestPollState = await fetchPollState(participantToken);
       updateAgendaBadges();
       if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
       await openRequestedPoll();
@@ -1895,7 +1904,7 @@ async function initLive() {
     const submit = event.target.closest('[data-role="poll-scale-submit"]');
     if (!submit || !submit.dataset.optionId) return;
     submit.disabled = true;
-    submitPollVote(submit.dataset.pollId, { optionId: submit.dataset.optionId })
+    submitPollVote(submit.dataset.pollId, { optionId: submit.dataset.optionId }, participantToken)
       .then(() => {
         showToast("Vērtējums iesniegts.");
         refreshPolls();
@@ -1916,7 +1925,7 @@ async function initLive() {
     const optionIds = selected.map((item) => item.dataset.optionId);
     const isMulti = selected[0].dataset.multi === "true";
     submit.disabled = true;
-    submitPollVote(pollId, isMulti ? { optionIds } : { optionId: optionIds[0] })
+    submitPollVote(pollId, isMulti ? { optionIds } : { optionId: optionIds[0] }, participantToken)
       .then(() => {
         showToast("Balsojums iesniegts.");
         refreshPolls();
@@ -1939,7 +1948,7 @@ async function initLive() {
       return;
     }
     submit.disabled = true;
-    submitPollVote(submit.dataset.pollId, { responseText: text })
+    submitPollVote(submit.dataset.pollId, { responseText: text }, participantToken)
       .then(() => {
         textarea.value = "";
         showToast("Atbilde iesniegta.");
