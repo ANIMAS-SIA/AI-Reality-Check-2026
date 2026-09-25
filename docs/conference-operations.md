@@ -11,7 +11,7 @@ Vienai darbībai ir viens īpašnieks:
 - **tehniskais operators** atbild par to, ko konkrētajā brīdī redz lielais ekrāns, un par PowerPoint;
 - **check-in operators** strādā tikai ar ieejas skeneri.
 
-Programmas punkta maiņa pati nepārslēdz prezentācijas skatu vai jautājumus. Balsojums ir izņēmums: aktivizējot balsojumu, tas automātiski kļūst par vienīgo aktīvo balsojumu un prezentācijas skatā uzreiz parādās tā jautājums.
+Programmas punkta maiņa pati nepārslēdz jautājumus. Balsojums ir izņēmums: ja tam ieslēgta automātiskā aktivizēšana, tas sākas kopā ar piesaistīto programmas punktu un prezentācijas skatā uzreiz parādās tā jautājums. Manuāli aktivizēts balsojums darbojas tāpat, bet moderatora izvēlētajā brīdī.
 
 ## Ieteicamais tehniskais komplekts
 
@@ -73,6 +73,7 @@ Admin sesija pēc aptuveni 30 minūšu neaktivitātes var beigties. Visas ierīc
 - Produkcijas adminā pārbaudīt programmas secību, runātāju vārdus un laikus.
 - Visus paredzētos balsojumus sagatavot kā melnrakstus vai plānotus balsojumus; konferences laikā neveidot tos no nulles, ja vien nav ārkārtas vajadzības.
 - Pārbaudīt, ka katrs balsojums piesaistīts pareizajam programmas punktam.
+- Katram programmas punktam izvēlēties ne vairāk kā vienu balsojumu ar **Aktivizēt automātiski, sākoties programmas punktam**. Pārējos atstāt manuālai aktivizēšanai.
 - Pārbaudīt anonīmo ieeju no `/pass/`: bez personīgā tokena jābūt iespējai turpināt bez vārda vai ar izvēles vārdu. Reģistrētam dalībniekam jāizmanto apstiprinājuma e-pasta personīgā AI Pass saite.
 - Pārbaudīt lielā ekrāna QR kodu ar reālu telefonu.
 - Atvērt audita žurnālu un pārliecināties, ka katram operatoram ir savs konts un pareizā loma.
@@ -159,13 +160,14 @@ Jautājumus konferences laikā labāk paslēpt vai arhivēt, nevis dzēst. Dzē�
 ### Balsojuma secība
 
 1. Atvērt **Balsojumi** un atrast iepriekš sagatavoto balsojumu.
-2. Pārbaudīt pie balsojuma norādīto programmas punktu.
-3. Pēc skatuves moderatora signāla izvēlēties **Aktivizēt**. Iepriekšējais aktīvais balsojums automātiski tiek aizvērts, bet jaunā balsojuma jautājums uzreiz tiek sagatavots prezentācijas skatā.
-4. Tehniskais operators pārslēdz lielo ekrānu uz PORTĀLS.
-5. Skatuves moderators dod auditorijai laiku balsot un nosauc atskaiti, piemēram, “vēl 5 sekundes”.
-6. Lai jebkurā brīdī parādītu līdzšinējās atbildes, nospiest **Atbildes**. Balsojums paliek atvērts, un rezultāti prezentācijā turpina atjaunoties.
-7. Kad atbildes vairs nepieņem, izvēlēties **Noslēgt**. Ja rezultāti jau ir ekrānā, tie paliek redzami.
-8. Pēc rezultātu apspriešanas izvēlēties **Programmas punkts**, **Auditorijas jautājumi** vai **Gaidīšanas ekrāns**.
+2. Pārbaudīt pie balsojuma norādīto programmas punktu un vai tam norādīta automātiska vai manuāla aktivizēšana.
+3. Automātiskais balsojums ieslēdzas, tiklīdz pēc servera laika sākas piesaistītais programmas punkts vai administrators šo punktu sāk manuāli. Manuālam balsojumam pēc skatuves moderatora signāla izvēlēties **Aktivizēt**.
+4. Aktivizēšana aizver iepriekšējo aktīvo balsojumu un prezentācijas skatā uzreiz sagatavo jaunā balsojuma jautājumu.
+5. Tehniskais operators pārslēdz lielo ekrānu uz PORTĀLS.
+6. Skatuves moderators dod auditorijai laiku balsot un nosauc atskaiti, piemēram, “vēl 5 sekundes”.
+7. Lai jebkurā brīdī parādītu līdzšinējās atbildes, nospiest **Atbildes**. Balsojums paliek atvērts, un rezultāti prezentācijā turpina atjaunoties.
+8. Kad atbildes vairs nepieņem, izvēlēties **Noslēgt**. Sistēma to neatvērs vēlreiz tajā pašā programmas punktā. Ja rezultāti jau ir ekrānā, tie paliek redzami.
+9. Pēc rezultātu apspriešanas izvēlēties **Programmas punkts**, **Auditorijas jautājumi** vai **Gaidīšanas ekrāns**.
 
 Vienlaikus drīkst būt tikai viens aktīvs balsojums. Nav atsevišķi jāspiež **Prezentēt**, nav jāaizver balsojums pirms rezultātu rādīšanas un nav jāizmanto bulttaustiņš, lai atrastu pareizo rezultātu skatu.
 

@@ -40,7 +40,7 @@ export class SupabaseRest {
       });
   }
 
-  async rpc<T>(name: "control_event_agenda" | "create_event_rehearsal", args: Record<string, unknown>): Promise<T> {
+  async rpc<T>(name: "control_event_agenda" | "create_event_rehearsal" | "reconcile_event_poll_automation", args: Record<string, unknown>): Promise<T> {
     return await (await this.rawRequest(`rpc/${name}`, { method: "POST", body: args })).json() as T;
   }
 

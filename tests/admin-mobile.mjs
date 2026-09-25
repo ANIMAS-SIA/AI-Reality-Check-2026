@@ -108,6 +108,7 @@ try {
       await page.locator('#pollsOpenWizard').click();
       assert.equal(Math.round((await page.locator('#pollWizardModal .admin-modal-panel').boundingBox()).width), width);
       assert.equal(await page.locator('#wizardMultipleSubmissions').isChecked(), false, 'Choice polls default to one submission');
+      assert.equal(await page.locator('#wizardAutoActivate').isDisabled(), true, 'Automatic activation requires an agenda item');
       await page.locator('[data-wizard-type="word_cloud"]').click();
       assert.equal(await page.locator('#wizardMultipleSubmissions').isChecked(), true, 'Word clouds default to repeated submissions');
       await page.locator('[data-wizard-type="single_choice"]').click();
@@ -116,15 +117,19 @@ try {
       if (width === 390) await page.screenshot({ path: resolve(out, 'wizard-390.png'), fullPage: true });
       await page.locator('#wizardNext').click();
       await page.locator('#wizardTitle').fill('Testa balsojums');
+      await page.locator('#wizardAgendaItem').selectOption('agenda-0');
+      assert.equal(await page.locator('#wizardAutoActivate').isDisabled(), false, 'Agenda-linked poll can enable automatic activation');
       await page.locator('[data-option-index="0"]').fill('Jā');
       await page.locator('[data-option-index="1"]').fill('Nē');
       await page.locator('#wizardNext').click();
+      await page.locator('#wizardAutoActivate').check();
       await page.locator('#wizardNext').click();
       await page.locator('#wizardSubmit').waitFor({ state: 'visible' });
       await noOverflow('wizard preview');
       await page.locator('#wizardSubmit').click();
       await page.waitForFunction(() => document.querySelector('#pollWizardModal').hidden);
       assert.equal(writes.findLast((entry) => entry.path.endsWith('/admin-polls') && entry.action === 'create').body.settings.allowMultipleSubmissions, false);
+      assert.equal(writes.findLast((entry) => entry.path.endsWith('/admin-polls') && entry.action === 'create').body.settings.autoActivateWithAgenda, true);
       assert.equal(await page.locator('#pollWizardModal').isVisible(), false);
       await page.setViewportSize({ width: 1280, height: 900 });
       assert.equal(await page.locator('.admin-bottom-tabs').isVisible(), false);

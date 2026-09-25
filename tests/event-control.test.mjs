@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { resolveAgenda } from '../supabase/functions/_shared/agenda.ts';
+import { reconcilePollAutomation } from '../supabase/functions/_shared/poll-automation.ts';
 import { SupabaseRest } from '../supabase/functions/_shared/supabase-rest.ts';
 
 const time = (minutes) => new Date(Date.UTC(2026, 8, 30, 6, minutes)).toISOString();
@@ -40,6 +41,51 @@ test('resolver is pure and gaps do not reactivate a stale speaker', () => {
   assert.equal(resolved.current, null);
   assert.equal(resolved.next.id, 'talk2');
   assert.deepEqual(agenda, original);
+});
+
+test('poll automation reconciliation stays idempotent and broadcasts only real transitions', async () => {
+  const calls = [];
+  const db = {
+    topic: 'live:test-event',
+    async rpc(name, args) {
+      calls.push({ name, args });
+      return { changed: false, agenda_item_id: 'talk1', poll_id: 'poll1' };
+    },
+  };
+  const result = await reconcilePollAutomation(db, 'test-event');
+  assert.equal(result.changed, false);
+  assert.deepEqual(calls, [{
+    name: 'reconcile_event_poll_automation',
+    args: { p_event_id: 'test-event' },
+  }]);
+
+  const originalFetch = globalThis.fetch;
+  const originalWarn = console.warn;
+  globalThis.fetch = async () => { throw new Error('Realtime unavailable'); };
+  console.warn = () => {};
+  try {
+    const transitioned = await reconcilePollAutomation({
+      topic: 'live:test-event',
+      async rpc() {
+        return { changed: true, agenda_item_id: 'talk2', poll_id: 'poll2' };
+      },
+    }, 'test-event');
+    assert.equal(transitioned.changed, true, 'committed transition survives a Realtime outage');
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
+  }
+});
+
+test('poll automation migration enforces serialized, single-owner and service-only transitions', () => {
+  const sql = readFileSync(new URL('../supabase/migrations/202609250002_poll_agenda_automation.sql', import.meta.url), 'utf8');
+  assert.match(sql, /create unique index polls_one_auto_activation_per_agenda/i);
+  assert.match(sql, /from public\.events[\s\S]*for update/i);
+  assert.match(sql, /automation\.agenda_item_id is not distinct from current_agenda_id/i);
+  assert.match(sql, /select count\(\*\)[\s\S]*from public\.poll_options/i);
+  assert.match(sql, /and poll_id = previous_poll_id[\s\S]*and mode in \('poll_question', 'poll_results'\)/i);
+  assert.match(sql, /revoke all on function public\.reconcile_event_poll_automation\(uuid\) from public, anon, authenticated/i);
+  assert.match(sql, /grant execute on function public\.reconcile_event_poll_automation\(uuid\) to service_role/i);
 });
 
 globalThis.Deno = { env: { get: (key) => ({ SUPABASE_URL: 'https://db.invalid', SUPABASE_SERVICE_ROLE_KEY: 'test-only' })[key] } };

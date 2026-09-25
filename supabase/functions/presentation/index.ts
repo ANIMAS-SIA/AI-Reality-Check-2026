@@ -2,6 +2,7 @@ import { broadcast } from "../_shared/broadcast.ts";
 import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, logAudit } from "../_shared/auth.ts";
 import { errorResponse, handleOptions, jsonResponse, readJson } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
+import { reconcilePollAutomation } from "../_shared/poll-automation.ts";
 
 const TOPIC = "live:ai-reality-check-2026";
 const MODES = ["waiting", "agenda", "poll_question", "poll_results", "questions", "announcement", "closing"] as const;
@@ -126,6 +127,7 @@ async function buildSnapshot(db: SupabaseRest, event: EventRow, state: StateRow)
 
 async function getSnapshot(db: SupabaseRest): Promise<Response> {
   const event = await getEvent(db);
+  await reconcilePollAutomation(db, event.id);
   const state = await ensureState(db, event);
   return jsonResponse(await buildSnapshot(db, event, state));
 }

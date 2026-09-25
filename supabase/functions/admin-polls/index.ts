@@ -11,6 +11,7 @@ type PollSettings = Partial<{
   anonymous: boolean;
   allowAnswerChange: boolean;
   allowMultipleSubmissions: boolean;
+  autoActivateWithAgenda: boolean;
   resultsVisibleLive: boolean;
   resultsAfterClose: boolean;
   showRespondentCount: boolean;
@@ -43,6 +44,7 @@ type PollRow = {
   status: string;
   allow_anonymous: boolean;
   results_public: boolean;
+  auto_activate_with_agenda: boolean;
   settings: PollSettings;
   updated_at: string;
 };
@@ -103,11 +105,32 @@ function settingsForType(pollType: PollTypeValue, provided: PollSettings): PollS
   };
 }
 
+async function autoActivationConflict(
+  db: SupabaseRest,
+  eventId: string,
+  agendaItemId: string,
+  excludePollId = "",
+): Promise<boolean> {
+  const polls = await db.select<PollRow>("polls", {
+    event_id: `eq.${eventId}`,
+    agenda_item_id: `eq.${agendaItemId}`,
+  });
+  return polls.some((poll) => poll.id !== excludePollId
+    && poll.status !== "archived"
+    && poll.auto_activate_with_agenda);
+}
+
 async function createPoll(db: SupabaseRest, actor: AdminActor, event: EventRow, payload: PollPayload): Promise<Response> {
   const title = clean(payload.title);
   if (!title) return errorResponse("Poll title is required", 400);
   const pollType = POLL_TYPES.includes(payload.pollType as PollTypeValue) ? (payload.pollType as PollTypeValue) : "single_choice";
   const settings = settingsForType(pollType, payload.settings || {});
+  const agendaItemId = clean(payload.agendaItemId);
+  const autoActivate = settings.autoActivateWithAgenda === true;
+  if (autoActivate && !agendaItemId) return errorResponse("Automatic activation requires an agenda item", 422);
+  if (autoActivate && await autoActivationConflict(db, event.id, agendaItemId)) {
+    return errorResponse("Šim programmas punktam jau ir automātiski aktivizējams balsojums.", 409);
+  }
   const options = optionsForType(pollType, payload.options || [], settings);
   if (["single_choice", "multiple_choice", "scale"].includes(pollType) && options.length < 2) {
     return errorResponse("At least two options are required", 422);
@@ -115,12 +138,13 @@ async function createPoll(db: SupabaseRest, actor: AdminActor, event: EventRow, 
 
   const poll = (await db.insert<PollRow>("polls", [{
     event_id: event.id,
-    agenda_item_id: clean(payload.agendaItemId) || null,
+    agenda_item_id: agendaItemId || null,
     title,
     poll_type: pollType,
     status: "draft",
     allow_anonymous: settings.anonymous !== false,
     results_public: false,
+    auto_activate_with_agenda: autoActivate,
     settings,
   }]))[0];
 
@@ -151,12 +175,21 @@ async function updatePoll(db: SupabaseRest, actor: AdminActor, pollId: string, p
   if (!title) return errorResponse("Poll title is required", 400);
   const pollType = POLL_TYPES.includes(payload.pollType as PollTypeValue) ? (payload.pollType as PollTypeValue) : poll.poll_type;
   const settings = settingsForType(pollType, { ...poll.settings, ...(payload.settings || {}) });
+  const agendaItemId = payload.agendaItemId !== undefined ? clean(payload.agendaItemId) : (poll.agenda_item_id || "");
+  const autoActivate = payload.settings && Object.prototype.hasOwnProperty.call(payload.settings, "autoActivateWithAgenda")
+    ? payload.settings.autoActivateWithAgenda === true
+    : poll.auto_activate_with_agenda;
+  if (autoActivate && !agendaItemId) return errorResponse("Automatic activation requires an agenda item", 422);
+  if (autoActivate && await autoActivationConflict(db, poll.event_id, agendaItemId, poll.id)) {
+    return errorResponse("Šim programmas punktam jau ir automātiski aktivizējams balsojums.", 409);
+  }
 
   const updated = (await db.update<PollRow>("polls", {
     title,
     poll_type: pollType,
-    agenda_item_id: payload.agendaItemId !== undefined ? (clean(payload.agendaItemId) || null) : poll.agenda_item_id,
+    agenda_item_id: agendaItemId || null,
     allow_anonymous: settings.anonymous !== false,
+    auto_activate_with_agenda: autoActivate,
     settings,
   }, { id: `eq.${pollId}` }))[0];
 
@@ -257,6 +290,31 @@ async function clearResponses(db: SupabaseRest, actor: AdminActor, pollId: strin
   return jsonResponse({ ok: true });
 }
 
+async function setAutomation(db: SupabaseRest, actor: AdminActor, pollId: string, enabled: boolean): Promise<Response> {
+  const poll = (await db.select<PollRow>("polls", { id: `eq.${pollId}`, limit: 1 }))[0];
+  if (!poll) return errorResponse("Poll not found", 404);
+  if (["active", "archived"].includes(poll.status)) {
+    return errorResponse("Aktīvam vai arhivētam balsojumam automātisko aktivizēšanu mainīt nevar.", 409);
+  }
+  if (enabled && !poll.agenda_item_id) return errorResponse("Balsojumam vispirms jāpiesaista programmas punkts.", 422);
+  if (enabled && ["single_choice", "multiple_choice", "scale"].includes(poll.poll_type)) {
+    const options = await db.select<PollOptionRow>("poll_options", { poll_id: `eq.${pollId}` });
+    if (options.length < 2) return errorResponse("Pirms automātiskas aktivizēšanas balsojumam vajag vismaz divus atbilžu variantus.", 422);
+  }
+  if (enabled && await autoActivationConflict(db, poll.event_id, poll.agenda_item_id || "", poll.id)) {
+    return errorResponse("Šim programmas punktam jau ir automātiski aktivizējams balsojums.", 409);
+  }
+
+  const settings = { ...poll.settings, autoActivateWithAgenda: enabled };
+  const updated = (await db.update<PollRow>("polls", {
+    auto_activate_with_agenda: enabled,
+    settings,
+  }, { id: `eq.${pollId}` }))[0];
+  await logAudit(db, actor, "poll_automation_update", "polls", pollId, { enabled });
+  await broadcast(db.topic, "poll_changed", { poll_id: pollId, action: "automation", enabled });
+  return jsonResponse({ poll: updated });
+}
+
 async function deletePoll(db: SupabaseRest, actor: AdminActor, pollId: string): Promise<Response> {
   const poll = (await db.select<PollRow>("polls", { id: `eq.${pollId}`, limit: 1 }))[0];
   if (!poll) return errorResponse("Poll not found", 404);
@@ -352,6 +410,11 @@ Deno.serve(async (request) => {
       if (action === "clear-responses") {
         const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);
         return await clearResponses(db, actor, pollId);
+      }
+      if (action === "automation") {
+        const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);
+        const payload = await readJson<{ enabled?: boolean }>(request);
+        return await setAutomation(db, actor, pollId, payload.enabled === true);
       }
       if (action === "delete") {
         const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);

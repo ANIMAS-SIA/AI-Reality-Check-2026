@@ -3,6 +3,7 @@ import { AdminActor, AdminAuthError, adminAuthErrorResponse, authenticateAdmin, 
 import { errorResponse, handleOptions, jsonResponse, readJson } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { resolveAgenda } from "../_shared/agenda.ts";
+import { reconcilePollAutomation } from "../_shared/poll-automation.ts";
 
 const TOPIC = "live:ai-reality-check-2026";
 
@@ -61,6 +62,7 @@ async function getEvent(db: SupabaseRest): Promise<EventRow> {
 }
 
 async function listAgenda(db: SupabaseRest, event: EventRow): Promise<Response> {
+  await reconcilePollAutomation(db, event.id);
   const agenda = await db.select<AgendaItem>("agenda_items", {
     event_id: `eq.${event.id}`,
     order: "display_order.asc,starts_at.asc",

@@ -1,6 +1,7 @@
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 import { resolveAgenda } from "../_shared/agenda.ts";
+import { reconcilePollAutomation } from "../_shared/poll-automation.ts";
 
 type EventRow = {
   id: string;
@@ -64,6 +65,7 @@ Deno.serve(async (request) => {
     const slug = db.eventSlug;
     const event = (await db.select<EventRow>("events", { slug: `eq.${slug}`, limit: 1 }))[0];
     if (!event) return errorResponse("Event not found", 404);
+    await reconcilePollAutomation(db, event.id);
 
     const agenda = await db.select<AgendaItem>("agenda_items", {
       event_id: `eq.${event.id}`,

@@ -933,6 +933,7 @@
     const allowsMultiple = typeof poll.settings?.allowMultipleSubmissions === "boolean"
       ? poll.settings.allowMultipleSubmissions
       : ["open_text", "word_cloud"].includes(poll.poll_type);
+    const activationLabel = poll.auto_activate_with_agenda ? "Automātiski ar programmas punktu" : "Manuāla aktivizēšana";
     const agendaItem = agendaItems.find((item) => item.id === poll.agenda_item_id);
     const agendaLabel = agendaItem?.title || (poll.agenda_item_id ? "Nezināms programmas punkts" : "Nav piesaistīts programmas punktam");
     const actions = isActive
@@ -944,6 +945,7 @@
            <div class="admin-more-dropdown" hidden>
              ${poll.status === "paused" ? `<button type="button" data-poll-reopen="${poll.id}">Atkārtoti atvērt</button>` : ""}
              ${poll.status === "active" ? `<button type="button" data-poll-pause="${poll.id}">Apturēt</button>` : ""}
+             ${poll.agenda_item_id && poll.status !== "archived" ? `<button type="button" data-poll-automation="${poll.id}" data-automation-enabled="${!poll.auto_activate_with_agenda}">${poll.auto_activate_with_agenda ? "Pārslēgt uz manuālu aktivizēšanu" : "Aktivizēt automātiski ar programmu"}</button>` : ""}
              <button type="button" data-poll-clear="${poll.id}">Notīrīt atbildes</button>
              <button type="button" data-poll-archive="${poll.id}">Arhivēt</button>
              <button type="button" data-poll-export="${poll.id}">Eksportēt CSV</button>
@@ -958,6 +960,7 @@
           <strong>${esc(poll.title)}</strong>
           <span class="admin-fine">${typeLabel}</span>
           <span class="admin-fine">${allowsMultiple ? "Var iesniegt vairākkārt" : "Viena atbilde no dalībnieka"}</span>
+          <span class="admin-fine">${activationLabel}</span>
           <span class="admin-poll-agenda"><span aria-hidden="true">◆</span> ${esc(agendaLabel)}</span>
         </div>
         <strong class="admin-poll-count">${poll.response_count || 0}<span>atbildes</span></strong>
@@ -1021,6 +1024,22 @@
       await refreshPollsPanel();
       return;
     }
+    const automationBtn = event.target.closest("[data-poll-automation]");
+    if (automationBtn) {
+      try {
+        await adminFetch(`/admin-polls?action=automation&poll_id=${automationBtn.dataset.pollAutomation}`, {
+          method: "POST",
+          body: JSON.stringify({ enabled: automationBtn.dataset.automationEnabled === "true" }),
+        });
+        showToast(automationBtn.dataset.automationEnabled === "true"
+          ? "Balsojums aktivizēsies kopā ar programmas punktu."
+          : "Balsojums pārslēgts uz manuālu aktivizēšanu.");
+        await refreshPollsPanel();
+      } catch (error) {
+        showToast(error.message);
+      }
+      return;
+    }
     const resultsBtn = event.target.closest("[data-poll-results]");
     const deleteBtn = event.target.closest("[data-poll-delete]");
     if (deleteBtn) {
@@ -1059,6 +1078,7 @@
     wizardOptions = ["", ""];
     el("wizardTitle").value = "";
     el("wizardMultipleSubmissions").checked = false;
+    el("wizardAutoActivate").checked = false;
     populateWizardAgendaSelect();
     renderPollTypeGrid();
     updateWizardStepView();
@@ -1068,7 +1088,17 @@
   function populateWizardAgendaSelect() {
     const select = el("wizardAgendaItem");
     select.innerHTML = `<option value="">Nav piesaistīts</option>` + agendaItems.filter((item) => !item.is_break).map((item) => `<option value="${item.id}">${item.title}</option>`).join("");
+    syncWizardAutoActivation();
   }
+
+  function syncWizardAutoActivation() {
+    const checkbox = el("wizardAutoActivate");
+    const hasAgendaItem = Boolean(el("wizardAgendaItem").value);
+    checkbox.disabled = !hasAgendaItem;
+    if (!hasAgendaItem) checkbox.checked = false;
+  }
+
+  el("wizardAgendaItem")?.addEventListener("change", syncWizardAutoActivation);
 
   document.addEventListener("click", (event) => {
     const typeBtn = event.target.closest("[data-wizard-type]");
@@ -1126,6 +1156,7 @@
         <h3>${el("wizardTitle").value || "Balsojuma jautājums"}</h3>
         <p class="admin-fine">${typeLabel}</p>
         <p class="admin-fine">${el("wizardMultipleSubmissions").checked ? "Atbildes var iesniegt vairākkārt" : "Katrs dalībnieks var atbildēt vienu reizi"}</p>
+        <p class="admin-fine">${el("wizardAutoActivate").checked ? "Aktivizēsies automātiski ar programmas punktu" : "Moderators aktivizēs manuāli"}</p>
         ${["single_choice", "multiple_choice"].includes(wizardType)
           ? wizardOptions.filter(Boolean).map((option, index) => `<div class="poll-option"><span class="poll-letter">${String.fromCharCode(65 + index)}</span><strong>${option}</strong></div>`).join("")
           : ""}
@@ -1147,6 +1178,7 @@
     const settings = {
       anonymous: el("wizardAnonymous").checked,
       allowMultipleSubmissions: el("wizardMultipleSubmissions").checked,
+      autoActivateWithAgenda: el("wizardAutoActivate").checked,
       resultsVisibleLive: el("wizardResultsLive").checked,
       showRespondentCount: el("wizardShowCount").checked,
       shuffleOptions: el("wizardShuffle").checked,
