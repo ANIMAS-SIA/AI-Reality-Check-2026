@@ -160,7 +160,7 @@
   }
 
   async function handleLogout() {
-    await supabaseClient?.auth.signOut();
+    await supabaseClient?.auth.signOut({ scope: "local" });
     window.location.reload();
   }
 
@@ -1689,7 +1689,7 @@
       currentActor = await adminFetch("/admin-users?action=whoami");
     } catch (error) {
       showToast("Šim kontam nav administratora tiesību.");
-      await supabaseClient.auth.signOut();
+      await supabaseClient.auth.signOut({ scope: "local" });
       showLogin();
       return;
     }

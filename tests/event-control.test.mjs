@@ -177,6 +177,17 @@ test('interactive rate limits use participant identities instead of a shared ven
   assert.notEqual(inserted[0].ip_hash, inserted[1].ip_hash);
 });
 
+test('shared admin account logout stays local to the current device', () => {
+  for (const script of ['admin.js', 'checkin.js']) {
+    const source = readFileSync(new URL(`../${script}`, import.meta.url), 'utf8');
+    const signOutCalls = source.match(/\.auth\.signOut\([^)]*\)/g) || [];
+    assert.ok(signOutCalls.length > 0, `${script} should contain authenticated sign-out flows`);
+    for (const call of signOutCalls) {
+      assert.match(call, /scope:\s*["']local["']/, `${script} must not revoke sessions on other devices`);
+    }
+  }
+});
+
 test('live load controls batch company reads, suppress vote fan-out and avoid polling results off-tab', () => {
   const resultsSource = readFileSync(new URL('../supabase/functions/results/index.ts', import.meta.url), 'utf8');
   const pollsSource = readFileSync(new URL('../supabase/functions/polls/index.ts', import.meta.url), 'utf8');

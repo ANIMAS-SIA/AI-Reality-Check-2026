@@ -98,7 +98,7 @@
       if (navigator.vibrate) navigator.vibrate(data.result === "accepted" ? 80 : [60, 50, 60]);
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        await supabaseClient?.auth.signOut();
+        await supabaseClient?.auth.signOut({ scope: "local" });
         showLogin("Sesija beigusies. Lūdzu, ielogojies vēlreiz.");
         return;
       }
@@ -198,7 +198,7 @@
       if (error) throw error;
       await validateSession();
     } catch (error) {
-      await supabaseClient?.auth.signOut();
+      await supabaseClient?.auth.signOut({ scope: "local" });
       showLogin(error.message === "Invalid login credentials"
         ? "Nepareizs e-pasts vai parole."
         : (error.message || "Pieslēgties neizdevās."));
@@ -209,7 +209,7 @@
 
   async function logout() {
     await stopScanner();
-    await supabaseClient?.auth.signOut();
+    await supabaseClient?.auth.signOut({ scope: "local" });
     showLogin();
   }
 
@@ -232,7 +232,7 @@
     try {
       await validateSession();
     } catch (_) {
-      await supabaseClient.auth.signOut();
+      await supabaseClient.auth.signOut({ scope: "local" });
       showLogin("Šim kontam nav check-in tiesību.");
     }
   })();
