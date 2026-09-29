@@ -201,6 +201,7 @@ test('scheduled agenda boundaries refresh promptly and admin exposes Realtime he
   assert.match(portalSource, /onStatus\?\.\(status, error\)/);
   assert.match(portalSource, /liveBoundaryRefreshTimer = window\.setTimeout\(/);
   assert.match(portalSource, /\(\) => refreshLive\(\)/);
+  assert.match(portalSource, /const audienceJitter = 500 \+ Math\.floor\(Math\.random\(\) \* 1500\)/);
 });
 
 test('live load controls batch company reads, suppress vote fan-out and avoid polling results off-tab', () => {

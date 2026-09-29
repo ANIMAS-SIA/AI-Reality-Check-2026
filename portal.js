@@ -1988,9 +1988,12 @@ async function initLive() {
           .filter((time) => Number.isFinite(time) && time > now + 250)
           .sort((a, b) => a - b)[0];
         if (nextBoundary) {
+          // Spread the audience refresh over a short window instead of making
+          // every open phone hit the Free-plan function in the same millisecond.
+          const audienceJitter = 500 + Math.floor(Math.random() * 1500);
           liveBoundaryRefreshTimer = window.setTimeout(
             () => refreshLive(),
-            Math.min(2_147_000_000, Math.max(250, nextBoundary - now + 500)),
+            Math.min(2_147_000_000, Math.max(250, nextBoundary - now + audienceJitter)),
           );
         }
         const signature = agendaSignature(agendaItems);
