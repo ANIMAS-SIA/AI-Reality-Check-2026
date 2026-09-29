@@ -95,12 +95,6 @@ function firstNumber(...values: unknown[]): number | null {
   return null;
 }
 
-function chunks<T>(values: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size));
-  return result;
-}
-
 function needsC360Details(company: CompanyRow): boolean {
   if (!company.c360_registration_number) return false;
   return !record(company.c360_payload)._results_sync;
@@ -113,29 +107,31 @@ async function syncC360Details(db: SupabaseRest, companies: CompanyRow[]): Promi
 
   const apiBase = Deno.env.get("C360_API_BASE") || "https://api.company360.lv";
   const syncedAt = new Date().toISOString();
-  const batches = chunks(pending, 20);
-  const resultGroups = await Promise.all(batches.map(async (batch) => {
-    try {
-      const response = await fetch(new URL("/v1/company/bulk", apiBase), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
-        signal: AbortSignal.timeout(8_000),
-        body: JSON.stringify({
-          companies: batch.map((company) => company.c360_registration_number),
-          country: "LV",
-          fields: ["basic", "financials", "employees", "financials_history"],
-        }),
-      });
-      if (!response.ok) return [] as C360BulkResult[];
+  // Process one API-sized batch per public request. This keeps the endpoint
+  // responsive even if Company360 serializes or throttles concurrent batches.
+  const batch = pending.slice(0, 20);
+  let results: C360BulkResult[] = [];
+  try {
+    const response = await fetch(new URL("/v1/company/bulk", apiBase), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
+      signal: AbortSignal.timeout(8_000),
+      body: JSON.stringify({
+        companies: batch.map((company) => company.c360_registration_number),
+        country: "LV",
+        fields: ["basic", "financials", "employees", "financials_history"],
+      }),
+    });
+    if (response.ok) {
       const data = await response.json();
-      return Array.isArray(data?.results) ? data.results as C360BulkResult[] : [];
-    } catch {
-      return [] as C360BulkResult[];
+      results = Array.isArray(data?.results) ? data.results as C360BulkResult[] : [];
     }
-  }));
+  } catch {
+    results = [];
+  }
 
   const resultByRegcode = new Map(
-    resultGroups.flat().filter((item) => item.regcode).map((item) => [String(item.regcode), item]),
+    results.filter((item) => item.regcode).map((item) => [String(item.regcode), item]),
   );
   const updates = pending.flatMap((company) => {
     const result = resultByRegcode.get(company.c360_registration_number || "");

@@ -185,6 +185,8 @@ test('live load controls batch company reads, suppress vote fan-out and avoid po
 
   assert.match(resultsSource, /id: `in\.\(\$\{companyIds\.join\(","\)\}\)`/);
   assert.match(resultsSource, /\/v1\/company\/bulk/);
+  assert.match(resultsSource, /pending\.slice\(0, 20\)/);
+  assert.doesNotMatch(resultsSource, /Promise\.all\(batches/);
   assert.match(resultsSource, /const FINANCIAL_PRIVACY_MIN = 3/);
   assert.match(resultsSource, /const c360Syncs = new Map/);
   assert.match(resultsSource, /company_financials: companyFinancials\(companies\)/);
