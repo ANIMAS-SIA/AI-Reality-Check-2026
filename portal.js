@@ -1511,7 +1511,10 @@ function renderResultsSection(data) {
     `).join("");
   }
   if (companyMeta) {
-    companyMeta.textContent = `${finances.enriched_company_count || 0} no ${finances.company_count || summary.represented_companies || 0} uzņēmumiem sinhronizēti ar Company360. Finanšu rādītāji tiek publicēti tikai agregēti un tikai tad, ja pieejami vismaz ${finances.privacy_minimum || 3} uzņēmumu dati.`;
+    const allCompanies = Number(finances.company_count || summary.represented_companies || 0);
+    const eligibleCompanies = Number(finances.eligible_company_count || 0);
+    const withoutC360 = Math.max(0, allCompanies - eligibleCompanies);
+    companyMeta.textContent = `${finances.enriched_company_count || 0} uzņēmumi ar reģistrācijas numuru sinhronizēti ar Company360${withoutC360 ? `; ${withoutC360} ierakstiem Company360 kartīte nav pieejama` : ""}. Finanšu rādītāji tiek publicēti tikai agregēti un tikai tad, ja pieejami vismaz ${finances.privacy_minimum || 3} uzņēmumu dati.`;
   }
 
   if (maturityBox) {

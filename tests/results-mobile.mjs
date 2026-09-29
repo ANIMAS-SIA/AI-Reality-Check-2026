@@ -46,6 +46,7 @@ const fixture = {
   },
   company_financials: {
     company_count: 93,
+    eligible_company_count: 88,
     enriched_company_count: 88,
     financial_company_count: 79,
     turnover_company_count: 78,
@@ -91,7 +92,8 @@ try {
     assert.equal(await page.locator('.results-tile').nth(1).locator('strong').textContent(), '2%');
     assert.match(await page.locator('#resultsMaturity').textContent(), /Kur atrodas konferences dalībnieki/);
     assert.match(await page.locator('#resultsCompanyMetrics').textContent(), /1,9 mljrd\. €/);
-    assert.match(await page.locator('#resultsCompanyMeta').textContent(), /88 no 93/);
+    assert.match(await page.locator('#resultsCompanyMeta').textContent(), /88 uzņēmumi/);
+    assert.match(await page.locator('#resultsCompanyMeta').textContent(), /5 ierakstiem/);
     assert.equal(await page.locator('a[href*="networking"], [data-live-tab="networking"]').count(), 0);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}px results page has no horizontal overflow`);
     assert.deepEqual(errors, []);

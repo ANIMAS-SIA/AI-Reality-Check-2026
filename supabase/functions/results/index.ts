@@ -189,6 +189,7 @@ function companyFinancials(companies: CompanyRow[]) {
     const financials = record(payload.financials);
     const employees = record(payload.employees);
     return {
+      eligible: Boolean(company.c360_registration_number),
       synced: Boolean(payload._results_sync),
       year: numeric(financials.year),
       turnover: firstNumber(financials.net_turnover, financials.revenue),
@@ -222,6 +223,7 @@ function companyFinancials(companies: CompanyRow[]) {
 
   return {
     company_count: companies.length,
+    eligible_company_count: rows.filter((row) => row.eligible).length,
     enriched_company_count: rows.filter((row) => row.synced).length,
     financial_company_count: rows.filter((row) => row.turnover !== null || row.profit !== null || row.assets !== null).length,
     turnover_company_count: turnovers.length,
