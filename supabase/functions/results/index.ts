@@ -69,6 +69,21 @@ function groupedCounts(values: string[]) {
     .sort((a, b) => b.count - a.count);
 }
 
+function companyRegion(company: CompanyRow): string {
+  const explicit = company.region?.trim();
+  if (explicit) return explicit;
+
+  const payload = record(company.c360_payload);
+  const address = String(company.legal_address || payload.address || "").trim();
+  if (!address) return "";
+
+  const stateCities = new Set([
+    "Rīga", "Daugavpils", "Jelgava", "Jūrmala", "Liepāja", "Rēzekne", "Ventspils",
+  ]);
+  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.find((part) => part.endsWith(" nov.") || stateCities.has(part)) || "";
+}
+
 function companySizeLabel(value: string): string {
   const label = value.trim();
   return label.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV") === "vidējs" ? "Vidējs" : label;
@@ -323,7 +338,7 @@ Deno.serve(async (request) => {
       company_segments: {
         industries: groupedCounts(companies.map((company) => company.industry || "")),
         sizes: groupedCounts(companies.map((company) => companySizeLabel(company.company_size_badge || ""))),
-        regions: groupedCounts(companies.map((company) => company.region || "")),
+        regions: groupedCounts(companies.map(companyRegion)),
       },
       company_financials: companyFinancials(companies),
       updated_at: new Date().toISOString(),
