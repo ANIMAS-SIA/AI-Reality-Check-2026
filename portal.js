@@ -1500,10 +1500,6 @@ async function initLive() {
   setText("liveUser", `${p.firstName} ${p.lastName}`.trim());
   setText("passAccess", p.access);
 
-  if (p.isGuest) {
-    document.querySelectorAll('[data-live-tab="networking"], a[href*="view=networking"]').forEach((item) => { item.hidden = true; });
-  }
-
   document.querySelectorAll(".tab-btn, [data-live-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.liveTab || button.dataset.tab;
@@ -1976,22 +1972,21 @@ async function initLive() {
       .finally(() => { submit.disabled = false; });
   });
 
-  let networkingToken = participantToken;
-  if (!networkingToken && p.passLink) {
+  let passToken = participantToken;
+  if (!passToken && p.passLink) {
     try {
-      networkingToken = new URL(p.passLink, window.location.href).searchParams.get("token");
+      passToken = new URL(p.passLink, window.location.href).searchParams.get("token");
     } catch {
-      networkingToken = null;
+      passToken = null;
     }
   }
-  if (networkingToken) {
+  if (passToken) {
     document.querySelectorAll(".live-pass-link, [data-pass-link]").forEach((link) => {
-      link.href = `../pass/?token=${encodeURIComponent(networkingToken)}`;
+      link.href = `../pass/?token=${encodeURIComponent(passToken)}`;
     });
-    initNetworkingPass(networkingToken);
   }
 
-  const availableViews = p.isGuest ? ["program", "results"] : ["program", "results", "networking"];
+  const availableViews = ["program", "results"];
   const requestedView = liveParams.get("view");
   const initialView = availableViews.includes(requestedView) ? requestedView : "program";
   setActiveTab(initialView);

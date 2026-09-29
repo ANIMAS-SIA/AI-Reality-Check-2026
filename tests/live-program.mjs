@@ -53,6 +53,7 @@ try {
       return route.abort();
     });
     await page.goto('https://mobile.test/live/?event=rehearsal-ui&token=test-only');
+    assert.equal(await page.locator('[data-live-tab="networking"], [data-panel="networking"], a[href*="view=networking"]').count(), 0, 'Networking section is removed from Live');
     await page.locator('[data-agenda-action="questions"]').click();
     await page.locator('[data-question-vote="q2"]').waitFor();
     const before = await page.locator('[data-role="question-input"]').boundingBox();
@@ -160,7 +161,7 @@ try {
   await guestPage.locator('[data-guest-access-form] button[type="submit"]').click();
   await guestPage.waitForURL(/\/live\//);
   await guestPage.locator('#passAccess').filter({ hasText: 'Anonīma pieeja' }).waitFor();
-  assert.equal(await guestPage.locator('[data-live-tab="networking"]').isHidden(), true);
+  assert.equal(await guestPage.locator('[data-live-tab="networking"], [data-panel="networking"]').count(), 0);
   await guestPage.locator('[data-agenda-action="questions"]').click();
   assert.equal(await guestPage.locator('[data-role="question-anon"]').isChecked(), false);
   await guestPage.locator('[data-role="question-input"]').fill('Anonīma dalībnieka jautājums');
