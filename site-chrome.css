@@ -348,19 +348,21 @@ body[data-page="registration"] .brand-mark,
   }
 
   body[data-page="live"],
-  body[data-page="pass"] {
+  body[data-page="pass"],
+  body[data-page="results"] {
     padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
 
   body[data-page="live"] .live-bottom-tabs,
-  body[data-page="pass"] .live-bottom-tabs {
+  body[data-page="pass"] .live-bottom-tabs,
+  body[data-page="results"] .live-bottom-tabs {
     position: fixed;
     right: 0;
     bottom: 0;
     left: 0;
     z-index: 50;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     min-height: calc(60px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid rgba(255, 255, 255, .1);
@@ -369,7 +371,8 @@ body[data-page="registration"] .brand-mark,
   }
 
   body[data-page="live"] .live-bottom-tabs > *,
-  body[data-page="pass"] .live-bottom-tabs > * {
+  body[data-page="pass"] .live-bottom-tabs > *,
+  body[data-page="results"] .live-bottom-tabs > * {
     min-width: 0;
     min-height: 60px;
     padding: 8px 2px;

@@ -46,7 +46,7 @@ try {
         if (url.pathname.endsWith('/polls')) data = pollMode === 'scale'
           ? { activePolls: [{ poll: { id: 'scale-poll', agenda_item_id: 'talk', title: 'Novērtē no 1 līdz 5', poll_type: 'scale', settings: { allowMultipleSubmissions: false } }, options: [1, 2, 3, 4, 5].map((value) => ({ id: `scale-${value}`, label: String(value) })) }], results: [] }
           : pollMode === 'locked'
-            ? { activePolls: [{ poll: { id: 'locked-poll', agenda_item_id: 'talk', title: 'Vienreizējs balsojums', poll_type: 'yes_no', settings: { allowMultipleSubmissions: false } }, options: [{ id: 'locked-yes', label: 'Jā' }, { id: 'locked-no', label: 'Nē' }], has_submitted: true }], results: [] }
+            ? { activePolls: [{ poll: { id: 'locked-poll', agenda_item_id: 'talk', title: 'Vienreizējs balsojums', poll_type: 'yes_no', settings: { allowMultipleSubmissions: false } }, options: [{ id: 'locked-yes', label: 'Jā', votes: 2, percent: 67 }, { id: 'locked-no', label: 'Nē', votes: 1, percent: 33 }], total_votes: 3, has_submitted: true }], results: [] }
             : { activePolls: [{ poll: { id: 'poll', agenda_item_id: 'talk', title: 'Vai izmantojat MI?', poll_type: 'multiple_choice', settings: { allowMultipleSubmissions: true } }, options: [{ id: 'yes', label: 'Jā' }, { id: 'no', label: 'Nē' }] }], results: [] };
         return route.fulfill({ json: data });
       }
@@ -54,6 +54,16 @@ try {
     });
     await page.goto('https://mobile.test/live/?event=rehearsal-ui&token=test-only');
     assert.equal(await page.locator('[data-live-tab="networking"], [data-panel="networking"], a[href*="view=networking"]').count(), 0, 'Networking section is removed from Live');
+    if (width <= 768) {
+      const navLayout = await page.locator('.live-bottom-tabs').evaluate((nav) => ({
+        columns: getComputedStyle(nav).gridTemplateColumns.split(' ').length,
+        nav: nav.getBoundingClientRect().toJSON(),
+        first: nav.firstElementChild.getBoundingClientRect().toJSON(),
+        last: nav.lastElementChild.getBoundingClientRect().toJSON(),
+      }));
+      assert.equal(navLayout.columns, 3, 'Participant navigation uses three equal columns');
+      assert.ok(Math.abs(navLayout.first.left - navLayout.nav.left) <= 1 && Math.abs(navLayout.last.right - navLayout.nav.right) <= 1, 'Participant navigation spans the full viewport width');
+    }
     await page.locator('[data-agenda-action="questions"]').click();
     await page.locator('[data-question-vote="q2"]').waitFor();
     const before = await page.locator('[data-role="question-input"]').boundingBox();
@@ -77,6 +87,8 @@ try {
     ]);
     assert.deepEqual(writes.findLast((write) => write.body.pollId === 'poll').body.optionIds, ['yes'], 'Multiple choice submits one selected option as an array');
     assert.equal(writes.findLast((write) => write.body.pollId === 'poll').body.token, 'test-only', 'Registered poll submission carries the pass token');
+    await page.locator('[data-active-poll-result="poll"] .meter').waitFor();
+    assert.match(await page.locator('[data-active-poll-result="poll"]').textContent(), /Rezultāti/, 'Active poll results appear immediately after voting');
     await page.locator('[data-option-id="yes"]').click();
     await page.locator('[data-option-id="no"]').click();
     await Promise.all([
@@ -112,7 +124,8 @@ try {
     pollMode = 'locked';
     await page.reload();
     await page.locator('[data-agenda-action="polls"]').click();
-    await page.locator('.poll-submitted-message').waitFor();
+    await page.locator('[data-active-poll-result="locked-poll"] .meter').waitFor();
+    assert.match(await page.locator('[data-active-poll-result="locked-poll"]').textContent(), /67%/, 'Submitted active poll shows current results without moderator close');
     assert.equal(await page.locator('[data-role^="poll-"][data-role$="submit"]').count(), 0, 'One-time poll controls stay hidden after submission');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'No horizontal overflow');
     await page.screenshot({ path: resolve(out, `questions-${width}.png`), fullPage: true });
@@ -146,6 +159,7 @@ try {
   });
   await guestPage.goto('https://mobile.test/pass/?event=rehearsal-ui');
   await guestPage.locator('[data-guest-access-form]').waitFor();
+  assert.equal(await guestPage.locator('a[href*="view=networking"], #networkingPanel').count(), 0, 'Networking is removed from Pass');
   const guestGateLayout = await guestPage.evaluate(() => {
     const card = document.querySelector('.portal-access-card').getBoundingClientRect();
     return { viewport: innerWidth, pageWidth: document.documentElement.scrollWidth, cardLeft: card.left, cardRight: card.right };

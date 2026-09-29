@@ -31,8 +31,6 @@
   forward("Prezentācijas tālvadība", '.admin-nav [data-admin-nav="dashboard"]');
   const remoteMenuButton = menu.lastElementChild;
   remoteMenuButton.addEventListener("click", () => {
-    $(".admin-remote-card")?.classList.add("mobile-expanded");
-    $(".admin-remote-card .admin-mobile-collapse")?.setAttribute("aria-expanded", "true");
     $(".admin-remote-card")?.scrollIntoView({ block: "center" });
   });
   forward("Dalībnieki CSV", "#exportRegistrationsCsv");
@@ -83,7 +81,7 @@
   document.querySelectorAll(".admin-panel").forEach((node) => new MutationObserver(syncChrome).observe(node, { attributes: true, attributeFilter: ["class"] }));
   syncChrome();
 
-  for (const [selector, text] of [[".admin-remote-card", "Prezentācijas tālvadība"], [".admin-preview-card", "Prezentācijas priekšskatījums"]]) {
+  for (const [selector, text] of [[".admin-preview-card", "Prezentācijas priekšskatījums"]]) {
     const node = $(selector);
     const toggle = button(text, () => {
       toggle.setAttribute("aria-expanded", String(node.classList.toggle("mobile-expanded")));

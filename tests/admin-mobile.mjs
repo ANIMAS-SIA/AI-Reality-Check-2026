@@ -54,6 +54,11 @@ try {
     assert.equal(await page.evaluate(() => window.__supabaseClientCount), 1, 'Admin auth and Realtime share one Supabase client');
     assert.equal(await page.evaluate(() => window.__sessionRefreshCount), 1, 'A rejected access token is refreshed once');
     await page.locator('#dashAgendaTitle').filter({ hasText: 'Programmas punkts' }).waitFor();
+    if (width <= 860) {
+      assert.equal(await page.locator('.admin-remote-card > .admin-mobile-collapse').count(), 0, 'Presentation remote is never collapsible');
+      assert.equal(await page.locator('.admin-remote-card #presentQrVisible').isVisible(), true, 'Presentation remote controls stay visible');
+      assert.equal(await page.locator('.admin-preview-card > .admin-mobile-collapse').count(), 1, 'Only presentation preview remains collapsible');
+    }
     const noOverflow = async (label) => {
       const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
       assert.ok(size.scroll <= size.viewport + 1, `${width}px ${label}: overflow ${size.scroll}`);

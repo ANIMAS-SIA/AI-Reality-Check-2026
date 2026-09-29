@@ -1170,7 +1170,6 @@ async function initPass() {
       if (link) { link.hidden = true; link.removeAttribute("href"); }
     });
   }
-  initNetworkingPass(token);
   setText("passName", `${p.firstName} ${p.lastName}`);
   setText("passCompany", p.companyName);
   setText("passRole", p.role);
@@ -1184,7 +1183,6 @@ async function initPass() {
   const qrImage = document.getElementById("passQrImage");
   const walletPanel = document.querySelector(".pass-wallet-panel");
   const liveLink = document.querySelector("a[href*='live']");
-  const networkingLink = document.querySelector("a[href*='networking']");
 
   const isCancelled = p.status === "cancelled" ||
     (typeof p.cancelledAt === "string" && p.cancelledAt.trim() !== "");
@@ -1193,7 +1191,6 @@ async function initPass() {
     if (qrImage) qrImage.style.opacity = "0.3";
     if (walletPanel) walletPanel.style.pointerEvents = "none";
     if (liveLink) liveLink.setAttribute("aria-disabled", "true");
-    if (networkingLink) networkingLink.setAttribute("aria-disabled", "true");
   }
 
   renderParticipantActions(p);
@@ -1369,12 +1366,6 @@ function renderPollResultSet(result, container, { showTitle = true } = {}) {
   `;
 }
 
-function readinessLabel(score) {
-  const level = Math.max(1, Math.min(10, Math.round(Number(score || 0) / 10)));
-  const info = window.maturityLevelByNumber ? window.maturityLevelByNumber(level) : null;
-  return info ? `${info.phase} · ${info.title}` : "Nav pietiekamu datu";
-}
-
 function formatResultNumber(value) {
   return new Intl.NumberFormat("lv-LV", { maximumFractionDigits: 0 }).format(Number(value || 0));
 }
@@ -1402,12 +1393,81 @@ function resultSegmentRows(rows) {
   `).join("") : `<p class="fine">Nav pietiekamu datu</p>`;
 }
 
+function companySizeLabel(label) {
+  const value = String(label || "").trim();
+  return value.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV") === "vidējs" ? "Vidējs" : value;
+}
+
+const collapsedResultSections = new Set();
+
+function setResultsCollapseState(button, content, label, collapsed) {
+  button.setAttribute("aria-expanded", String(!collapsed));
+  button.setAttribute("aria-label", `${collapsed ? "Atvērt" : "Sakļaut"} ${label}`);
+  button.classList.toggle("is-collapsed", collapsed);
+  button.querySelector("span").textContent = collapsed ? "Atvērt" : "Sakļaut";
+  content.hidden = collapsed;
+}
+
+function prepareResultsCollapsible(section, contentId, label, { createHeader = false } = {}) {
+  if (!section) return;
+  let header = section.querySelector(":scope > .results-section-heading");
+  if (!header && createHeader) {
+    const eyebrow = section.querySelector(":scope > .eyebrow");
+    const heading = section.querySelector(":scope > h2");
+    if (!eyebrow || !heading) return;
+    header = document.createElement("header");
+    header.className = "results-section-heading";
+    section.insertBefore(header, section.firstChild);
+    header.append(eyebrow, heading);
+  }
+  if (!header) return;
+
+  let copy = header.querySelector(":scope > .results-section-heading-copy");
+  if (!copy) {
+    copy = document.createElement("div");
+    copy.className = "results-section-heading-copy";
+    [...header.children].forEach((child) => copy.append(child));
+    header.append(copy);
+  }
+  header.classList.add("is-collapsible");
+
+  let content = section.querySelector(`:scope > #${contentId}`);
+  if (!content) {
+    content = document.createElement("div");
+    content.id = contentId;
+    content.className = "results-collapsible-content";
+    [...section.children].filter((child) => child !== header).forEach((child) => content.append(child));
+    section.append(content);
+  }
+
+  let button = header.querySelector(":scope > .results-collapse-toggle");
+  if (!button) {
+    button = document.createElement("button");
+    button.type = "button";
+    button.className = "results-collapse-toggle";
+    button.dataset.resultsCollapse = contentId;
+    button.dataset.resultsLabel = label;
+    button.setAttribute("aria-controls", contentId);
+    button.innerHTML = `<span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg>`;
+    header.append(button);
+  }
+  setResultsCollapseState(button, content, label, collapsedResultSections.has(contentId));
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-results-collapse]");
+  if (!button) return;
+  const contentId = button.dataset.resultsCollapse;
+  const content = document.getElementById(contentId);
+  if (!content) return;
+  const collapsed = button.getAttribute("aria-expanded") === "true";
+  if (collapsed) collapsedResultSections.add(contentId);
+  else collapsedResultSections.delete(contentId);
+  setResultsCollapseState(button, content, button.dataset.resultsLabel || "sadaļu", collapsed);
+});
+
 function renderResultsSection(data) {
   const intro = document.getElementById("resultsIntro");
-  const scoreRing = document.getElementById("resultsScoreRing");
-  const scoreValue = document.getElementById("resultsScoreValue");
-  const scoreLabel = document.getElementById("resultsScoreLabel");
-  const scoreNote = document.getElementById("resultsScoreNote");
   const highlights = document.getElementById("resultsHighlights");
   const pollList = document.getElementById("resultsPollList");
   const segmentsBox = document.getElementById("resultsSegments");
@@ -1419,23 +1479,14 @@ function renderResultsSection(data) {
   const segments = data?.company_segments || {};
   const finances = data?.company_financials || {};
   const maturity = data?.maturity || {};
-  const polls = data?.polls || [];
+  const polls = (data?.polls || []).filter((result) => result.poll?.status !== "archived");
   const hasData = Boolean(summary.participant_count);
-  const hasMaturity = Number(maturity.answered_count || 0) > 0;
-  const score = Number(summary.maturity_score ?? Math.round(Number(maturity.average || 0) * 10));
 
   if (intro) {
     intro.textContent = hasData
       ? `${summary.participant_count} dalībnieku MI pašvērtējums un ${summary.represented_companies || 0} pārstāvēto uzņēmumu kopējais ekonomiskais profils.`
       : (summary.headline || "Rezultāti tiks publicēti drīzumā.");
   }
-  if (scoreRing) scoreRing.style.setProperty("--score", score);
-  if (scoreValue) scoreValue.textContent = hasMaturity ? String(score) : "--";
-  if (scoreLabel) scoreLabel.textContent = hasMaturity ? readinessLabel(score) : "Nav pašvērtējumu";
-  if (scoreNote) scoreNote.textContent = hasMaturity
-    ? `${maturity.average ?? "—"}/10 ir dalībnieku vidējais pašvērtējums, pārrēķināts 100 punktu indeksā.`
-    : "Indekss tiks aprēķināts no dalībnieku 1–10 pašvērtējuma.";
-
   if (highlights) {
     highlights.hidden = !hasData;
     highlights.innerHTML = hasData ? `
@@ -1455,9 +1506,8 @@ function renderResultsSection(data) {
   if (pollList) {
     pollList.innerHTML = `
       <header class="results-section-heading">
-        <span>03 · Auditorijas balsojumi</span>
+        <span>02 · Auditorijas balsojumi</span>
         <h2>Ko dalībnieki atbildēja pasākuma laikā</h2>
-        <p>Katrs jautājums ir atsevišķs balsojuma rezultāts un netiek izmantots MI gatavības indeksa aprēķinā.</p>
       </header>
       ${polls.length ? polls.map((result, index) => `
         <article class="results-poll-card">
@@ -1481,7 +1531,7 @@ function renderResultsSection(data) {
   if (segmentsBox) {
     segmentsBox.innerHTML = `
       <div class="results-segment"><strong>Nozares</strong>${resultSegmentRows(segments.industries)}</div>
-      <div class="results-segment"><strong>Uzņēmumu lielums</strong>${resultSegmentRows(segments.sizes)}</div>
+      <div class="results-segment"><strong>Uzņēmumu lielums</strong>${resultSegmentRows((segments.sizes || []).map((row) => ({ ...row, label: companySizeLabel(row.label) })))}</div>
       <div class="results-segment"><strong>Reģioni</strong>${resultSegmentRows(segments.regions)}</div>
     `;
   }
@@ -1518,9 +1568,9 @@ function renderResultsSection(data) {
     if (answeredCount) {
       const byLevel = maturity.by_level || [];
       maturityBox.innerHTML = `
-        <span class="eyebrow">02 · MI brieduma profils</span>
+        <span class="eyebrow">01 · MI brieduma profils</span>
         <h2>Kur atrodas konferences dalībnieki</h2>
-        <p class="results-section-copy">Pilns dalībnieku pašvērtējuma sadalījums pa 10 līmeņiem. Tas ir MI gatavības indeksa avots.</p>
+        <p class="results-section-copy">Pilns dalībnieku pašvērtējuma sadalījums pa 10 MI brieduma līmeņiem.</p>
         <div class="grid two maturity-stats-grid">
           <div><strong>${maturity.average ?? "--"}/10</strong><p class="fine">Vidējais līmenis</p></div>
           <div><strong>${maturity.median ?? "--"}/10</strong><p class="fine">Mediāna</p></div>
@@ -1544,6 +1594,12 @@ function renderResultsSection(data) {
       `;
     }
   }
+
+  if (maturityBox && !maturityBox.hidden) {
+    prepareResultsCollapsible(maturityBox, "resultsMaturityContent", "MI brieduma profilu", { createHeader: true });
+  }
+  prepareResultsCollapsible(pollList, "resultsPollContent", "auditorijas balsojumus");
+  prepareResultsCollapsible(companyMeta?.closest(".results-segments-card"), "resultsCompanyContent", "Company360 ekonomisko profilu");
 }
 
 async function initLive() {

@@ -46,7 +46,7 @@
   .admin-card-actions > button { flex: 1 1 140px; }
   .admin-activity-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .admin-status-bar { display: none; }
-  .admin-remote-card:not(.mobile-expanded) > :not(.admin-mobile-collapse), .admin-preview-card:not(.mobile-expanded) > :not(.admin-mobile-collapse) { display: none; }
+  .admin-preview-card:not(.mobile-expanded) > :not(.admin-mobile-collapse) { display: none; }
   .admin-mobile-collapse { justify-content: space-between; align-items: center; width: 100%; border: 0; background: transparent; color: var(--text); padding: 0; text-align: left; font: 600 14px Poppins, sans-serif; }
   .admin-mobile-collapse::after { content: '+'; font-size: 24px; }
   .mobile-expanded > .admin-mobile-collapse::after { content: '−'; }

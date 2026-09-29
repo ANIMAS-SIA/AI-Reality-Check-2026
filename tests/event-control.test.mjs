@@ -190,9 +190,9 @@ test('live load controls batch company reads, suppress vote fan-out and avoid po
   assert.match(resultsSource, /const FINANCIAL_PRIVACY_MIN = 3/);
   assert.match(resultsSource, /const c360Syncs = new Map/);
   assert.match(resultsSource, /company_financials: companyFinancials\(companies\)/);
-  assert.match(resultsSource, /maturity_score: maturityScore/);
-  assert.match(portalSource, /summary\.maturity_score/);
-  assert.match(portalSource, /Katrs jautājums ir atsevišķs balsojuma rezultāts/);
+  assert.doesNotMatch(resultsSource, /maturity_score: maturityScore/);
+  assert.doesNotMatch(portalSource, /summary\.maturity_score/);
+  assert.doesNotMatch(portalSource, /Katrs jautājums ir atsevišķs balsojuma rezultāts/);
   assert.doesNotMatch(pollsSource, /broadcast\(db\.topic, "poll_voted"/);
   assert.doesNotMatch(questionsSource, /broadcast\(db\.topic, "question_voted"/);
   assert.match(portalSource, /if \(refreshLivePromise\) return refreshLivePromise/);

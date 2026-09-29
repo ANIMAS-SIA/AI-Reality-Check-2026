@@ -14,7 +14,6 @@ const fixture = {
   summary: {
     participant_count: 170,
     represented_companies: 93,
-    maturity_score: 49,
     using_ai_percent: 88,
     not_using_ai_percent: 2,
   },
@@ -31,17 +30,21 @@ const fixture = {
     ],
   },
   polls: [{
-    poll: { title: 'Kurā stadijā jūsu uzņēmums pašlaik ir ar MI ieviešanu?' },
+    poll: { id: 'published-poll', status: 'closed', title: 'Kurā stadijā jūsu uzņēmums pašlaik ir ar MI ieviešanu?' },
     total_votes: 154,
     options: [
       { label: 'Vēl neizmantojam', percent: 50 },
       { label: 'Testējam atsevišķus risinājumus', percent: 34 },
       { label: 'MI ir ikdienas procesos', percent: 16 },
     ],
+  }, {
+    poll: { id: 'archived-poll', status: 'archived', title: 'Arhivēts jautājums, kuru nedrīkst rādīt' },
+    total_votes: 12,
+    options: [{ label: 'Arhivēta atbilde', percent: 100 }],
   }],
   company_segments: {
     industries: [{ label: 'IT pakalpojumi', count: 18 }, { label: 'Ražošana', count: 12 }],
-    sizes: [{ label: 'Mazs', count: 31 }, { label: 'Vidējs', count: 22 }],
+    sizes: [{ label: 'Mazs', count: 31 }, { label: 'Vidēj’s', count: 22 }],
     regions: [{ label: 'Rīga', count: 54 }, { label: 'Vidzeme', count: 11 }],
   },
   company_financials: {
@@ -86,15 +89,32 @@ try {
     });
 
     await page.goto('https://mobile.test/rezultati/');
-    await page.locator('#resultsScoreValue').filter({ hasText: '49' }).waitFor();
-    assert.match(await page.locator('#resultsScoreNote').textContent(), /4,9|4\.9/);
+    await page.locator('#resultsMaturity:not([hidden])').waitFor();
+    assert.equal(await page.locator('.results-score').count(), 0);
     assert.equal(await page.locator('.results-tile').nth(0).locator('strong').textContent(), '88%');
     assert.equal(await page.locator('.results-tile').nth(1).locator('strong').textContent(), '2%');
+    assert.equal(await page.locator('.results-poll-card').count(), 1, 'Only the non-archived poll is rendered once');
+    assert.doesNotMatch(await page.locator('#resultsPollList').textContent(), /Arhivēts jautājums/);
+    assert.doesNotMatch(await page.locator('.results-highlights').textContent(), /Kurā stadijā/, 'Poll question is not duplicated in highlights');
     assert.equal(await page.locator('.results-tile').count(), 2);
     assert.match(await page.locator('#resultsMaturity').textContent(), /Kur atrodas konferences dalībnieki/);
     assert.match(await page.locator('#resultsCompanyMetrics').textContent(), /1,9 mljrd\. €/);
     assert.match(await page.locator('#resultsCompanyMeta').textContent(), /88 uzņēmumi/);
     assert.match(await page.locator('#resultsCompanyMeta').textContent(), /5 ierakstiem/);
+    assert.equal(await page.locator('[data-results-collapse]').count(), 3, 'Long result sections have collapse controls');
+    const pollToggle = page.locator('[data-results-collapse="resultsPollContent"]');
+    assert.equal(await pollToggle.getAttribute('aria-expanded'), 'true');
+    await pollToggle.click();
+    assert.equal(await pollToggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#resultsPollContent').isHidden(), true, 'Poll results can be collapsed');
+    await pollToggle.click();
+    assert.equal(await page.locator('#resultsPollContent').isVisible(), true, 'Poll results can be reopened');
+    assert.equal(await page.locator('.company360-logo-link').getAttribute('href'), 'https://company360.lv/lv');
+    assert.match(await page.locator('.company360-logo-link img').getAttribute('src'), /C360-logo-balts\.png$/);
+    assert.equal(await page.locator('#resultsSegments .results-segment').count(), 3, 'Company360 segment is rendered once');
+    assert.match(await page.locator('#resultsSegments').textContent(), /Vidējs/);
+    assert.doesNotMatch(await page.locator('#resultsSegments').textContent(), /Vidēj’s/);
+    assert.doesNotMatch(await page.locator('#resultsMaturity').textContent(), /Nozares|Uzņēmumu lielums/);
     assert.equal(await page.locator('a[href*="networking"], [data-live-tab="networking"]').count(), 0);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}px results page has no horizontal overflow`);
     assert.deepEqual(errors, []);
@@ -105,3 +125,7 @@ try {
 } finally {
   await browser.close();
 }
+
+const resultsFunctionSource = await readFile(resolve(root, 'supabase/functions/results/index.ts'), 'utf8');
+assert.match(resultsFunctionSource, /status:\s*"neq\.archived"/, 'Results API excludes archived polls');
+assert.doesNotMatch(resultsFunctionSource, /total_votes:\s*total,\s*top/, 'Results API does not expose a duplicate top-answer tile');

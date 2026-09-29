@@ -57,8 +57,7 @@ async function pollResult(db: SupabaseRest, poll: PollRow) {
     const count = votes.filter((vote) => vote.option_id === option.id).length;
     return { ...option, votes: count, percent: total ? Math.round((count / total) * 100) : 0 };
   });
-  const top = [...rows].sort((a, b) => b.votes - a.votes)[0] || null;
-  return { poll, options: rows, total_votes: total, top };
+  return { poll, options: rows, total_votes: total };
 }
 
 function groupedCounts(values: string[]) {
@@ -68,6 +67,11 @@ function groupedCounts(values: string[]) {
     .filter(([, count]) => count >= 3)
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+function companySizeLabel(value: string): string {
+  const label = value.trim();
+  return label.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV") === "vidējs" ? "Vidējs" : label;
 }
 
 function median(values: number[]): number {
@@ -259,6 +263,7 @@ Deno.serve(async (request) => {
     const polls = await db.select<PollRow>("polls", {
       event_id: `eq.${event.id}`,
       results_public: "eq.true",
+      status: "neq.archived",
       order: "created_at.asc",
     });
     const pollResults = [];
@@ -290,26 +295,21 @@ Deno.serve(async (request) => {
       p.ai_maturity_level ? p.ai_maturity_level === 1 : p.ai_stage === "Vēl neizmantojam"
     )).length;
     const notUsingPercent = participants.length ? Math.round((notUsingCount / participants.length) * 100) : 0;
-    const maturityScore = levels.length ? Math.round(averageLevel * 10) : 0;
-
     const byLevel = Array.from({ length: 10 }, (_, index) => ({
       level: index + 1,
       count: levels.filter((level) => level === index + 1).length,
     }));
     const byPhase = groupedCounts(participants.map((p) => p.ai_maturity_phase || ""));
-    const byIndustry = groupedCounts(participants.map((p) => (p.company_id ? companyById.get(p.company_id)?.industry || "" : "")));
-    const bySize = groupedCounts(participants.map((p) => (p.company_id ? companyById.get(p.company_id)?.company_size_badge || "" : "")));
 
     return jsonResponse({
       event,
       summary: {
         participant_count: participants.length,
         represented_companies: companyIds.length,
-        maturity_score: maturityScore,
         using_ai_percent: usingAiPercentRounded,
         not_using_ai_percent: notUsingPercent,
-        headline: participants.length
-          ? `${maturityScore}/100 ir konferences auditorijas MI gatavības indekss.`
+        headline: levels.length
+          ? `${averageLevel}/10 ir konferences auditorijas vidējais MI brieduma līmenis.`
           : "Rezultāti tiks publicēti pēc pirmajām atbildēm.",
       },
       maturity: {
@@ -318,13 +318,11 @@ Deno.serve(async (request) => {
         answered_count: levels.length,
         by_level: byLevel,
         by_phase: byPhase,
-        by_industry: byIndustry,
-        by_size: bySize,
       },
       polls: pollResults,
       company_segments: {
         industries: groupedCounts(companies.map((company) => company.industry || "")),
-        sizes: groupedCounts(companies.map((company) => company.company_size_badge || "")),
+        sizes: groupedCounts(companies.map((company) => companySizeLabel(company.company_size_badge || ""))),
         regions: groupedCounts(companies.map((company) => company.region || "")),
       },
       company_financials: companyFinancials(companies),
