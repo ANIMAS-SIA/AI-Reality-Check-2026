@@ -1,7 +1,7 @@
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/http.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
 
-type EventRow = { id: string; slug: string; name: string; is_test: boolean };
+type EventRow = { id: string; slug: string; name: string; starts_at: string; is_test: boolean };
 type PollRow = { id: string; event_id: string; title: string; status: string; results_public: boolean };
 type PollOptionRow = { id: string; poll_id: string; label: string; display_order: number };
 type PollVoteRow = { id: string; poll_id: string; option_id: string; company_snapshot: Record<string, unknown> };
@@ -82,6 +82,53 @@ function companyRegion(company: CompanyRow): string {
   ]);
   const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
   return parts.find((part) => part.endsWith(" nov.") || stateCities.has(part)) || "";
+}
+
+function companyDataCoverage(companies: CompanyRow[], eventYear: number) {
+  const missingFinancials = companies.filter((company) => {
+    const financials = record(record(company.c360_payload).financials);
+    return Object.keys(financials).length === 0;
+  });
+  const categories = new Map([
+    ["financial_sector", { label: "Bankas, apdrošinātāji un to filiāles", count: 0 }],
+    ["public_sector", { label: "Valsts un publiskā sektora iestādes", count: 0 }],
+    ["associations", { label: "Biedrības un nodibinājumi", count: 0 }],
+    ["new_companies", { label: `Jauni uzņēmumi, dibināti ${eventYear - 1}.–${eventYear}. gadā`, count: 0 }],
+    ["without_c360", { label: "Ieraksti bez Company360 kartītes", count: 0 }],
+    ["other", { label: "Citi bez standarta Company360 finanšu objekta", count: 0 }],
+  ]);
+
+  missingFinancials.forEach((company) => {
+    const legalForm = (company.legal_form || "").toLocaleLowerCase("lv-LV");
+    const name = company.name.toLocaleLowerCase("lv-LV");
+    const registeredYear = Number((company.registered_date || "").slice(0, 4));
+    let key = "other";
+    if (!company.c360_registration_number) key = "without_c360";
+    else if (legalForm.includes("institution_") || legalForm.includes("public_person")) key = "public_sector";
+    else if (legalForm.includes("biedrība") || legalForm.includes("nodibinājums")) key = "associations";
+    else if (/bank|insurance|apdrošin|pension|compensa|luminor|\baon\b|\bseb\b/u.test(name)) key = "financial_sector";
+    else if (registeredYear >= eventYear - 1) key = "new_companies";
+    categories.get(key)!.count += 1;
+  });
+
+  const directRegions = companies.filter((company) => Boolean(company.region?.trim())).length;
+  const resolvedRegions = companies.filter((company) => Boolean(companyRegion(company))).length;
+  return {
+    regions: {
+      company_count: companies.length,
+      direct_count: directRegions,
+      inferred_from_address_count: Math.max(0, resolvedRegions - directRegions),
+      unavailable_count: Math.max(0, companies.length - resolvedRegions),
+    },
+    financials: {
+      company_count: companies.length,
+      available_count: companies.length - missingFinancials.length,
+      unavailable_count: missingFinancials.length,
+      unavailable_breakdown: [...categories.entries()]
+        .map(([key, item]) => ({ key, ...item }))
+        .filter((item) => item.count > 0),
+    },
+  };
 }
 
 function companySizeLabel(value: string): string {
@@ -342,6 +389,10 @@ Deno.serve(async (request) => {
         regions: groupedCounts(companies.map(companyRegion)),
       },
       company_financials: companyFinancials(companies),
+      company_data_coverage: companyDataCoverage(
+        companies,
+        Number(event.starts_at.slice(0, 4)) || new Date().getUTCFullYear(),
+      ),
       updated_at: new Date().toISOString(),
     });
   } catch (error) {

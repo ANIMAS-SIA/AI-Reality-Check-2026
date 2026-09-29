@@ -69,6 +69,26 @@ const fixture = {
     profitable_percent: 81,
     privacy_minimum: 3,
   },
+  company_data_coverage: {
+    regions: {
+      company_count: 89,
+      direct_count: 64,
+      inferred_from_address_count: 25,
+      unavailable_count: 0,
+    },
+    financials: {
+      company_count: 89,
+      available_count: 53,
+      unavailable_count: 36,
+      unavailable_breakdown: [
+        { key: 'financial_sector', label: 'Bankas, apdrošinātāji un to filiāles', count: 6 },
+        { key: 'public_sector', label: 'Valsts un publiskā sektora iestādes', count: 8 },
+        { key: 'associations', label: 'Biedrības un nodibinājumi', count: 6 },
+        { key: 'new_companies', label: 'Jauni uzņēmumi, dibināti 2025.–2026. gadā', count: 15 },
+        { key: 'other', label: 'Citi bez standarta Company360 finanšu objekta', count: 1 },
+      ],
+    },
+  },
 };
 
 const browser = await chromium.launch({ headless: true, ...(process.env.ARC_CHROME_PATH ? { executablePath: process.env.ARC_CHROME_PATH } : {}) });
@@ -101,6 +121,12 @@ try {
     assert.match(await page.locator('#resultsCompanyMetrics').textContent(), /1,9 mljrd\. €/);
     assert.match(await page.locator('#resultsCompanyMeta').textContent(), /88 uzņēmumi/);
     assert.match(await page.locator('#resultsCompanyMeta').textContent(), /5 ierakstiem/);
+    assert.match(await page.locator('#resultsDataCoverage').textContent(), /89\/89 uzņēmumiem noteikts reģions/);
+    assert.match(await page.locator('#resultsDataCoverage').textContent(), /64C360 reģiona lauks/);
+    assert.match(await page.locator('#resultsDataCoverage').textContent(), /25Noteikts no C360 juridiskās adreses/);
+    assert.match(await page.locator('#resultsDataCoverage').textContent(), /53 ar finanšu datiem, 36 bez tiem/);
+    assert.match(await page.locator('#resultsDataCoverage').textContent(), /6Bankas, apdrošinātāji un to filiāles/);
+    assert.match(await page.locator('#resultsDataCoverage').textContent(), /15Jauni uzņēmumi/);
     assert.equal(await page.locator('[data-results-collapse]').count(), 3, 'Long result sections have collapse controls');
     const pollToggle = page.locator('[data-results-collapse="resultsPollContent"]');
     assert.equal(await pollToggle.getAttribute('aria-expanded'), 'true');

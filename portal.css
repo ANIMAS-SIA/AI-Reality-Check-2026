@@ -3262,6 +3262,59 @@ body[data-page="live"] .poll-option[data-multi="true"] > i {
   line-height: 1.45;
 }
 
+.company-data-coverage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 24px;
+}
+
+.company-coverage-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: #08080b;
+}
+
+.company-coverage-card h3 {
+  margin: 10px 0 8px;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.15;
+}
+
+.company-coverage-card > p {
+  margin: 0 0 15px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.company-coverage-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.company-coverage-list > div {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.company-coverage-list strong {
+  color: var(--pink);
+  font-size: 16px;
+}
+
+.company-coverage-list span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .results-segments-grid {
   gap: 12px;
 }
@@ -3517,6 +3570,10 @@ body[data-page="live"] .meter-fill {
 
   .company-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .company-data-coverage {
+    grid-template-columns: 1fr;
   }
 
   .results-segments-grid {

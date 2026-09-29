@@ -1473,12 +1473,14 @@ function renderResultsSection(data) {
   const pollList = document.getElementById("resultsPollList");
   const segmentsBox = document.getElementById("resultsSegments");
   const financeBox = document.getElementById("resultsCompanyMetrics");
+  const coverageBox = document.getElementById("resultsDataCoverage");
   const companyMeta = document.getElementById("resultsCompanyMeta");
   const maturityBox = document.getElementById("resultsMaturity");
 
   const summary = data?.summary || {};
   const segments = data?.company_segments || {};
   const finances = data?.company_financials || {};
+  const coverage = data?.company_data_coverage || {};
   const maturity = data?.maturity || {};
   const polls = (data?.polls || []).filter((result) => result.poll?.status !== "archived");
   const hasData = Boolean(summary.participant_count);
@@ -1555,6 +1557,33 @@ function renderResultsSection(data) {
         <small>${note}</small>
       </article>
     `).join("");
+  }
+  if (coverageBox) {
+    const regions = coverage.regions || {};
+    const financialCoverage = coverage.financials || {};
+    const unavailableBreakdown = financialCoverage.unavailable_breakdown || [];
+    const resolvedRegionCount = Math.max(0, Number(regions.company_count || 0) - Number(regions.unavailable_count || 0));
+    coverageBox.innerHTML = `
+      <article class="company-coverage-card">
+        <span class="live-kicker">Reģionu datu avots</span>
+        <h3>${resolvedRegionCount}/${regions.company_count || 0} uzņēmumiem noteikts reģions</h3>
+        <div class="company-coverage-list">
+          <div><strong>${regions.direct_count || 0}</strong><span>C360 reģiona lauks</span></div>
+          <div><strong>${regions.inferred_from_address_count || 0}</strong><span>Noteikts no C360 juridiskās adreses</span></div>
+          ${regions.unavailable_count ? `<div><strong>${regions.unavailable_count}</strong><span>Reģions nav nosakāms</span></div>` : ""}
+        </div>
+      </article>
+      <article class="company-coverage-card">
+        <span class="live-kicker">Finanšu datu pieejamība</span>
+        <h3>${financialCoverage.available_count || 0} ar finanšu datiem, ${financialCoverage.unavailable_count || 0} bez tiem</h3>
+        <p>Uzņēmums ir atrasts Company360, taču standarta finanšu objekts šīm juridiskās personas tipam vai periodam nav pieejams.</p>
+        <div class="company-coverage-list">
+          ${unavailableBreakdown.map((item) => `
+            <div><strong>${item.count || 0}</strong><span>${liveEscape(item.label)}</span></div>
+          `).join("")}
+        </div>
+      </article>
+    `;
   }
   if (companyMeta) {
     const allCompanies = Number(finances.company_count || summary.represented_companies || 0);
