@@ -1345,18 +1345,18 @@ function textResponseListMarkup(responses) {
   return `<ul class="poll-text-list">${responses.map((text) => `<li>${text}</li>`).join("")}</ul>`;
 }
 
-function renderPollResultSet(result, container) {
+function renderPollResultSet(result, container, { showTitle = true } = {}) {
   if (result.text_responses) {
     container.innerHTML = `
       <span class="live-kicker">Rezultāti · ${result.total_votes || 0} atbildes</span>
-      <h3>${result.poll.title}</h3>
+      ${showTitle ? `<h3>${result.poll.title}</h3>` : ""}
       ${result.poll.poll_type === "word_cloud" ? wordCloudMarkup(result.text_responses) : textResponseListMarkup(result.text_responses)}
     `;
     return;
   }
   container.innerHTML = `
     <span class="live-kicker">Rezultāti · ${result.total_votes || 0} atbildes</span>
-    <h3>${result.poll.title}</h3>
+    ${showTitle ? `<h3>${result.poll.title}</h3>` : ""}
     <div class="meter">
       ${result.options.map((option) => `
         <div class="meter-row">
@@ -1448,11 +1448,6 @@ function renderResultsSection(data) {
         <strong>${summary.not_using_ai_percent || 0}%</strong>
         <span>Vēl neizmanto MI</span>
         <small>Dalībnieki 1. brieduma līmenī — atsevišķi no auditorijas balsojumiem</small>
-      </article>
-      <article class="results-tile" data-tone="neutral">
-        <strong>${maturity.answered_count || 0}</strong>
-        <span>MI pašvērtējumi</span>
-        <small>No ${summary.participant_count || 0} apstiprinātiem konferences dalībniekiem</small>
       </article>
     ` : "";
   }
@@ -1595,6 +1590,20 @@ async function initLive() {
     localStorage.setItem(window.arcStorageKey("arcMyQuestionIds"), JSON.stringify([...ids]));
   }
 
+  function myPollVoteIds() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(window.arcStorageKey("arcMyPollVoteIds")) || "[]"));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function rememberMyPollVote(id) {
+    const ids = myPollVoteIds();
+    ids.add(id);
+    localStorage.setItem(window.arcStorageKey("arcMyPollVoteIds"), JSON.stringify([...ids]));
+  }
+
   function agendaExpandQuestionsMarkup() {
     const draft = questionDrafts.get(openExpand?.itemId) || "";
     return `
@@ -1651,15 +1660,18 @@ async function initLive() {
       const allowsMultiple = typeof active.poll.settings?.allowMultipleSubmissions === "boolean"
         ? active.poll.settings.allowMultipleSubmissions
         : isText;
-      const alreadySubmitted = active.has_submitted && !allowsMultiple;
+      const showResults = Boolean(active.has_submitted || myPollVoteIds().has(active.poll.id));
+      const alreadySubmitted = showResults && !allowsMultiple;
       const scaleIndex = Math.floor(Math.max(0, active.options.length - 1) / 2);
       const scaleOption = active.options[scaleIndex];
+      const result = `<div class="poll-live-results" data-active-poll-result="${active.poll.id}"></div>`;
       const body = alreadySubmitted
-        ? `<p class="live-empty poll-submitted-message">Atbilde jau iesniegta. Šajā balsojumā var piedalīties vienu reizi.</p>`
+        ? result
         : isText
         ? `
           <textarea class="poll-text-input" maxlength="280" placeholder="Ieraksti savu atbildi..."></textarea>
           <button class="live-submit" type="button" data-role="poll-text-submit" data-poll-id="${active.poll.id}">Iesniegt atbildi <span>→</span></button>
+          ${showResults ? result : ""}
         `
         : isScale
           ? `
@@ -1670,6 +1682,7 @@ async function initLive() {
             </div>
             <label class="poll-anonymous"><input type="checkbox" checked disabled> Atbilde vienmēr anonīma</label>
             <button class="live-submit" type="button" data-role="poll-scale-submit" data-poll-id="${active.poll.id}" data-option-id="${scaleOption?.id || ""}">Iesniegt vērtējumu <span>→</span></button>
+            ${showResults ? result : ""}
           `
         : `
           ${active.options.map((option, index) => `
@@ -1681,6 +1694,7 @@ async function initLive() {
           `).join("")}
           <label class="poll-anonymous"><input type="checkbox" checked disabled> Atbilde vienmēr anonīma</label>
           <button class="live-submit" type="button" disabled data-role="poll-option-submit">Iesniegt atbildi <span>→</span></button>
+          ${showResults ? result : ""}
         `;
       cards.push(`
         <article class="agenda-poll-card" data-poll-card="${active.poll.id}">
@@ -1699,6 +1713,12 @@ async function initLive() {
   function fillPollPanel(itemId, container) {
     if (!container) return;
     container.innerHTML = agendaPollMarkup(itemId, latestPollState);
+    (latestPollState?.activePolls || [])
+      .filter((result) => result.poll?.agenda_item_id === itemId)
+      .forEach((result) => {
+        const target = container.querySelector(`[data-active-poll-result="${result.poll.id}"]`);
+        if (target) renderPollResultSet(result, target, { showTitle: false });
+      });
     (latestPollState?.results || [])
       .filter((result) => result.poll?.agenda_item_id === itemId)
       .forEach((result) => {
@@ -1853,6 +1873,16 @@ async function initLive() {
     }
   }
 
+  function showSubmittedPollResults(pollId, result) {
+    rememberMyPollVote(pollId);
+    if (result && latestPollState?.activePolls) {
+      latestPollState.activePolls = latestPollState.activePolls.map((active) => (
+        active.poll?.id === pollId ? { ...active, ...result, poll: result.poll || active.poll } : active
+      ));
+    }
+    if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
+  }
+
   function refreshLive() {
     if (refreshLivePromise) return refreshLivePromise;
     refreshLivePromise = (async () => {
@@ -1991,8 +2021,9 @@ async function initLive() {
     if (!submit || !submit.dataset.optionId) return;
     submit.disabled = true;
     submitPollVote(submit.dataset.pollId, { optionId: submit.dataset.optionId }, participantToken)
-      .then(() => {
+      .then((data) => {
         showToast("Vērtējums iesniegts.");
+        showSubmittedPollResults(submit.dataset.pollId, data.results);
         refreshPolls();
       })
       .catch((error) => {
@@ -2012,10 +2043,10 @@ async function initLive() {
     const isMulti = selected[0].dataset.multi === "true";
     submit.disabled = true;
     submitPollVote(pollId, isMulti ? { optionIds } : { optionId: optionIds[0] }, participantToken)
-      .then(() => {
+      .then((data) => {
         showToast("Balsojums iesniegts.");
+        showSubmittedPollResults(pollId, data.results);
         refreshPolls();
-        if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
       })
       .catch((error) => {
         showToast(error.message || "Balsojumu neizdevās iesniegt.");
@@ -2035,11 +2066,11 @@ async function initLive() {
     }
     submit.disabled = true;
     submitPollVote(submit.dataset.pollId, { responseText: text }, participantToken)
-      .then(() => {
+      .then((data) => {
         textarea.value = "";
         showToast("Atbilde iesniegta.");
+        showSubmittedPollResults(submit.dataset.pollId, data.results);
         refreshPolls();
-        if (openExpand?.mode === "polls") fillExpandContent(openExpand.itemId, "polls");
       })
       .catch((error) => showToast(error.message || "Atbildi neizdevās iesniegt."))
       .finally(() => { submit.disabled = false; });

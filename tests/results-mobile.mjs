@@ -90,6 +90,7 @@ try {
     assert.match(await page.locator('#resultsScoreNote').textContent(), /4,9|4\.9/);
     assert.equal(await page.locator('.results-tile').nth(0).locator('strong').textContent(), '88%');
     assert.equal(await page.locator('.results-tile').nth(1).locator('strong').textContent(), '2%');
+    assert.equal(await page.locator('.results-tile').count(), 2);
     assert.match(await page.locator('#resultsMaturity').textContent(), /Kur atrodas konferences dalībnieki/);
     assert.match(await page.locator('#resultsCompanyMetrics').textContent(), /1,9 mljrd\. €/);
     assert.match(await page.locator('#resultsCompanyMeta').textContent(), /88 uzņēmumi/);
