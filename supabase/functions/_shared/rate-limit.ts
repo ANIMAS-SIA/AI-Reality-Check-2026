@@ -12,11 +12,22 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function rateLimit(db: SupabaseRest, request: Request, bucket: string, maxHits = 30, windowSeconds = 60): Promise<Response | null> {
+export async function rateLimit(
+  db: SupabaseRest,
+  request: Request,
+  bucket: string,
+  maxHits = 30,
+  windowSeconds = 60,
+  identity?: string | null,
+): Promise<Response | null> {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || request.headers.get("cf-connecting-ip")
     || "unknown";
-  const ipHash = await sha256(`${bucket}:${ip}:${Deno.env.get("TOKEN_PEPPER") || ""}`);
+  // Public conference traffic often shares one venue Wi-Fi or mobile-carrier
+  // CGNAT address. Scope interactive limits to the participant/browser when
+  // an identity is available; keep the IP as a fallback for legacy callers.
+  const subject = identity?.trim() ? `identity:${identity.trim()}` : `ip:${ip}`;
+  const ipHash = await sha256(`${bucket}:${subject}:${Deno.env.get("TOKEN_PEPPER") || ""}`);
   const rows = await db.select<RateRow>("public_rate_limits", {
     bucket: `eq.${bucket}`,
     ip_hash: `eq.${ipHash}`,

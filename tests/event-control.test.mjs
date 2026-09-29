@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { resolveAgenda } from '../supabase/functions/_shared/agenda.ts';
 import { reconcilePollAutomation } from '../supabase/functions/_shared/poll-automation.ts';
 import { SupabaseRest } from '../supabase/functions/_shared/supabase-rest.ts';
+import { rateLimit } from '../supabase/functions/_shared/rate-limit.ts';
 
 const time = (minutes) => new Date(Date.UTC(2026, 8, 30, 6, minutes)).toISOString();
 const agenda = [
@@ -159,4 +160,34 @@ test('preview without a rehearsal fails closed for production writes; production
       assert.equal(calls.length, 1);
     }
   }
+});
+
+test('interactive rate limits use participant identities instead of a shared venue IP', async () => {
+  const inserted = [];
+  const db = {
+    async select() { return []; },
+    async insert(_table, rows) { inserted.push(rows[0]); return rows; },
+  };
+  const request = new Request('https://api.invalid/polls', {
+    headers: { 'x-forwarded-for': '203.0.113.10' },
+  });
+
+  assert.equal(await rateLimit(db, request, 'polls', 30, 60, 'participant-a'), null);
+  assert.equal(await rateLimit(db, request, 'polls', 30, 60, 'participant-b'), null);
+  assert.notEqual(inserted[0].ip_hash, inserted[1].ip_hash);
+});
+
+test('live load controls batch company reads, suppress vote fan-out and avoid polling results off-tab', () => {
+  const resultsSource = readFileSync(new URL('../supabase/functions/results/index.ts', import.meta.url), 'utf8');
+  const pollsSource = readFileSync(new URL('../supabase/functions/polls/index.ts', import.meta.url), 'utf8');
+  const questionsSource = readFileSync(new URL('../supabase/functions/questions/index.ts', import.meta.url), 'utf8');
+  const portalSource = readFileSync(new URL('../portal.js', import.meta.url), 'utf8');
+
+  assert.match(resultsSource, /id: `in\.\(\$\{companyIds\.join\(","\)\}\)`/);
+  assert.doesNotMatch(pollsSource, /broadcast\(db\.topic, "poll_voted"/);
+  assert.doesNotMatch(questionsSource, /broadcast\(db\.topic, "question_voted"/);
+  assert.match(portalSource, /if \(refreshLivePromise\) return refreshLivePromise/);
+  assert.match(portalSource, /setInterval\(\(\) => refreshLive\(\), 45000\)/);
+  assert.match(portalSource, /dataset\.panel === "results"\) refreshResults\(\)/);
+  assert.doesNotMatch(portalSource, /await refreshPolls\(\);\s*await refreshResults\(\);/);
 });

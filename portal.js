@@ -1493,6 +1493,8 @@ async function initLive() {
   let openExpand = null;
   const questionDrafts = new Map();
   let activeQuestionFilter = "top";
+  let refreshLivePromise = null;
+  let realtimeRefreshTimer = null;
 
   setText("liveMode", p.isGuest ? "Anonīma pieeja" : (p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja"));
   setText("liveUser", `${p.firstName} ${p.lastName}`.trim());
@@ -1503,7 +1505,11 @@ async function initLive() {
   }
 
   document.querySelectorAll(".tab-btn, [data-live-tab]").forEach((button) => {
-    button.addEventListener("click", () => setActiveTab(button.dataset.liveTab || button.dataset.tab));
+    button.addEventListener("click", () => {
+      const target = button.dataset.liveTab || button.dataset.tab;
+      setActiveTab(target);
+      if (target === "results") refreshResults();
+    });
   });
 
   function myQuestionIds() {
@@ -1778,29 +1784,40 @@ async function initLive() {
     }
   }
 
-  async function refreshLive() {
-    try {
-      const state = await fetchLiveState();
-      if (!state) return;
-      agendaItems = state.agenda || [];
-      const signature = agendaSignature(agendaItems);
-      if (signature !== lastAgendaSignature) {
-        lastAgendaSignature = signature;
-        renderLiveProgram(agendaItems);
-        restoreOpenExpandAfterRerender();
-        updateAgendaBadges();
+  function refreshLive() {
+    if (refreshLivePromise) return refreshLivePromise;
+    refreshLivePromise = (async () => {
+      try {
+        const state = await fetchLiveState();
+        if (!state) return;
+        agendaItems = state.agenda || [];
+        const signature = agendaSignature(agendaItems);
+        if (signature !== lastAgendaSignature) {
+          lastAgendaSignature = signature;
+          renderLiveProgram(agendaItems);
+          restoreOpenExpandAfterRerender();
+          updateAgendaBadges();
+        }
+        await refreshQuestions();
+        await refreshPolls();
+      } catch (error) {
+        console.warn(error);
       }
-      await refreshQuestions();
-      await refreshPolls();
-      await refreshResults();
-    } catch (error) {
-      console.warn(error);
-    }
+    })().finally(() => { refreshLivePromise = null; });
+    return refreshLivePromise;
   }
 
   refreshLive();
-  window.setInterval(refreshLive, 10000);
-  subscribeLiveRealtime(() => refreshLive());
+  // Realtime keeps the UI responsive; this conservative fallback stays within
+  // the Free-plan invocation budget and also covers clients beyond its 200-connection cap.
+  window.setInterval(() => refreshLive(), 45000);
+  window.setInterval(() => {
+    if (document.querySelector('.tab-panel.is-active')?.dataset.panel === "results") refreshResults();
+  }, 60000);
+  subscribeLiveRealtime(() => {
+    window.clearTimeout(realtimeRefreshTimer);
+    realtimeRefreshTimer = window.setTimeout(() => refreshLive(), 750);
+  });
 
   document.getElementById("liveProgramList")?.addEventListener("click", (event) => {
     const actionBtn = event.target.closest("[data-agenda-action]");
@@ -1976,7 +1993,9 @@ async function initLive() {
 
   const availableViews = p.isGuest ? ["program", "results"] : ["program", "results", "networking"];
   const requestedView = liveParams.get("view");
-  setActiveTab(availableViews.includes(requestedView) ? requestedView : "program");
+  const initialView = availableViews.includes(requestedView) ? requestedView : "program";
+  setActiveTab(initialView);
+  if (initialView === "results") refreshResults();
 }
 
 function initResults() {

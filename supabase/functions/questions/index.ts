@@ -102,7 +102,6 @@ async function voteQuestion(db: SupabaseRest, payload: VotePayload): Promise<Res
     return errorResponse("Balsojums jau ir iesniegts.", 409, String(error));
   }
 
-  await broadcast(db.topic, "question_voted", { question_id: questionId });
   return jsonResponse({ ok: true, anonymousSessionId });
 }
 
@@ -121,11 +120,32 @@ Deno.serve(async (request) => {
     }
 
     if (request.method === "POST") {
-      const limited = await rateLimit(db, request, "questions", 20, 60);
-      if (limited) return limited;
       const action = url.searchParams.get("action") || "create";
-      if (action === "vote") return await voteQuestion(db, await readJson<VotePayload>(request));
-      return await createQuestion(db, event, await readJson<QuestionPayload>(request));
+      if (action === "vote") {
+        const payload = await readJson<VotePayload>(request);
+        const limited = await rateLimit(
+          db,
+          request,
+          "question-votes",
+          60,
+          60,
+          clean(payload.anonymousSessionId) || clean(payload.participantId),
+        );
+        if (limited) return limited;
+        return await voteQuestion(db, payload);
+      }
+
+      const payload = await readJson<QuestionPayload>(request);
+      const limited = await rateLimit(
+        db,
+        request,
+        "question-create",
+        10,
+        60,
+        clean(payload.anonymousSessionId) || clean(payload.participantId),
+      );
+      if (limited) return limited;
+      return await createQuestion(db, event, payload);
     }
 
     return errorResponse("Method not allowed", 405);

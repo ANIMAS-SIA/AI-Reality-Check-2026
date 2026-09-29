@@ -1,4 +1,3 @@
-import { broadcast } from "../_shared/broadcast.ts";
 import { errorResponse, handleOptions, jsonResponse, readJson, requiredEnv } from "../_shared/http.ts";
 import { rateLimit } from "../_shared/rate-limit.ts";
 import { SupabaseRest } from "../_shared/supabase-rest.ts";
@@ -188,7 +187,6 @@ async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Respo
       await releaseClaim(db, guardId);
       return errorResponse("Atbildi neizdevās saglabāt.", 500, String(error));
     }
-    await broadcast(db.topic, "poll_voted", { poll_id: pollId });
     return jsonResponse({ ok: true, anonymousSessionId: identity.anonymousSessionId, results: await resultsForPoll(db, poll, !multipleSubmissions) });
   }
 
@@ -213,7 +211,6 @@ async function submitVote(db: SupabaseRest, payload: VotePayload): Promise<Respo
     return errorResponse("Balsojumu neizdevās saglabāt.", 500, String(error));
   }
 
-  await broadcast(db.topic, "poll_voted", { poll_id: pollId });
   return jsonResponse({ ok: true, anonymousSessionId: identity.anonymousSessionId, results: await resultsForPoll(db, poll, !multipleSubmissions) });
 }
 
@@ -232,9 +229,17 @@ Deno.serve(async (request) => {
       return await listPolls(db, event.id, identity);
     }
     if (request.method === "POST") {
-      const limited = await rateLimit(db, request, "polls", 30, 60);
+      const payload = await readJson<VotePayload>(request);
+      const limited = await rateLimit(
+        db,
+        request,
+        "polls",
+        30,
+        60,
+        clean(payload.token) || clean(payload.anonymousSessionId),
+      );
       if (limited) return limited;
-      return await submitVote(db, await readJson<VotePayload>(request));
+      return await submitVote(db, payload);
     }
     return errorResponse("Method not allowed", 405);
   } catch (error) {

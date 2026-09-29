@@ -73,13 +73,13 @@ Deno.serve(async (request) => {
       event_id: `eq.${event.id}`,
       status: "in.(approved,arrived,reconfirm_required)",
     });
-    const companyIds = [...new Set(participants.map((p) => p.company_id).filter(Boolean))];
-    const companyById = new Map<string, CompanyRow>();
-    for (const id of companyIds) {
-      const company = (await db.select<CompanyRow>("companies", { id: `eq.${id}`, limit: 1 }))[0];
-      if (company) companyById.set(id as string, company);
-    }
-    const companies = [...companyById.values()];
+    const companyIds = [...new Set(
+      participants.map((p) => p.company_id).filter((id): id is string => Boolean(id)),
+    )];
+    const companies = companyIds.length
+      ? await db.select<CompanyRow>("companies", { id: `in.(${companyIds.join(",")})` })
+      : [];
+    const companyById = new Map(companies.map((company) => [company.id, company]));
 
     const levels = participants.map((p) => p.ai_maturity_level).filter((level): level is number => Number.isInteger(level));
     const averageLevel = levels.length ? levels.reduce((sum, level) => sum + level, 0) / levels.length : 0;
