@@ -507,7 +507,7 @@ async function submitPollVote(pollId, answer, token = "") {
   return data;
 }
 
-function subscribeLiveRealtime(onMessage, existingClient = null) {
+function subscribeLiveRealtime(onMessage, existingClient = null, onStatus = null) {
   if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
   const client = existingClient || window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
     auth: {
@@ -527,6 +527,7 @@ function subscribeLiveRealtime(onMessage, existingClient = null) {
     .on("broadcast", { event: "poll_voted" }, onMessage)
     .on("broadcast", { event: "presentation_changed" }, onMessage)
     .subscribe((status, error) => {
+      onStatus?.(status, error);
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") console.warn(status, error);
     });
   return channel;
@@ -1649,6 +1650,8 @@ async function initLive() {
   let activeQuestionFilter = "top";
   let refreshLivePromise = null;
   let realtimeRefreshTimer = null;
+  let liveBoundaryRefreshTimer = null;
+  let liveServerClockOffset = 0;
 
   setText("liveMode", p.isGuest ? "Anonīma pieeja" : (p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja"));
   setText("liveUser", `${p.firstName} ${p.lastName}`.trim());
@@ -1976,6 +1979,20 @@ async function initLive() {
         const state = await fetchLiveState();
         if (!state) return;
         agendaItems = state.agenda || [];
+        liveServerClockOffset = Date.parse(state.updated_at) - Date.now() || 0;
+        window.clearTimeout(liveBoundaryRefreshTimer);
+        const now = Date.now() + liveServerClockOffset;
+        const nextBoundary = agendaItems
+          .filter((item) => item.status !== "cancelled")
+          .flatMap((item) => [Date.parse(item.starts_at), Date.parse(item.ends_at)])
+          .filter((time) => Number.isFinite(time) && time > now + 250)
+          .sort((a, b) => a - b)[0];
+        if (nextBoundary) {
+          liveBoundaryRefreshTimer = window.setTimeout(
+            () => refreshLive(),
+            Math.min(2_147_000_000, Math.max(250, nextBoundary - now + 500)),
+          );
+        }
         const signature = agendaSignature(agendaItems);
         if (signature !== lastAgendaSignature) {
           lastAgendaSignature = signature;

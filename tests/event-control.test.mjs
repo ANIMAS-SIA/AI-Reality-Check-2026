@@ -188,6 +188,21 @@ test('shared admin account logout stays local to the current device', () => {
   }
 });
 
+test('scheduled agenda boundaries refresh promptly and admin exposes Realtime health', () => {
+  const adminSource = readFileSync(new URL('../admin.js', import.meta.url), 'utf8');
+  const adminHtml = readFileSync(new URL('../admin/index.html', import.meta.url), 'utf8');
+  const portalSource = readFileSync(new URL('../portal.js', import.meta.url), 'utf8');
+
+  assert.match(adminHtml, /id="dashAgendaLabel"/);
+  assert.match(adminSource, /const item = current \|\| next/);
+  assert.match(adminSource, /Sāksies pēc/);
+  assert.match(adminSource, /scheduleAgendaBoundaryRefresh\(\)/);
+  assert.match(adminSource, /Realtime savienots/);
+  assert.match(portalSource, /onStatus\?\.\(status, error\)/);
+  assert.match(portalSource, /liveBoundaryRefreshTimer = window\.setTimeout\(/);
+  assert.match(portalSource, /\(\) => refreshLive\(\)/);
+});
+
 test('live load controls batch company reads, suppress vote fan-out and avoid polling results off-tab', () => {
   const resultsSource = readFileSync(new URL('../supabase/functions/results/index.ts', import.meta.url), 'utf8');
   const pollsSource = readFileSync(new URL('../supabase/functions/polls/index.ts', import.meta.url), 'utf8');

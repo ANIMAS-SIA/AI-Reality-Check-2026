@@ -28,6 +28,9 @@
   let lastActivity = Date.now();
   let agendaItems = [];
   let serverClockOffset = 0;
+  let agendaBoundaryTimer = null;
+  let dashboardRealtimeStatus = "CONNECTING";
+  let lastDashboardSyncAt = null;
   let dashboardPolls = [];
   let presentationState = null;
   let moderationStatus = "pending";
@@ -221,30 +224,84 @@
     return ordered[index + 1] || null;
   }
 
+  function formatCountdown(milliseconds) {
+    const minutesTotal = Math.max(0, Math.ceil(milliseconds / 60000));
+    if (minutesTotal < 60) return `${minutesTotal} min`;
+    const hoursTotal = Math.floor(minutesTotal / 60);
+    const minutes = minutesTotal % 60;
+    if (hoursTotal < 24) return `${hoursTotal} h${minutes ? ` ${minutes} min` : ""}`;
+    const days = Math.floor(hoursTotal / 24);
+    const hours = hoursTotal % 24;
+    return `${days} d${hours ? ` ${hours} h` : ""}`;
+  }
+
+  function renderDashboardSyncStatus() {
+    if (!lastDashboardSyncAt) return;
+    const time = new Intl.DateTimeFormat("lv-LV", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(lastDashboardSyncAt);
+    const label = dashboardRealtimeStatus === "SUBSCRIBED"
+      ? "Realtime savienots"
+      : ["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(dashboardRealtimeStatus)
+        ? "Rezerves režīms"
+        : "Realtime pieslēdzas";
+    setText("dashSyncTime", `${label} · atjaunots ${time}`);
+  }
+
+  function scheduleAgendaBoundaryRefresh() {
+    window.clearTimeout(agendaBoundaryTimer);
+    const now = Date.now() + serverClockOffset;
+    const nextBoundary = agendaItems
+      .filter((item) => item.status !== "cancelled")
+      .flatMap((item) => [Date.parse(item.starts_at), Date.parse(item.ends_at)])
+      .filter((time) => Number.isFinite(time) && time > now + 250)
+      .sort((a, b) => a - b)[0];
+    if (!nextBoundary) return;
+    agendaBoundaryTimer = window.setTimeout(
+      () => refreshDashboard(),
+      Math.min(2_147_000_000, Math.max(250, nextBoundary - now + 500)),
+    );
+  }
+
   function renderDashboardAgenda() {
     const current = currentAgendaItem();
-    if (!current) {
-      setText("dashAgendaTitle", "Nav aktīva programmas punkta");
+    const next = nextAgendaItem();
+    const item = current || next;
+    const now = Date.now() + serverClockOffset;
+    if (!item) {
+      setText("dashAgendaLabel", "Programma");
+      setText("dashAgendaTitle", "Nav nākamā programmas punkta");
       setText("dashAgendaSpeaker", "");
       setText("dashAgendaCategory", "—");
       el("dashAgendaProgress").style.width = "0%";
       setText("dashAgendaStart", "--:--");
       setText("dashAgendaEnd", "--:--");
       setText("dashAgendaRemaining", "—");
+      setText("dashEventState", "Pasākums noslēdzies");
+      setText("adminEventStatus", "Pasākums noslēdzies");
       return;
     }
-    setText("dashAgendaCategory", current.category || (current.is_break ? "Pauze" : "Programma"));
-    setText("dashAgendaTitle", current.title);
-    setText("dashAgendaSpeaker", [current.speaker_name, current.speaker_company].filter(Boolean).join(" · "));
-    const start = new Date(current.starts_at).getTime();
-    const end = new Date(current.ends_at).getTime();
-    const now = Date.now() + serverClockOffset;
+    setText("dashAgendaLabel", current ? "Šobrīd programmā" : "Tuvākais programmā");
+    setText("dashAgendaCategory", item.category || (item.is_break ? "Pauze" : "Programma"));
+    setText("dashAgendaTitle", item.title);
+    setText("dashAgendaSpeaker", [item.speaker_name, item.speaker_company].filter(Boolean).join(" · "));
+    const start = new Date(item.starts_at).getTime();
+    const end = new Date(item.ends_at).getTime();
+    setText("dashAgendaStart", fmtTime(item.starts_at));
+    setText("dashAgendaEnd", fmtTime(item.ends_at));
+    if (!current) {
+      const startsLater = start > now;
+      const countdown = startsLater ? formatCountdown(start - now) : "";
+      el("dashAgendaProgress").style.width = "0%";
+      setText("dashAgendaRemaining", startsLater ? `Sāksies pēc ${countdown}` : "Sāksies tūlīt");
+      setText("dashEventState", startsLater ? `Nākamais ${fmtTime(item.starts_at)} · pēc ${countdown}` : `Nākamais ${fmtTime(item.starts_at)} · tūlīt`);
+      setText("adminEventStatus", "Gaida nākamo punktu");
+      return;
+    }
     const percent = end > start ? Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100))) : 0;
     el("dashAgendaProgress").style.width = `${percent}%`;
-    setText("dashAgendaStart", fmtTime(current.starts_at));
-    setText("dashAgendaEnd", fmtTime(current.ends_at));
     const remainingMin = Math.max(0, Math.round((end - now) / 60000));
     setText("dashAgendaRemaining", now > end ? "Laiks beidzies" : `${remainingMin} min atlikušas`);
+    setText("dashEventState", "Pasākums notiek");
+    setText("adminEventStatus", "Pasākums live");
   }
 
   async function renderDashboardPoll() {
@@ -290,6 +347,7 @@
       ]);
       agendaItems = liveData.agenda || [];
       serverClockOffset = Date.parse(liveData.server_time) - Date.now() || 0;
+      scheduleAgendaBoundaryRefresh();
       setText("agendaModeLabel", liveData.event?.agenda_mode === "manual" ? "Manuāla vadība — pulkstenis nepārslēdz" : "Pēc grafika");
       el("createTestParticipant").hidden = !liveData.event?.is_test;
       renderDashboardAgenda();
@@ -307,11 +365,9 @@
       setText("dashArrivedCount", `${statsData.arrived || 0}/${statsData.participants || 0}`);
       setText("dashQuestionCount", String(questionsData.questions?.length ?? "--"));
 
-      const current = currentAgendaItem();
-      setText("dashEventState", current ? "Pasākums notiek" : "Pasākums nav sācies");
-      setText("adminEventStatus", current ? "Pasākums live" : "Gaida sākumu");
       setText("dashOnlineCount", `${statsData.arrived || 0} dalībnieki tiešsaistē`);
-      setText("dashSyncTime", `Sinhronizēts ${new Intl.DateTimeFormat("lv-LV", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}`);
+      lastDashboardSyncAt = new Date();
+      renderDashboardSyncStatus();
     } catch (error) {
       console.warn(error);
     }
@@ -1710,7 +1766,11 @@
       refreshPresentationState();
       if (document.querySelector(".admin-panel.is-active")?.dataset.adminPanel === "moderation") refreshModeration();
       if (document.querySelector(".admin-panel.is-active")?.dataset.adminPanel === "polls") refreshPollsPanel();
-    }, supabaseClient);
+    }, supabaseClient, (status) => {
+      dashboardRealtimeStatus = status;
+      renderDashboardSyncStatus();
+    });
+    window.setInterval(renderDashboardAgenda, 1000);
     window.setInterval(() => {
       refreshDashboard();
       refreshPresentationState();

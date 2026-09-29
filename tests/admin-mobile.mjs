@@ -9,7 +9,7 @@ const root = resolve(import.meta.dirname, '..');
 const out = resolve(root, 'supabase/.temp/admin-mobile');
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true, ...(process.env.ARC_CHROME_PATH ? { executablePath: process.env.ARC_CHROME_PATH } : {}) });
-const agenda = [0, 1, 2].map((i) => ({ id: `agenda-${i}`, starts_at: '2026-09-30T06:00:00Z', ends_at: '2026-09-30T06:30:00Z', title: `Programmas punkts ${i + 1} — mākslīgais intelekts uzņēmumu ikdienā`, speaker_name: 'Testa Runātājs', status: i === 0 ? 'now' : 'later', display_order: i, is_break: i === 1 }));
+const agenda = [0, 1, 2].map((i) => ({ id: `agenda-${i}`, starts_at: '2026-09-30T06:00:00Z', ends_at: '2026-09-30T06:30:00Z', title: `Programmas punkts ${i + 1} — mākslīgais intelekts uzņēmumu ikdienā`, speaker_name: 'Testa Runātājs', status: i === 0 ? 'next' : 'later', display_order: i, is_break: i === 1 }));
 const questions = [{ id: 'question-1', agenda_item_id: 'agenda-0', body: 'Kā ieviest mākslīgo intelektu uzņēmuma ikdienas darbā, saglabājot datu drošību?', is_anonymous: true, vote_count: 12, created_at: new Date().toISOString() }];
 const participants = [{ id: 'person-1', first_name: 'Testa', last_name: 'Dalībnieks', email: 'garaks.testetaja.epasts@example.invalid', role: 'Uzņēmuma vadītājs', status: 'approved', access_mode: 'full', consents: { networking: true }, attendance_reconfirmed_at: new Date().toISOString() }];
 const polls = [
@@ -30,7 +30,7 @@ try {
         try { return await route.fulfill({ body: await readFile(file), contentType: types[extname(file)] || 'application/octet-stream' }); }
         catch { return route.fulfill({ status: 404 }); }
       }
-      if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.__supabaseClientCount=0;window.__sessionRefreshCount=0;window.supabase={createClient(){window.__supabaseClientCount++;let token='offline-stale';return {auth:{getSession:async()=>({data:{session:{access_token:token}}}),refreshSession:async()=>{window.__sessionRefreshCount++;token='offline-refreshed';return {data:{session:{access_token:token}}}},signOut:async()=>({})},channel(){return {on(){return this},subscribe(){return this}}}}}};` });
+      if (url.hostname === 'cdn.jsdelivr.net') return route.fulfill({ contentType: 'text/javascript', body: `window.__supabaseClientCount=0;window.__sessionRefreshCount=0;window.supabase={createClient(){window.__supabaseClientCount++;let token='offline-stale';return {auth:{getSession:async()=>({data:{session:{access_token:token}}}),refreshSession:async()=>{window.__sessionRefreshCount++;token='offline-refreshed';return {data:{session:{access_token:token}}}},signOut:async()=>({})},channel(){return {on(){return this},subscribe(callback){callback?.('SUBSCRIBED');return this}}}}}};` });
       if (url.pathname.includes('/functions/v1/')) {
         if (route.request().method() === 'POST') writes.push({ path: url.pathname, action: url.searchParams.get('action'), pollId: url.searchParams.get('poll_id'), body: route.request().postDataJSON() });
         if (url.pathname.endsWith('/admin-users') && url.searchParams.get('action') === 'whoami' && route.request().headers().authorization === 'Bearer offline-stale') {
@@ -54,6 +54,9 @@ try {
     assert.equal(await page.evaluate(() => window.__supabaseClientCount), 1, 'Admin auth and Realtime share one Supabase client');
     assert.equal(await page.evaluate(() => window.__sessionRefreshCount), 1, 'A rejected access token is refreshed once');
     await page.locator('#dashAgendaTitle').filter({ hasText: 'Programmas punkts' }).waitFor();
+    assert.equal(await page.locator('#dashAgendaLabel').textContent(), 'Tuvākais programmā');
+    assert.match(await page.locator('#dashAgendaRemaining').textContent(), /^Sāksies pēc /);
+    assert.match(await page.locator('#dashSyncTime').textContent(), /^Realtime savienots/);
     if (width <= 860) {
       assert.equal(await page.locator('.admin-remote-card > .admin-mobile-collapse').count(), 0, 'Presentation remote is never collapsible');
       assert.equal(await page.locator('.admin-remote-card #presentQrVisible').isVisible(), true, 'Presentation remote controls stay visible');
