@@ -1810,7 +1810,7 @@ async function initLive() {
   refreshLive();
   // Realtime keeps the UI responsive; this conservative fallback stays within
   // the Free-plan invocation budget and also covers clients beyond its 200-connection cap.
-  window.setInterval(() => refreshLive(), 45000);
+  window.setInterval(() => refreshLive(), 90000);
   window.setInterval(() => {
     if (document.querySelector('.tab-panel.is-active')?.dataset.panel === "results") refreshResults();
   }, 60000);

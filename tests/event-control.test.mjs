@@ -187,7 +187,7 @@ test('live load controls batch company reads, suppress vote fan-out and avoid po
   assert.doesNotMatch(pollsSource, /broadcast\(db\.topic, "poll_voted"/);
   assert.doesNotMatch(questionsSource, /broadcast\(db\.topic, "question_voted"/);
   assert.match(portalSource, /if \(refreshLivePromise\) return refreshLivePromise/);
-  assert.match(portalSource, /setInterval\(\(\) => refreshLive\(\), 45000\)/);
+  assert.match(portalSource, /setInterval\(\(\) => refreshLive\(\), 90000\)/);
   assert.match(portalSource, /dataset\.panel === "results"\) refreshResults\(\)/);
   assert.doesNotMatch(portalSource, /await refreshPolls\(\);\s*await refreshResults\(\);/);
 });
