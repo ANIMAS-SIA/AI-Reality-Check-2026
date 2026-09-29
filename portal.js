@@ -1369,11 +1369,37 @@ function renderPollResultSet(result, container) {
   `;
 }
 
-function readinessLabel(percent) {
-  if (percent >= 75) return "Aktīvi ievieš MI";
-  if (percent >= 50) return "Praktiski ieinteresēti";
-  if (percent >= 25) return "Izzina iespējas";
-  return "Sākuma posmā";
+function readinessLabel(score) {
+  const level = Math.max(1, Math.min(10, Math.round(Number(score || 0) / 10)));
+  const info = window.maturityLevelByNumber ? window.maturityLevelByNumber(level) : null;
+  return info ? `${info.phase} · ${info.title}` : "Nav pietiekamu datu";
+}
+
+function formatResultNumber(value) {
+  return new Intl.NumberFormat("lv-LV", { maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function formatResultMoney(value) {
+  if (value === null || value === undefined) return "—";
+  const amount = Number(value);
+  const absolute = Math.abs(amount);
+  const sign = amount < 0 ? "−" : "";
+  if (absolute >= 1_000_000_000) return `${sign}${(absolute / 1_000_000_000).toLocaleString("lv-LV", { maximumFractionDigits: 1 })} mljrd. €`;
+  if (absolute >= 1_000_000) return `${sign}${(absolute / 1_000_000).toLocaleString("lv-LV", { maximumFractionDigits: 1 })} milj. €`;
+  if (absolute >= 1_000) return `${sign}${(absolute / 1_000).toLocaleString("lv-LV", { maximumFractionDigits: 1 })} tūkst. €`;
+  return `${sign}${absolute.toLocaleString("lv-LV", { maximumFractionDigits: 0 })} €`;
+}
+
+function resultSegmentRows(rows) {
+  const values = rows || [];
+  const max = Math.max(1, ...values.map((row) => Number(row.count || 0)));
+  return values.length ? values.map((row) => `
+    <div class="results-segment-row">
+      <span>${liveEscape(row.label)}</span>
+      <i><b style="--value:${Math.round((Number(row.count || 0) / max) * 100)}%"></b></i>
+      <strong>${row.count || 0}</strong>
+    </div>
+  `).join("") : `<p class="fine">Nav pietiekamu datu</p>`;
 }
 
 function renderResultsSection(data) {
@@ -1381,49 +1407,71 @@ function renderResultsSection(data) {
   const scoreRing = document.getElementById("resultsScoreRing");
   const scoreValue = document.getElementById("resultsScoreValue");
   const scoreLabel = document.getElementById("resultsScoreLabel");
+  const scoreNote = document.getElementById("resultsScoreNote");
   const highlights = document.getElementById("resultsHighlights");
   const pollList = document.getElementById("resultsPollList");
   const segmentsBox = document.getElementById("resultsSegments");
+  const financeBox = document.getElementById("resultsCompanyMetrics");
+  const companyMeta = document.getElementById("resultsCompanyMeta");
   const maturityBox = document.getElementById("resultsMaturity");
 
   const summary = data?.summary || {};
   const segments = data?.company_segments || {};
+  const finances = data?.company_financials || {};
   const maturity = data?.maturity || {};
   const polls = data?.polls || [];
   const hasData = Boolean(summary.participant_count);
-  const score = Number(summary.using_ai_percent || 0);
+  const hasMaturity = Number(maturity.answered_count || 0) > 0;
+  const score = Number(summary.maturity_score ?? Math.round(Number(maturity.average || 0) * 10));
 
   if (intro) {
     intro.textContent = hasData
-      ? `Ko par MI domā ${summary.participant_count} konferences dalībnieki no ${summary.represented_companies || 0} Latvijas uzņēmumiem un organizācijām.`
+      ? `${summary.participant_count} dalībnieku MI pašvērtējums un ${summary.represented_companies || 0} pārstāvēto uzņēmumu kopējais ekonomiskais profils.`
       : (summary.headline || "Rezultāti tiks publicēti drīzumā.");
   }
   if (scoreRing) scoreRing.style.setProperty("--score", score);
-  if (scoreValue) scoreValue.textContent = hasData ? String(score) : "--";
-  if (scoreLabel) scoreLabel.textContent = hasData ? readinessLabel(score) : "Ielādē datus...";
+  if (scoreValue) scoreValue.textContent = hasMaturity ? String(score) : "--";
+  if (scoreLabel) scoreLabel.textContent = hasMaturity ? readinessLabel(score) : "Nav pašvērtējumu";
+  if (scoreNote) scoreNote.textContent = hasMaturity
+    ? `${maturity.average ?? "—"}/10 ir dalībnieku vidējais pašvērtējums, pārrēķināts 100 punktu indeksā.`
+    : "Indekss tiks aprēķināts no dalībnieku 1–10 pašvērtējuma.";
 
   if (highlights) {
-    const tiles = polls.filter((result) => result.top).slice(0, 3);
-    highlights.hidden = !tiles.length;
-    highlights.innerHTML = tiles.map((result) => `
-      <article class="results-tile">
-        <strong>${result.top.percent || 0}%</strong>
-        <span>${result.top.label}</span>
-        <small>${result.poll.title}</small>
+    highlights.hidden = !hasData;
+    highlights.innerHTML = hasData ? `
+      <article class="results-tile" data-tone="violet">
+        <strong>${summary.using_ai_percent || 0}%</strong>
+        <span>Jau testē vai izmanto MI</span>
+        <small>Dalībnieki, kuri sevi novērtējuši 3.–10. brieduma līmenī</small>
       </article>
-    `).join("");
+      <article class="results-tile" data-tone="pink">
+        <strong>${summary.not_using_ai_percent || 0}%</strong>
+        <span>Vēl neizmanto MI</span>
+        <small>Dalībnieki 1. brieduma līmenī — atsevišķi no auditorijas balsojumiem</small>
+      </article>
+      <article class="results-tile" data-tone="neutral">
+        <strong>${maturity.answered_count || 0}</strong>
+        <span>MI pašvērtējumi</span>
+        <small>No ${summary.participant_count || 0} apstiprinātiem konferences dalībniekiem</small>
+      </article>
+    ` : "";
   }
 
   if (pollList) {
-    pollList.innerHTML = polls.length
-      ? polls.map((result, index) => `
+    pollList.innerHTML = `
+      <header class="results-section-heading">
+        <span>03 · Auditorijas balsojumi</span>
+        <h2>Ko dalībnieki atbildēja pasākuma laikā</h2>
+        <p>Katrs jautājums ir atsevišķs balsojuma rezultāts un netiek izmantots MI gatavības indeksa aprēķinā.</p>
+      </header>
+      ${polls.length ? polls.map((result, index) => `
         <article class="results-poll-card">
-          <span class="live-kicker">${String(index + 1).padStart(2, "0")} · MI auditorijas balsojums</span>
-          <h3>${result.poll.title}</h3>
+          <span class="live-kicker">Balsojums ${String(index + 1).padStart(2, "0")}</span>
+          <h3>${liveEscape(result.poll.title)}</h3>
           <div class="meter">
             ${result.options.map((option) => `
               <div class="meter-row">
-                <span>${option.label}</span>
+                <span>${liveEscape(option.label)}</span>
                 <span class="meter-track"><span class="meter-fill" style="--value:${option.percent || 0}%"></span></span>
                 <strong>${option.percent || 0}%</strong>
               </div>
@@ -1431,16 +1479,39 @@ function renderResultsSection(data) {
           </div>
           <small class="results-poll-meta">${result.total_votes || 0} atbildes</small>
         </article>
-      `).join("")
-      : `<article class="results-empty"><span>Rezultāti</span><h2>Publicētu balsojumu vēl nav</h2></article>`;
+      `).join("") : `<article class="results-empty"><span>Rezultāti</span><h2>Publicētu balsojumu vēl nav</h2></article>`}
+    `;
   }
 
   if (segmentsBox) {
     segmentsBox.innerHTML = `
-      <div><strong>Nozares</strong><p class="fine">${(segments.industries || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-      <div><strong>Lielums</strong><p class="fine">${(segments.sizes || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-      <div><strong>Reģioni</strong><p class="fine">${(segments.regions || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+      <div class="results-segment"><strong>Nozares</strong>${resultSegmentRows(segments.industries)}</div>
+      <div class="results-segment"><strong>Uzņēmumu lielums</strong>${resultSegmentRows(segments.sizes)}</div>
+      <div class="results-segment"><strong>Reģioni</strong>${resultSegmentRows(segments.regions)}</div>
     `;
+  }
+
+  if (financeBox) {
+    const metrics = [
+      [formatResultMoney(finances.total_turnover), "Kopējais apgrozījums", `${finances.turnover_company_count || 0} uzņēmumu jaunākie dati`],
+      [formatResultMoney(finances.total_profit), "Kopējā peļņa", `${finances.profit_company_count || 0} uzņēmumu jaunākie dati`],
+      [formatResultMoney(finances.total_assets), "Kopējie aktīvi", `${finances.asset_company_count || 0} uzņēmumu bilances`],
+      [formatResultMoney(finances.total_equity), "Kopējais pašu kapitāls", `${finances.equity_company_count || 0} uzņēmumu bilances`],
+      [finances.total_employees == null ? "—" : formatResultNumber(finances.total_employees), "Darbinieki kopā", `${finances.employee_company_count || 0} uzņēmumu dati`],
+      [formatResultMoney(finances.weighted_avg_salary), "Vidējā bruto alga", `${finances.salary_company_count || 0} uzņēmumi, svērts pēc darbinieku skaita`],
+      [finances.profitable_percent == null ? "—" : `${finances.profitable_percent}%`, "Pelnoši uzņēmumi", `No ${finances.profit_company_count || 0} uzņēmumiem ar peļņas datiem`],
+      [formatResultMoney(finances.median_turnover), "Mediānas apgrozījums", finances.data_year ? `Pārsvarā ${finances.data_year}. gada pārskati` : "Jaunākie pieejamie pārskati"],
+    ];
+    financeBox.innerHTML = metrics.map(([value, label, note]) => `
+      <article class="company-metric">
+        <strong>${value}</strong>
+        <span>${label}</span>
+        <small>${note}</small>
+      </article>
+    `).join("");
+  }
+  if (companyMeta) {
+    companyMeta.textContent = `${finances.enriched_company_count || 0} no ${finances.company_count || summary.represented_companies || 0} uzņēmumiem sinhronizēti ar Company360. Finanšu rādītāji tiek publicēti tikai agregēti un tikai tad, ja pieejami vismaz ${finances.privacy_minimum || 3} uzņēmumu dati.`;
   }
 
   if (maturityBox) {
@@ -1449,8 +1520,9 @@ function renderResultsSection(data) {
     if (answeredCount) {
       const byLevel = maturity.by_level || [];
       maturityBox.innerHTML = `
-        <span class="eyebrow">MI brieduma līmenis</span>
+        <span class="eyebrow">02 · MI brieduma profils</span>
         <h2>Kur atrodas konferences dalībnieki</h2>
+        <p class="results-section-copy">Pilns dalībnieku pašvērtējuma sadalījums pa 10 līmeņiem. Tas ir MI gatavības indeksa avots.</p>
         <div class="grid two maturity-stats-grid">
           <div><strong>${maturity.average ?? "--"}/10</strong><p class="fine">Vidējais līmenis</p></div>
           <div><strong>${maturity.median ?? "--"}/10</strong><p class="fine">Mediāna</p></div>
@@ -1461,17 +1533,15 @@ function renderResultsSection(data) {
             const percent = answeredCount ? Math.round((row.count / answeredCount) * 100) : 0;
             return `
               <div class="meter-row">
-                <span>${row.level} · ${info?.title || ""}</span>
+                <span>${row.level} · ${liveEscape(info?.title || "")}</span>
                 <span class="meter-track"><span class="meter-fill" style="--value:${percent}%"></span></span>
-                <strong>${row.count}</strong>
+                <strong>${row.count} <small>${percent}%</small></strong>
               </div>
             `;
           }).join("")}
         </div>
-        <div class="grid three results-segments-grid">
-          <div><strong>Posmi</strong><p class="fine">${(maturity.by_phase || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-          <div><strong>Nozares</strong><p class="fine">${(maturity.by_industry || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
-          <div><strong>Lielums</strong><p class="fine">${(maturity.by_size || []).map((x) => `${x.label} (${x.count})`).join("<br>") || "Nav pietiekamu datu"}</p></div>
+        <div class="maturity-phase-summary">
+          ${(maturity.by_phase || []).map((phase) => `<span><strong>${phase.count}</strong>${liveEscape(phase.label)}</span>`).join("")}
         </div>
       `;
     }

@@ -181,6 +181,7 @@ try {
 
   const presentationPage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   let presentationMode = 'poll_question';
+  let densePresentationPoll = false;
   await presentationPage.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     if (url.hostname === 'mobile.test') {
@@ -196,7 +197,13 @@ try {
         question_count: 4,
         poll: presentationMode === 'poll_results'
           ? { poll: { id: 'poll', title: 'Testa balsojuma jautājums?', poll_type: 'word_cloud' }, options: [], text_responses: ['Mākslīgais intelekts palīdz', 'mākslīgais   intelekts palīdz', 'Cilvēks paliek centrā'], total_votes: 3 }
-          : { poll: { id: 'poll', agenda_item_id: 'talk', title: 'Testa balsojuma jautājums?' }, options: [], total_votes: 0 },
+          : densePresentationPoll
+            ? {
+                poll: { id: 'poll', agenda_item_id: 'talk', title: 'Ja MI rīt vairs nebūtu pieejams, kā tas ietekmētu tavu darbu un organizācijas svarīgākos ikdienas procesus?' },
+                options: Array.from({ length: 8 }, (_, index) => ({ id: `dense-${index}`, label: `${index + 1}. atbildes variants ar pietiekami garu skaidrojumu prezentācijas izkārtojuma pārbaudei` })),
+                total_votes: 0,
+              }
+            : { poll: { id: 'poll', agenda_item_id: 'talk', title: 'Testa balsojuma jautājums?' }, options: [], total_votes: 0 },
       } });
     }
     return route.fulfill({ status: 204 });
@@ -212,6 +219,20 @@ try {
   const pollQrTarget = new URL(new URL(await presentationPage.locator('#presentPollQrImg').getAttribute('src')).searchParams.get('data'));
   assert.equal(pollQrTarget.searchParams.get('poll'), 'poll', 'Poll QR links directly to the active poll');
   assert.equal(pollQrTarget.searchParams.get('agenda'), 'talk', 'Poll QR keeps its agenda context');
+  densePresentationPoll = true;
+  await presentationPage.reload();
+  await presentationPage.locator('.present-poll[data-density="dense"]').waitFor();
+  const denseBounds = await presentationPage.locator('[data-present-mode="poll_question"] .present-poll').boundingBox();
+  const denseQrBounds = await presentationPage.locator('#presentPollQrImg').boundingBox();
+  assert.ok(denseBounds.y >= 0 && denseBounds.y + denseBounds.height <= 1080, 'Long poll content fits the presentation viewport');
+  assert.ok(denseQrBounds.y >= 0 && denseQrBounds.y + denseQrBounds.height <= 1080, 'Dense poll QR remains fully visible');
+  assert.equal(await presentationPage.locator('.present-option-chip').count(), 8, 'All dense poll options remain visible');
+  assert.equal(await presentationPage.locator('.present-option-chip').evaluateAll((nodes) => nodes.every((node) => {
+    const rect = node.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  })), true, 'Every dense poll option fits inside the viewport');
+  await presentationPage.screenshot({ path: resolve(out, 'presentation-dense.png'), fullPage: true });
+  densePresentationPoll = false;
   presentationMode = 'agenda';
   await presentationPage.reload();
   await presentationPage.locator('#presentAgendaQr').waitFor({ state: 'visible' });

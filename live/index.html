@@ -75,12 +75,15 @@
           </div>
         </div>
         <div class="results-score-copy">
-          <span class="live-kicker">Auditorijas MI gatavība</span>
+          <span class="live-kicker">01 · MI gatavības indekss</span>
           <strong id="resultsScoreLabel">Ielādē...</strong>
+          <small class="results-score-note" id="resultsScoreNote">Indekss tiek aprēķināts no dalībnieku pašvērtējuma.</small>
         </div>
       </section>
 
       <section class="results-highlights" id="resultsHighlights" hidden></section>
+
+      <section class="card results-maturity-card" id="resultsMaturity" hidden></section>
 
       <section class="results-poll-list" id="resultsPollList">
         <article class="results-empty">
@@ -89,12 +92,13 @@
         </article>
       </section>
 
-      <section class="card results-maturity-card" id="resultsMaturity" hidden></section>
-
       <section class="card results-segments-card">
-        <span class="eyebrow">Company360 griezumi</span>
-        <h2>Agregēti segmenti</h2>
-        <p class="fine">Segmenti tiek rādīti tikai grupām ar vismaz 3 uzņēmumiem.</p>
+        <header class="results-section-heading">
+          <span>04 · Company360 ekonomiskais profils</span>
+          <h2>Ko kopā pārstāv auditorija</h2>
+          <p id="resultsCompanyMeta">Ielādē Company360 datus...</p>
+        </header>
+        <div class="company-metrics-grid" id="resultsCompanyMetrics"></div>
         <div class="grid three results-segments-grid" id="resultsSegments"></div>
       </section>
     </section>

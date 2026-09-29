@@ -22,6 +22,22 @@
     return new Intl.DateTimeFormat("lv-LV", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Riga" }).format(new Date(iso));
   }
 
+  function applyPollDensity(titleId, poll) {
+    const title = String(poll?.poll?.title || "");
+    const options = poll?.options || [];
+    const totalOptionLength = options.reduce((sum, option) => sum + String(option.label || "").length, 0);
+    const longestOption = Math.max(0, ...options.map((option) => String(option.label || "").length));
+    const isDense = title.length > 105 || options.length > 6 || totalOptionLength > 300 || longestOption > 90;
+    const isCompact = isDense || title.length > 62 || options.length > 4 || totalOptionLength > 170 || longestOption > 52;
+    const density = isDense ? "dense" : (isCompact ? "compact" : "normal");
+    const columns = options.length <= 4 ? Math.max(1, options.length) : (options.length <= 6 ? 3 : (options.length <= 12 ? 4 : 5));
+    const container = el(titleId)?.closest(".present-poll");
+    if (!container) return;
+    container.dataset.density = density;
+    container.style.setProperty("--present-option-columns", String(columns));
+    container.closest(".present-view")?.setAttribute("data-poll-density", density);
+  }
+
   function meterMarkup(options) {
     return `<div class="present-meter">${options.map((option) => `
       <div class="present-meter-row">
@@ -83,6 +99,7 @@
   function renderPollQuestion(snapshot) {
     const poll = snapshot.poll;
     if (!poll) return;
+    applyPollDensity("presentPollQuestionTitle", poll);
     setText("presentPollQuestionTitle", poll.poll.title);
     const isText = Boolean(poll.text_responses);
     el("presentPollQuestionOptions").innerHTML = isText
@@ -106,6 +123,7 @@
   function renderPollResults(snapshot) {
     const poll = snapshot.poll;
     if (!poll) return;
+    applyPollDensity("presentPollResultsTitle", poll);
     setText("presentPollResultsTitle", poll.poll.title);
     el("presentPollResultsBody").innerHTML = poll.text_responses
       ? (poll.poll.poll_type === "word_cloud" ? wordCloudMarkup(poll.text_responses) : textListMarkup(poll.text_responses))
