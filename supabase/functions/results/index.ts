@@ -105,7 +105,7 @@ function companyDataCoverage(companies: CompanyRow[], eventYear: number) {
     let key = "other";
     if (!company.c360_registration_number) key = "without_c360";
     else if (legalForm.includes("institution_") || legalForm.includes("public_person")) key = "public_sector";
-    else if (legalForm.includes("biedrība") || legalForm.includes("nodibinājums")) key = "associations";
+    else if (legalForm === "biedrība" || legalForm === "nodibinājums") key = "associations";
     else if (/bank|insurance|apdrošin|pension|compensa|luminor|\baon\b|\bseb\b/u.test(name)) key = "financial_sector";
     else if (registeredYear >= eventYear - 1) key = "new_companies";
     categories.get(key)!.count += 1;
