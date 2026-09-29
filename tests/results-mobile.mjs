@@ -44,7 +44,7 @@ const fixture = {
   }],
   company_segments: {
     industries: [{ label: 'IT pakalpojumi', count: 18 }, { label: 'Ražošana', count: 12 }],
-    sizes: [{ label: 'Mazs', count: 31 }, { label: 'Vidēj’s', count: 22 }],
+    sizes: [{ label: 'Mazs', count: 31 }, { label: 'VidÄ“js', count: 22 }],
     regions: [{ label: 'Rīga', count: 54 }, { label: 'Vidzeme', count: 11 }],
   },
   company_financials: {
@@ -113,7 +113,7 @@ try {
     assert.match(await page.locator('.company360-logo-link img').getAttribute('src'), /C360-logo-balts\.png$/);
     assert.equal(await page.locator('#resultsSegments .results-segment').count(), 3, 'Company360 segment is rendered once');
     assert.match(await page.locator('#resultsSegments').textContent(), /Vidējs/);
-    assert.doesNotMatch(await page.locator('#resultsSegments').textContent(), /Vidēj’s/);
+    assert.doesNotMatch(await page.locator('#resultsSegments').textContent(), /VidÄ“js/);
     assert.doesNotMatch(await page.locator('#resultsMaturity').textContent(), /Nozares|Uzņēmumu lielums/);
     assert.equal(await page.locator('a[href*="networking"], [data-live-tab="networking"]').count(), 0);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}px results page has no horizontal overflow`);

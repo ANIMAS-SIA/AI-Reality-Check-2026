@@ -1395,7 +1395,8 @@ function resultSegmentRows(rows) {
 
 function companySizeLabel(label) {
   const value = String(label || "").trim();
-  return value.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV") === "vidējs" ? "Vidējs" : value;
+  const normalized = value.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV");
+  return normalized === "vidējs" || normalized === "vidä“js" ? "Vidējs" : value;
 }
 
 const collapsedResultSections = new Set();

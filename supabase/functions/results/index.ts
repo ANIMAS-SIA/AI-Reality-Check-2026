@@ -86,7 +86,8 @@ function companyRegion(company: CompanyRow): string {
 
 function companySizeLabel(value: string): string {
   const label = value.trim();
-  return label.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV") === "vidējs" ? "Vidējs" : label;
+  const normalized = label.replace(/[’'`´]/g, "").toLocaleLowerCase("lv-LV");
+  return normalized === "vidējs" || normalized === "vidä“js" ? "Vidējs" : label;
 }
 
 function median(values: number[]): number {
@@ -324,7 +325,7 @@ Deno.serve(async (request) => {
         using_ai_percent: usingAiPercentRounded,
         not_using_ai_percent: notUsingPercent,
         headline: levels.length
-          ? `${averageLevel}/10 ir konferences auditorijas vidējais MI brieduma līmenis.`
+          ? `${Math.round(averageLevel * 10) / 10}/10 ir konferences auditorijas vidējais MI brieduma līmenis.`
           : "Rezultāti tiks publicēti pēc pirmajām atbildēm.",
       },
       maturity: {
