@@ -1222,7 +1222,7 @@ footer{
     <a href="#agenda"   class="nav-link">Programma</a>
     <a href="#about"    class="nav-link">Par konferenci</a>
   </div>
-  <a href="/registracija/" class="nav-cta">Pieteikties gaidītāju rindā</a>
+  <button class="nav-cta" onclick="showRegistrationClosed()" style="background:none;border:none;cursor:pointer;padding:0.8rem 1.5rem;color:var(--W);font-size:0.95rem;font-weight:600;font-family:inherit;text-decoration:none;transition:all 0.2s;border-radius:6px;opacity:0.6;">Pieteikties gaidītāju rindā</button>
   <button id="hamburger" aria-label="Izvēlne">
     <span id="hb1"></span><span id="hb2"></span><span id="hb3"></span>
   </button>
@@ -1233,10 +1233,10 @@ footer{
   <a href="#agenda"   class="nav-link">Programma</a>
   <a href="#about"    class="nav-link">Par konferenci</a>
   <hr style="margin:1rem 0;border:none;border-top:1px solid rgba(255,255,255,.1)">
-  <a href="/registracija/" class="nav-cta" style="text-align:center;margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.6rem">
+  <button class="nav-cta" onclick="showRegistrationClosed()" style="text-align:center;margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.6rem;background:none;border:none;cursor:pointer;color:var(--W);font-size:0.95rem;font-weight:600;font-family:inherit;opacity:0.6;padding:0.8rem 1.5rem;border-radius:6px;transition:all 0.2s;">
     <span>Pieteikties gaidītāju rindā</span>
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-  </a>
+  </button>
 </div>
 
 <!-- ═══════════ HERO ═══════════ -->
@@ -1271,7 +1271,7 @@ footer{
           <div class="hero-t4"><span class="scramble" data-text="2026">2026</span></div>
         </div>
         <!-- Mobile primary CTA -->
-        <a href="/registracija/" class="hero-cta-primary">Pieteikties gaidītāju rindā</a>
+        <button onclick="showRegistrationClosed()" class="hero-cta-primary" style="background:none;border:none;cursor:pointer;opacity:0.6;">Pieteikties gaidītāju rindā</button>
       </h1>
 
       <!-- RIGHT: Meta + CTA -->
@@ -1306,12 +1306,12 @@ footer{
           </div>
 
           <!-- CTA Button -->
-          <a href="/registracija/" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.08em;background:var(--V);color:#fff;padding:.8rem 2.2rem;border-radius:100px;text-decoration:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.6rem;white-space:nowrap;transform:none !important;animation:none !important"
-             onmouseover="this.style.boxShadow='0 12px 40px rgba(123,111,232,.55)';this.style.transform='translateY(-2px)'"
-             onmouseout="this.style.boxShadow='none';this.style.transform=''">
+          <button onclick="showRegistrationClosed()" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.08em;background:var(--V);color:#fff;padding:.8rem 2.2rem;border-radius:100px;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.6rem;white-space:nowrap;transform:none !important;animation:none !important;opacity:0.6;"
+             onmouseover="this.style.boxShadow='0 12px 40px rgba(123,111,232,.2)';this.style.transform='none';this.style.opacity='0.7'"
+             onmouseout="this.style.boxShadow='none';this.style.transform='';this.style.opacity='0.6'">
             Pieteikties gaidītāju rindā
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -2301,6 +2301,11 @@ function handleReg(e){
       btn.disabled=false;
       btn.innerHTML='Pieteikties';
     });
+}
+
+/* ── Registration Closed ──────────────────────── */
+function showRegistrationClosed(){
+  alert('Reģistrācijas laiks ir noslēdzis.\n\nTiekamies nākamajos Animas pasākumos!');
 }
 </script>
 

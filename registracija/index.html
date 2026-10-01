@@ -12,6 +12,13 @@
   <link rel="stylesheet" href="../portal.css">
   <link rel="stylesheet" href="../site-chrome.css">
   <script src="../site-chrome.js" defer></script>
+  <script>
+    // Reģistrācija slēgta
+    window.addEventListener('load', function() {
+      alert('Reģistrācijas laiks ir noslēdzis.\n\nTiekamies nākamajos Animas pasākumos!');
+      window.location.href = '../';
+    });
+  </script>
 </head>
 <body data-page="registration">
   <main class="portal-shell registration-shell">
