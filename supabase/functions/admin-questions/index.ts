@@ -103,6 +103,22 @@ async function setQuestionAnswer(db: SupabaseRest, actor: AdminActor, questionId
   return jsonResponse({ question: updated });
 }
 
+async function deleteQuestionAnswer(db: SupabaseRest, actor: AdminActor, questionId: string): Promise<Response> {
+  const existing = (await db.select<QuestionRow>("questions", { id: `eq.${questionId}`, limit: 1 }))[0];
+  if (!existing) return errorResponse("Question not found", 404);
+  if (!existing.answer_body) return errorResponse("Šim jautājumam nav dzēšamas atbildes.", 409);
+  const updated = (await db.update<QuestionRow>("questions", {
+    answer_body: null,
+    status: "approved",
+    answered_at: null,
+    answer_updated_at: new Date().toISOString(),
+    answer_updated_by: actor.userId,
+  }, { id: `eq.${questionId}` }))[0];
+  await logAudit(db, actor, "question_answer_delete", "questions", questionId, { answer_length: existing.answer_body.length });
+  await broadcast(db.topic, "question_answer_deleted", { question_id: questionId });
+  return jsonResponse({ question: updated });
+}
+
 type BulkAnswer = { questionId?: unknown; answer?: unknown };
 
 async function bulkAnswerQuestions(db: SupabaseRest, actor: AdminActor, rows: BulkAnswer[]): Promise<Response> {
@@ -255,6 +271,9 @@ Deno.serve(async (request) => {
       if (action === "answer") {
         const payload = await readJson<{ answer?: string }>(request);
         return await setQuestionAnswer(db, actor, questionId, payload.answer || "");
+      }
+      if (action === "delete-answer") {
+        return await deleteQuestionAnswer(db, actor, questionId);
       }
       if (action === "reassign") {
         const payload = await readJson<{ agendaItemId?: string | null }>(request);

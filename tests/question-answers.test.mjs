@@ -57,8 +57,19 @@ test('AI Pass and admin expose the complete answer workflow', () => {
   assert.match(admin, /id="answersImportModal"/);
   assert.match(admin, /id="moderationExportQuestions"/);
   assert.match(adminJs, /action=answer/);
+  assert.match(adminJs, /action=delete-answer/);
   assert.match(adminJs, /action=bulk-answer/);
   assert.match(adminJs, /agenda_item_id/);
+});
+
+test('answer deletion preserves the question and returns it to approved status', () => {
+  const source = readFileSync(new URL('../supabase/functions/admin-questions/index.ts', import.meta.url), 'utf8');
+  const adminJs = readFileSync(new URL('../admin.js', import.meta.url), 'utf8');
+  assert.match(source, /async function deleteQuestionAnswer/);
+  assert.match(source, /answer_body:\s*null[\s\S]*status:\s*"approved"[\s\S]*answered_at:\s*null/);
+  assert.match(source, /question_answer_delete/);
+  assert.match(adminJs, /data-question-answer-delete/);
+  assert.match(adminJs, /Dzēst jautājumu/);
 });
 
 test('admin CSV export is scoped by agenda item and includes speaker context', () => {

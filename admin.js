@@ -879,7 +879,8 @@
               <button type="button" data-question-action="archived">Arhivēt</button>
               <button type="button" data-question-present="${question.id}">Rādīt uz ekrāna</button>
               <button type="button" data-question-edit="${question.id}">Rediģēt tekstu</button>
-              <button type="button" data-question-delete="${question.id}">Dzēst</button>
+              ${question.answer_body ? `<button type="button" data-question-answer-delete="${question.id}">Dzēst atbildi</button>` : ""}
+              <button type="button" data-question-delete="${question.id}">Dzēst jautājumu</button>
             </div>
           </div>
         </div>
@@ -993,6 +994,20 @@
         });
         showToast("Jautājums rediģēts.");
         await refreshModeration();
+      } catch (error) {
+        showToast(error.message);
+      }
+      return;
+    }
+
+    const deleteAnswerBtn = event.target.closest("[data-question-answer-delete]");
+    if (deleteAnswerBtn) {
+      if (!window.confirm("Dzēst publicēto atbildi? Jautājums paliks saglabāts un publicēts.")) return;
+      try {
+        await adminFetch(`/admin-questions?question_id=${deleteAnswerBtn.dataset.questionAnswerDelete}&action=delete-answer`, { method: "POST" });
+        showToast("Atbilde dzēsta; jautājums ir saglabāts.");
+        await refreshModeration();
+        await refreshDashboard();
       } catch (error) {
         showToast(error.message);
       }
