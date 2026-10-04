@@ -1172,14 +1172,37 @@ function passQuestionAgendaTitle(question) {
   return agenda?.title || "AI Reality Check 2026";
 }
 
+function passQuestionSpeaker(question) {
+  const agenda = Array.isArray(question.agenda_items) ? question.agenda_items[0] : question.agenda_items;
+  return agenda?.speaker_name || "";
+}
+
+function populatePassQaAgendaFilter() {
+  const select = document.getElementById("passQaAgenda");
+  if (!select) return;
+  const previous = select.value;
+  const options = new Map();
+  passAnswerQuestions.forEach((question) => {
+    if (!question.agenda_item_id) return;
+    options.set(question.agenda_item_id, [passQuestionAgendaTitle(question), passQuestionSpeaker(question)].filter(Boolean).join(" — "));
+  });
+  select.innerHTML = `<option value="all">Visi programmas punkti un runātāji</option>`;
+  [...options.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], "lv-LV"))
+    .forEach(([value, label]) => select.add(new Option(label, value)));
+  if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+}
+
 function renderPassAnswers() {
   const list = document.getElementById("passQaList");
   if (!list) return;
   const search = (document.getElementById("passQaSearch")?.value || "").trim().toLocaleLowerCase("lv-LV");
+  const agendaItemId = document.getElementById("passQaAgenda")?.value || "all";
   const mine = passMyQuestionIds();
   const visible = passAnswerQuestions.filter((question) => {
+    if (agendaItemId !== "all" && question.agenda_item_id !== agendaItemId) return false;
     if (!search) return true;
-    return `${question.body || ""} ${question.answer_body || ""} ${passQuestionAgendaTitle(question)}`
+    return `${question.body || ""} ${question.answer_body || ""} ${passQuestionAgendaTitle(question)} ${passQuestionSpeaker(question)}`
       .toLocaleLowerCase("lv-LV").includes(search);
   });
 
@@ -1203,7 +1226,7 @@ function renderPassAnswers() {
         <div class="pass-qa-index">${String(index + 1).padStart(2, "0")}</div>
         <div class="pass-qa-content">
           <div class="pass-qa-meta">
-            <span>${liveEscape(passQuestionAgendaTitle(question))}</span>
+            <span>${liveEscape([passQuestionAgendaTitle(question), passQuestionSpeaker(question)].filter(Boolean).join(" · "))}</span>
             <span>${liveEscape(answered)}</span>
             ${isMine ? `<strong>Mans jautājums</strong>` : ""}
           </div>
@@ -1227,6 +1250,7 @@ async function loadPassAnswers() {
     passAnswerQuestions = questions
       .filter((question) => question.status === "answered" && question.answer_body)
       .sort((a, b) => Date.parse(b.answered_at || b.created_at || 0) - Date.parse(a.answered_at || a.created_at || 0));
+    populatePassQaAgendaFilter();
     renderPassAnswers();
   } catch (error) {
     list.innerHTML = `<p class="pass-qa-empty">${liveEscape(error.message || "Atbildes pašlaik neizdevās ielādēt.")}</p>`;
@@ -1237,6 +1261,7 @@ async function loadPassAnswers() {
 
 function initPassAnswers() {
   document.getElementById("passQaSearch")?.addEventListener("input", renderPassAnswers);
+  document.getElementById("passQaAgenda")?.addEventListener("change", renderPassAnswers);
   document.getElementById("passQaRefresh")?.addEventListener("click", loadPassAnswers);
   loadPassAnswers();
 }

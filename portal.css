@@ -1320,6 +1320,27 @@ body[data-page="pass"] .portal-shell {
   color: #6f6b76;
 }
 
+.pass-qa-filter {
+  display: flex;
+  min-width: 250px;
+}
+
+.pass-qa-filter select {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 38px 0 14px;
+  border: 1px solid var(--line);
+  outline: 0;
+  background: #0c0b11;
+  color: var(--text);
+  font: 600 10px/1.35 "Poppins", sans-serif;
+}
+
+.pass-qa-filter select:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px rgba(121, 100, 242, .12);
+}
+
 .pass-qa-refresh {
   min-width: 104px;
   padding: 0 18px;
@@ -1436,6 +1457,7 @@ body[data-page="pass"] .portal-shell {
   .pass-qa-heading { grid-template-columns: 1fr; align-items: start; }
   .pass-qa-count { border-left: 0; padding: 0; }
   .pass-qa-toolbar { display: grid; }
+  .pass-qa-filter { min-width: 0; }
   .pass-qa-refresh { min-height: 46px; }
   .pass-qa-card { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
   .pass-qa-card:hover { padding-right: 4px; padding-left: 4px; }

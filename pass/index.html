@@ -179,6 +179,12 @@
             <span class="sr-only">Meklēt jautājumos un atbildēs</span>
             <input type="search" id="passQaSearch" placeholder="Meklēt jautājumā vai atbildē..." autocomplete="off">
           </label>
+          <label class="pass-qa-filter" for="passQaAgenda">
+            <span class="sr-only">Filtrēt pēc programmas punkta vai runātāja</span>
+            <select id="passQaAgenda">
+              <option value="all">Visi programmas punkti un runātāji</option>
+            </select>
+          </label>
           <button type="button" class="pass-qa-refresh" id="passQaRefresh">Atjaunot</button>
         </div>
         <div class="pass-qa-list" id="passQaList" aria-live="polite">

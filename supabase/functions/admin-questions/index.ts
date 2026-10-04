@@ -22,6 +22,7 @@ type QuestionRow = {
   answer_updated_at: string | null;
   created_at: string;
   participants?: { first_name: string; last_name: string } | null;
+  agenda_items?: { title: string; speaker_name: string | null } | null;
 };
 
 function clean(value?: unknown): string {
@@ -183,10 +184,30 @@ async function deleteQuestion(db: SupabaseRest, actor: AdminActor, questionId: s
   return jsonResponse({ ok: true });
 }
 
-async function exportQuestions(db: SupabaseRest): Promise<Response> {
-  const questions = await db.select<QuestionRow>("questions", { order: "created_at.desc", limit: 1000 });
-  const header = ["question_id", "question", "answer", "status", "vote_count", "created_at"];
-  const body = questions.map((row) => [row.id, row.body, row.answer_body, row.status, row.vote_count, row.created_at].map(csvCell).join(","));
+async function exportQuestions(db: SupabaseRest, url: URL): Promise<Response> {
+  const query: Record<string, string | number> = {
+    select: "*,agenda_items(title,speaker_name)",
+    order: "created_at.desc",
+    limit: 1000,
+  };
+  const agendaItemId = clean(url.searchParams.get("agenda_item_id"));
+  if (agendaItemId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(agendaItemId)) {
+    return errorResponse("Invalid agenda_item_id", 422);
+  }
+  if (agendaItemId) query.agenda_item_id = `eq.${agendaItemId}`;
+  const questions = await db.select<QuestionRow>("questions", query);
+  const header = ["question_id", "agenda_item_id", "programmas_punkts", "speaker", "question", "answer", "status", "vote_count", "created_at"];
+  const body = questions.map((row) => [
+    row.id,
+    row.agenda_item_id,
+    row.agenda_items?.title,
+    row.agenda_items?.speaker_name,
+    row.body,
+    row.answer_body,
+    row.status,
+    row.vote_count,
+    row.created_at,
+  ].map(csvCell).join(","));
   return new Response([`\uFEFF${header.join(",")}`, ...body].join("\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
@@ -210,7 +231,7 @@ Deno.serve(async (request) => {
 
     if (request.method === "GET") {
       await authenticateAdmin(request, db, [...READ_ROLES]);
-      if (url.searchParams.get("action") === "export") return await exportQuestions(db);
+      if (url.searchParams.get("action") === "export") return await exportQuestions(db, url);
       return await listQuestions(db, url);
     }
 

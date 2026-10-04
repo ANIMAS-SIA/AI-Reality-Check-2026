@@ -43,6 +43,7 @@ test('public question response omits participant and anonymous session identifie
   const source = readFileSync(new URL('../supabase/functions/questions/index.ts', import.meta.url), 'utf8');
   const select = source.match(/select:\s*"([^"]+)"/)?.[1] || '';
   assert.match(select, /answer_body/);
+  assert.match(select, /agenda_items\(title,speaker_name\)/);
   assert.doesNotMatch(select, /participant_id|anonymous_session_id/);
 });
 
@@ -52,7 +53,17 @@ test('AI Pass and admin expose the complete answer workflow', () => {
   const adminJs = readFileSync(new URL('../admin.js', import.meta.url), 'utf8');
   assert.match(pass, /id="qaAnswers"/);
   assert.match(pass, /id="passQaSearch"/);
+  assert.match(pass, /id="passQaAgenda"/);
   assert.match(admin, /id="answersImportModal"/);
+  assert.match(admin, /id="moderationExportQuestions"/);
   assert.match(adminJs, /action=answer/);
   assert.match(adminJs, /action=bulk-answer/);
+  assert.match(adminJs, /agenda_item_id/);
+});
+
+test('admin CSV export is scoped by agenda item and includes speaker context', () => {
+  const source = readFileSync(new URL('../supabase/functions/admin-questions/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /agenda_item_id = `eq\.\$\{agendaItemId\}`/);
+  assert.match(source, /agenda_items\(title,speaker_name\)/);
+  assert.match(source, /"programmas_punkts", "speaker"/);
 });

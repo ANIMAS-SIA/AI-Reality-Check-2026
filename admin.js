@@ -826,6 +826,15 @@
   });
   el("moderationSearch")?.addEventListener("input", debounce(refreshModeration, 300));
   el("moderationAgendaFilter")?.addEventListener("change", refreshModeration);
+  el("moderationExportQuestions")?.addEventListener("click", () => {
+    const agendaItemId = el("moderationAgendaFilter")?.value || "all";
+    if (agendaItemId === "all") {
+      showToast("Izvēlies konkrētu programmas punktu vai runātāju.");
+      return;
+    }
+    const params = new URLSearchParams({ action: "export", agenda_item_id: agendaItemId });
+    downloadCsv(`/admin-questions?${params.toString()}`, `ai-reality-check-qa-${agendaItemId.slice(0, 8)}.csv`);
+  });
 
   function debounce(fn, wait) {
     let timer = null;
@@ -917,7 +926,7 @@
     agendaItems.filter((item) => !item.is_break).forEach((item) => {
       const option = document.createElement("option");
       option.value = item.id;
-      option.textContent = item.title;
+      option.textContent = [item.title, item.speaker_name].filter(Boolean).join(" — ");
       select.appendChild(option);
     });
     select.dataset.populated = "true";

@@ -35,7 +35,7 @@ type QuestionRow = {
   answer_body: string | null;
   answered_at: string | null;
   created_at: string;
-  agenda_items?: { title: string } | null;
+  agenda_items?: { title: string; speaker_name: string | null } | null;
 };
 
 function clean(value?: string): string {
@@ -51,7 +51,7 @@ async function getEvent(db: SupabaseRest): Promise<EventRow> {
 
 async function listQuestions(db: SupabaseRest, eventId: string, agendaItemId?: string | null): Promise<Response> {
   const query: Record<string, string | number> = {
-    select: "id,agenda_item_id,body,is_anonymous,guest_name,status,vote_count,answer_body,answered_at,created_at,agenda_items(title)",
+    select: "id,agenda_item_id,body,is_anonymous,guest_name,status,vote_count,answer_body,answered_at,created_at,agenda_items(title,speaker_name)",
     event_id: `eq.${eventId}`,
     status: "in.(approved,answered)",
     order: "vote_count.desc,created_at.desc",
