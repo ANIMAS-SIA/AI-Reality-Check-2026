@@ -79,3 +79,17 @@ test('admin CSV export is scoped by agenda item and includes speaker context', (
   assert.match(source, /agenda_items\(title,speaker_name\)/);
   assert.match(source, /"programmas_punkts", "speaker"/);
 });
+
+test('mobile navigation exposes Q&A consistently and marks its hash route active', () => {
+  const pages = ['../live/index.html', '../rezultati/index.html', '../pass/index.html']
+    .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'));
+  const portal = readFileSync(new URL('../portal.js', import.meta.url), 'utf8');
+  const chromeCss = readFileSync(new URL('../site-chrome.css', import.meta.url), 'utf8');
+  pages.forEach((page) => {
+    assert.match(page, /(?:\.\.\/pass\/)?#qaAnswers/);
+    assert.match(page, /<span>Q&amp;A<\/span>/);
+  });
+  assert.match(portal, /data-pass-bottom-qa/);
+  assert.match(portal, /hash === "#qaAnswers"/);
+  assert.match(chromeCss, /grid-template-columns:\s*repeat\(4,/);
+});

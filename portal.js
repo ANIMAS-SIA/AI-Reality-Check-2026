@@ -1260,6 +1260,22 @@ async function loadPassAnswers() {
 }
 
 function initPassAnswers() {
+  const syncBottomNav = () => {
+    const qaActive = window.location.hash === "#qaAnswers";
+    const qaLink = document.querySelector("[data-pass-bottom-qa]");
+    const passLink = document.querySelector("[data-pass-bottom-pass]");
+    qaLink?.classList.toggle("is-active", qaActive);
+    passLink?.classList.toggle("is-active", !qaActive);
+    if (qaActive) qaLink?.setAttribute("aria-current", "page");
+    else qaLink?.removeAttribute("aria-current");
+    if (!qaActive) passLink?.setAttribute("aria-current", "page");
+    else passLink?.removeAttribute("aria-current");
+  };
+  syncBottomNav();
+  window.addEventListener("hashchange", syncBottomNav);
+  if (window.location.hash === "#qaAnswers") {
+    window.requestAnimationFrame(() => document.getElementById("qaAnswers")?.scrollIntoView({ block: "start" }));
+  }
   document.getElementById("passQaSearch")?.addEventListener("input", renderPassAnswers);
   document.getElementById("passQaAgenda")?.addEventListener("change", renderPassAnswers);
   document.getElementById("passQaRefresh")?.addEventListener("click", loadPassAnswers);
@@ -2302,7 +2318,8 @@ async function initLive() {
   }
   if (passToken) {
     document.querySelectorAll(".live-pass-link, [data-pass-link]").forEach((link) => {
-      link.href = `../pass/?token=${encodeURIComponent(passToken)}`;
+      const hash = new URL(link.href, window.location.href).hash;
+      link.href = `../pass/?token=${encodeURIComponent(passToken)}${hash}`;
     });
   }
 
