@@ -60,6 +60,7 @@ test('AI Pass and admin expose the complete answer workflow', () => {
   assert.match(adminJs, /action=delete-answer/);
   assert.match(adminJs, /action=bulk-answer/);
   assert.match(adminJs, /agenda_item_id/);
+  assert.match(adminJs, /answersDownloadCsv[\s\S]*exportModerationQuestions\(\)/);
 });
 
 test('answer deletion preserves the question and returns it to approved status', () => {

@@ -826,15 +826,19 @@
   });
   el("moderationSearch")?.addEventListener("input", debounce(refreshModeration, 300));
   el("moderationAgendaFilter")?.addEventListener("change", refreshModeration);
-  el("moderationExportQuestions")?.addEventListener("click", () => {
+  function exportModerationQuestions(requireSelection = false) {
     const agendaItemId = el("moderationAgendaFilter")?.value || "all";
-    if (agendaItemId === "all") {
+    if (requireSelection && agendaItemId === "all") {
       showToast("Izvēlies konkrētu programmas punktu vai runātāju.");
       return;
     }
-    const params = new URLSearchParams({ action: "export", agenda_item_id: agendaItemId });
-    downloadCsv(`/admin-questions?${params.toString()}`, `ai-reality-check-qa-${agendaItemId.slice(0, 8)}.csv`);
-  });
+    const params = new URLSearchParams({ action: "export" });
+    if (agendaItemId !== "all") params.set("agenda_item_id", agendaItemId);
+    const suffix = agendaItemId === "all" ? "all" : agendaItemId.slice(0, 8);
+    downloadCsv(`/admin-questions?${params.toString()}`, `ai-reality-check-qa-${suffix}.csv`);
+  }
+
+  el("moderationExportQuestions")?.addEventListener("click", () => exportModerationQuestions(true));
 
   function debounce(fn, wait) {
     let timer = null;
@@ -1074,7 +1078,7 @@
     el("answersImportSubmit").disabled = true;
     openModal("answersImportModal");
   });
-  el("answersDownloadCsv")?.addEventListener("click", () => downloadCsv("/admin-questions?action=export", "ai-reality-check-qa.csv"));
+  el("answersDownloadCsv")?.addEventListener("click", () => exportModerationQuestions());
   el("answersImportText")?.addEventListener("input", debounce(previewAnswerImport, 150));
   el("answersImportFile")?.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
