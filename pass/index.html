@@ -49,6 +49,7 @@
       </a>
       <nav class="pass-nav" aria-label="Live portāla sadaļas">
         <a href="../live/?view=program">Programma</a>
+        <a href="#qaAnswers">Jautājumi &amp; atbildes</a>
         <a href="../live/?view=results">Rezultāti</a>
       </nav>
       <div class="top-actions pass-actions">
@@ -160,6 +161,30 @@
           </a>
         </aside>
       </div>
+
+      <section class="pass-qa" id="qaAnswers" aria-labelledby="passQaHeading">
+        <div class="pass-qa-heading">
+          <div>
+            <p class="pass-eyebrow">No skatuves līdz praktiskai rīcībai</p>
+            <h2 id="passQaHeading">Jautājumi.<br><em>Ar atbildēm.</em></h2>
+          </div>
+          <div class="pass-qa-count" aria-live="polite">
+            <strong id="passQaCount">—</strong>
+            <span>publicētas<br>atbildes</span>
+          </div>
+        </div>
+        <div class="pass-qa-toolbar">
+          <label class="pass-qa-search" for="passQaSearch">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <span class="sr-only">Meklēt jautājumos un atbildēs</span>
+            <input type="search" id="passQaSearch" placeholder="Meklēt jautājumā vai atbildē..." autocomplete="off">
+          </label>
+          <button type="button" class="pass-qa-refresh" id="passQaRefresh">Atjaunot</button>
+        </div>
+        <div class="pass-qa-list" id="passQaList" aria-live="polite">
+          <p class="pass-qa-empty">Ielādē atbildes...</p>
+        </div>
+      </section>
 
       <p class="pass-stage-note" id="aiStage">Izmēģinām atsevišķus rīkus</p>
       <button class="sr-only" id="activatePortal" type="button">Aktivizēt pilno pieredzi</button>

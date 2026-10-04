@@ -17,12 +17,15 @@ type QuestionRow = {
   status: string;
   vote_count: number;
   merged_into_id: string | null;
+  answer_body: string | null;
+  answered_at: string | null;
+  answer_updated_at: string | null;
   created_at: string;
   participants?: { first_name: string; last_name: string } | null;
 };
 
-function clean(value?: string): string {
-  return (value || "").trim();
+function clean(value?: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function csvCell(value: unknown) {
@@ -61,13 +64,74 @@ async function listQuestions(db: SupabaseRest, url: URL): Promise<Response> {
 async function setQuestionStatus(db: SupabaseRest, actor: AdminActor, questionId: string, status: string): Promise<Response> {
   if (!STATUSES.includes(status as typeof STATUSES[number])) return errorResponse("Unsupported status", 400);
   const fields: Record<string, unknown> = { status };
-  if (status === "answered") fields.answered_at = new Date().toISOString();
+  if (status === "answered") {
+    const existing = (await db.select<QuestionRow>("questions", { id: `eq.${questionId}`, limit: 1 }))[0];
+    if (!existing) return errorResponse("Question not found", 404);
+    if (!existing.answer_body) return errorResponse("Pirms statusa “Atbildēts” pievieno publicējamu atbildi.", 422);
+    fields.answered_at = existing.answered_at || new Date().toISOString();
+  }
   if (status === "shown_on_screen") fields.shown_on_screen_at = new Date().toISOString();
   const updated = await db.update<QuestionRow>("questions", fields, { id: `eq.${questionId}` });
   if (!updated[0]) return errorResponse("Question not found", 404);
   await logAudit(db, actor, "question_status", "questions", questionId, { status });
   await broadcast(db.topic, "question_moderated", { question_id: questionId, status });
   return jsonResponse({ question: updated[0] });
+}
+
+function validAnswer(value?: unknown): string | null {
+  const answer = clean(value);
+  return answer && answer.length <= 4000 ? answer : null;
+}
+
+async function setQuestionAnswer(db: SupabaseRest, actor: AdminActor, questionId: string, rawAnswer: string): Promise<Response> {
+  const answer = validAnswer(rawAnswer);
+  if (!answer) return errorResponse("Atbildei jābūt 1–4000 rakstzīmes garai.", 422);
+  const existing = (await db.select<QuestionRow>("questions", { id: `eq.${questionId}`, limit: 1 }))[0];
+  if (!existing) return errorResponse("Question not found", 404);
+  const now = new Date().toISOString();
+  const updated = (await db.update<QuestionRow>("questions", {
+    answer_body: answer,
+    status: "answered",
+    answered_at: existing.answered_at || now,
+    answer_updated_at: now,
+    answer_updated_by: actor.userId,
+  }, { id: `eq.${questionId}` }))[0];
+  if (!updated) return errorResponse("Question not found", 404);
+  await logAudit(db, actor, "question_answer", "questions", questionId, { answer_length: answer.length });
+  await broadcast(db.topic, "question_answered", { question_id: questionId });
+  return jsonResponse({ question: updated });
+}
+
+type BulkAnswer = { questionId?: unknown; answer?: unknown };
+
+async function bulkAnswerQuestions(db: SupabaseRest, actor: AdminActor, rows: BulkAnswer[]): Promise<Response> {
+  if (!Array.isArray(rows) || !rows.length || rows.length > 250) {
+    return errorResponse("Importā jābūt 1–250 atbildēm.", 422);
+  }
+  const seen = new Set<string>();
+  const answers: Array<{ questionId: string; answer: string }> = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") return errorResponse("Importā ir nederīga rinda.", 422);
+    const questionId = clean(row.questionId);
+    const answer = validAnswer(row.answer);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(questionId)) {
+      return errorResponse("Importā ir nederīgs question_id.", 422);
+    }
+    if (!answer) return errorResponse("Katrai rindai vajadzīga 1–4000 rakstzīmju atbilde.", 422);
+    if (seen.has(questionId)) return errorResponse("Importā question_id nedrīkst atkārtoties.", 422);
+    seen.add(questionId);
+    answers.push({ questionId, answer });
+  }
+
+  const event = await db.event();
+  const updated = await db.rpc<number>("bulk_answer_questions", {
+    p_event_id: event.id,
+    p_actor_user_id: actor.userId,
+    p_answers: answers,
+  });
+  await logAudit(db, actor, "question_answers_bulk", "questions", undefined, { count: updated });
+  await broadcast(db.topic, "question_answers_imported", { count: updated });
+  return jsonResponse({ updated });
 }
 
 async function editQuestionBody(db: SupabaseRest, actor: AdminActor, questionId: string, body: string): Promise<Response> {
@@ -121,9 +185,9 @@ async function deleteQuestion(db: SupabaseRest, actor: AdminActor, questionId: s
 
 async function exportQuestions(db: SupabaseRest): Promise<Response> {
   const questions = await db.select<QuestionRow>("questions", { order: "created_at.desc", limit: 1000 });
-  const header = ["body", "status", "vote_count", "is_anonymous", "created_at"];
-  const body = questions.map((row) => header.map((key) => csvCell((row as unknown as Record<string, unknown>)[key])).join(","));
-  return new Response([header.join(","), ...body].join("\n"), {
+  const header = ["question_id", "question", "answer", "status", "vote_count", "created_at"];
+  const body = questions.map((row) => [row.id, row.body, row.answer_body, row.status, row.vote_count, row.created_at].map(csvCell).join(","));
+  return new Response([`\uFEFF${header.join(",")}`, ...body].join("\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="ai-reality-check-questions.csv"`,
@@ -154,6 +218,10 @@ Deno.serve(async (request) => {
       const actor = await authenticateAdmin(request, db, [...MODERATE_ROLES]);
       const questionId = url.searchParams.get("question_id") || "";
       const action = url.searchParams.get("action") || "status";
+      if (action === "bulk-answer") {
+        const payload = await readJson<{ rows?: BulkAnswer[] }>(request);
+        return await bulkAnswerQuestions(db, actor, payload.rows || []);
+      }
       if (!questionId) return errorResponse("Question ID is required", 400);
 
       if (action === "status") {
@@ -162,6 +230,10 @@ Deno.serve(async (request) => {
       if (action === "edit") {
         const payload = await readJson<{ body?: string }>(request);
         return await editQuestionBody(db, actor, questionId, payload.body || "");
+      }
+      if (action === "answer") {
+        const payload = await readJson<{ answer?: string }>(request);
+        return await setQuestionAnswer(db, actor, questionId, payload.answer || "");
       }
       if (action === "reassign") {
         const payload = await readJson<{ agendaItemId?: string | null }>(request);

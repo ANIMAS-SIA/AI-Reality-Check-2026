@@ -239,6 +239,10 @@
       <section class="admin-panel" data-admin-panel="moderation">
         <div class="admin-panel-heading">
           <h1>Jautājumu moderācija</h1>
+          <div class="admin-panel-actions">
+            <button type="button" class="btn secondary" id="answersDownloadCsv" data-requires-moderate>Lejupielādēt Q&amp;A CSV</button>
+            <button type="button" class="live-submit" id="answersOpenImport" data-requires-moderate>Importēt atbildes</button>
+          </div>
         </div>
         <div class="admin-moderation-layout">
           <div>
@@ -502,6 +506,43 @@
     </div>
   </div>
 
+  <!-- Bulk question answers import -->
+  <div class="admin-modal" id="answersImportModal" hidden>
+    <div class="admin-modal-panel admin-answer-import-modal">
+      <header class="admin-modal-header">
+        <div>
+          <span class="admin-card-label">Jautājumi &amp; atbildes</span>
+          <h2>Atbilžu masveida imports</h2>
+        </div>
+        <button type="button" class="admin-modal-close" data-close-modal="answersImportModal">✕</button>
+      </header>
+      <div class="admin-modal-body admin-answer-import-body">
+        <div class="admin-import-steps" aria-label="Importa soļi">
+          <span><b>01</b> Lejupielādē CSV</span>
+          <span><b>02</b> Aizpildi answer kolonnu</span>
+          <span><b>03</b> Pārbaudi un importē</span>
+        </div>
+        <label class="admin-field admin-answer-file">
+          <span>CSV fails</span>
+          <input type="file" id="answersImportFile" accept=".csv,text/csv">
+          <small>Kolonnas: <code>question_id</code> un <code>answer</code>. Atbalstīts arī Excel semikola formāts.</small>
+        </label>
+        <label class="admin-field">
+          <span>Vai ielīmē CSV saturu</span>
+          <textarea id="answersImportText" rows="10" spellcheck="false" placeholder="question_id,answer&#10;…"></textarea>
+        </label>
+        <div class="admin-answer-import-summary" id="answersImportPreview" aria-live="polite">
+          <p class="admin-fine">Pievieno CSV failu, lai redzētu pārbaudes rezultātu.</p>
+        </div>
+      </div>
+      <footer class="admin-modal-footer">
+        <span class="admin-fine" id="answersImportStatus" role="status"></span>
+        <button type="button" class="btn secondary" data-close-modal="answersImportModal">Atcelt</button>
+        <button type="button" class="live-submit" id="answersImportSubmit" disabled>Importēt atbildes <span>→</span></button>
+      </footer>
+    </div>
+  </div>
+
   <!-- Users modal -->
   <div class="admin-modal" id="usersModal" hidden>
     <div class="admin-modal-panel">
@@ -547,6 +588,7 @@
   <script src="../config.js"></script>
   <script src="../portal.js"></script>
   <script src="../admin-mobile.js"></script>
+  <script src="../qa-csv.js"></script>
   <script src="../admin.js"></script>
 </body>
 </html>

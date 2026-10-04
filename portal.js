@@ -1157,6 +1157,90 @@ function initPassCountdown(event) {
   window.setInterval(update, minute);
 }
 
+let passAnswerQuestions = [];
+
+function passMyQuestionIds() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(window.arcStorageKey("arcMyQuestionIds")) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function passQuestionAgendaTitle(question) {
+  const agenda = Array.isArray(question.agenda_items) ? question.agenda_items[0] : question.agenda_items;
+  return agenda?.title || "AI Reality Check 2026";
+}
+
+function renderPassAnswers() {
+  const list = document.getElementById("passQaList");
+  if (!list) return;
+  const search = (document.getElementById("passQaSearch")?.value || "").trim().toLocaleLowerCase("lv-LV");
+  const mine = passMyQuestionIds();
+  const visible = passAnswerQuestions.filter((question) => {
+    if (!search) return true;
+    return `${question.body || ""} ${question.answer_body || ""} ${passQuestionAgendaTitle(question)}`
+      .toLocaleLowerCase("lv-LV").includes(search);
+  });
+
+  setText("passQaCount", passAnswerQuestions.length);
+  if (!passAnswerQuestions.length) {
+    list.innerHTML = `<p class="pass-qa-empty">Atbildes tiks publicētas šeit, tiklīdz moderatori tās būs sagatavojuši.</p>`;
+    return;
+  }
+  if (!visible.length) {
+    list.innerHTML = `<p class="pass-qa-empty">Nekas neatbilst meklētajam. Pamēģini citu atslēgvārdu.</p>`;
+    return;
+  }
+
+  list.innerHTML = visible.map((question, index) => {
+    const isMine = mine.has(question.id);
+    const answered = question.answered_at
+      ? new Intl.DateTimeFormat("lv-LV", { day: "numeric", month: "short" }).format(new Date(question.answered_at))
+      : "Publicēts";
+    return `
+      <article class="pass-qa-card${isMine ? " is-mine" : ""}">
+        <div class="pass-qa-index">${String(index + 1).padStart(2, "0")}</div>
+        <div class="pass-qa-content">
+          <div class="pass-qa-meta">
+            <span>${liveEscape(passQuestionAgendaTitle(question))}</span>
+            <span>${liveEscape(answered)}</span>
+            ${isMine ? `<strong>Mans jautājums</strong>` : ""}
+          </div>
+          <h3>${liveEscape(question.body)}</h3>
+          <div class="pass-qa-answer">
+            <span>Atbilde</span>
+            <p>${liveEscape(question.answer_body)}</p>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+async function loadPassAnswers() {
+  const list = document.getElementById("passQaList");
+  const refresh = document.getElementById("passQaRefresh");
+  if (!list) return;
+  if (refresh) { refresh.disabled = true; refresh.textContent = "Atjauno..."; }
+  try {
+    const questions = await fetchQuestions();
+    passAnswerQuestions = questions
+      .filter((question) => question.status === "answered" && question.answer_body)
+      .sort((a, b) => Date.parse(b.answered_at || b.created_at || 0) - Date.parse(a.answered_at || a.created_at || 0));
+    renderPassAnswers();
+  } catch (error) {
+    list.innerHTML = `<p class="pass-qa-empty">${liveEscape(error.message || "Atbildes pašlaik neizdevās ielādēt.")}</p>`;
+  } finally {
+    if (refresh) { refresh.disabled = false; refresh.textContent = "Atjaunot"; }
+  }
+}
+
+function initPassAnswers() {
+  document.getElementById("passQaSearch")?.addEventListener("input", renderPassAnswers);
+  document.getElementById("passQaRefresh")?.addEventListener("click", loadPassAnswers);
+  loadPassAnswers();
+}
+
 async function initPass() {
   const session = await authenticateParticipant();
   if (!session) return;
@@ -1180,6 +1264,7 @@ async function initPass() {
   setText("passNumber", p.passId ? `Dalībnieks · ${p.passId}` : "Dalībnieks");
   setText("aiStage", p.aiStage);
   revealParticipantPortal();
+  initPassAnswers();
 
   const qrImage = document.getElementById("passQrImage");
   const walletPanel = document.querySelector(".pass-wallet-panel");

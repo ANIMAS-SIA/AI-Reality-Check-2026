@@ -842,6 +842,12 @@
     const agendaItem = agendaItems.find((item) => item.id === question.agenda_item_id);
     const agendaLabel = agendaItem?.title || (question.agenda_item_id ? "Nezināms programmas punkts" : "Nav piesaistīts");
     const agendaClass = agendaItem ? "" : " is-unassigned";
+    const answer = question.answer_body
+      ? `<div class="admin-answer-published"><span>Publicētā atbilde</span><p>${esc(question.answer_body)}</p></div>`
+      : "";
+    const approveAction = question.status !== "approved" && question.status !== "answered"
+      ? `<button type="button" class="btn secondary" data-question-action="approved">Apstiprināt</button>`
+      : "";
     return `
       <article class="admin-question-row" data-question-id="${question.id}">
         <span class="admin-vote-badge">▲ ${question.vote_count || 0}</span>
@@ -850,16 +856,17 @@
             <span class="admin-fine">${esc(author)} · ${new Date(question.created_at).toLocaleTimeString("lv-LV")}</span>
             <span class="admin-question-agenda${agendaClass}"><span aria-hidden="true">◆</span> Programmas punkts: ${esc(agendaLabel)}</span>
           </div>
-          <p>${question.body}</p>
+          <p class="admin-question-text">${esc(question.body)}</p>
+          ${answer}
         </div>
-        <div class="admin-question-row-actions">
-          <button type="button" class="btn secondary" data-question-action="approved">Apstiprināt</button>
+        <div class="admin-question-row-actions" data-requires-moderate>
+          ${approveAction}
+          <button type="button" class="btn secondary admin-answer-toggle" data-question-answer-toggle>${question.answer_body ? "Labot atbildi" : "Atbildēt"}</button>
           <button type="button" class="btn secondary" data-question-action="rejected">Paslēpt</button>
           <div class="admin-more-menu">
             <button type="button" class="admin-more-toggle">⋯</button>
             <div class="admin-more-dropdown" hidden>
               <button type="button" data-question-action="highlighted">Izcelt</button>
-              <button type="button" data-question-action="answered">Atzīmēt kā atbildētu</button>
               <button type="button" data-question-action="archived">Arhivēt</button>
               <button type="button" data-question-present="${question.id}">Rādīt uz ekrāna</button>
               <button type="button" data-question-edit="${question.id}">Rediģēt tekstu</button>
@@ -867,6 +874,17 @@
             </div>
           </div>
         </div>
+        <form class="admin-answer-editor" data-answer-form hidden>
+          <label>
+            <span>Atbilde dalībniekiem</span>
+            <textarea name="answer" maxlength="4000" rows="5" required placeholder="Uzraksti skaidru, patstāvīgi saprotamu atbildi...">${esc(question.answer_body || "")}</textarea>
+          </label>
+          <div>
+            <span class="admin-fine" data-answer-status>${question.answer_updated_at ? `Pēdējoreiz labota ${new Date(question.answer_updated_at).toLocaleString("lv-LV")}` : "Saglabājot atbilde uzreiz būs redzama AI Pass."}</span>
+            <button type="button" class="btn secondary" data-question-answer-cancel>Atcelt</button>
+            <button type="submit" class="live-submit">Publicēt atbildi <span>→</span></button>
+          </div>
+        </form>
       </article>
     `;
   }
@@ -882,6 +900,7 @@
       const data = await adminFetch(`/admin-questions?${params.toString()}`);
       const questions = data.questions || [];
       container.innerHTML = questions.length ? questions.map(questionRowMarkup).join("") : `<p class="live-empty">Nav jautājumu šajā skatā.</p>`;
+      applyRoleVisibility();
       const topQuestion = [...questions].sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))[0];
       el("moderationPreview").innerHTML = topQuestion
         ? `<span class="live-kicker">Populārākais jautājums</span><h3>"${topQuestion.body}"</h3><p class="admin-fine">▲ ${topQuestion.vote_count || 0}</p><button type="button" class="live-submit" data-question-present="${topQuestion.id}">Parādīt uz lielā ekrāna <span>→</span></button>`
@@ -905,6 +924,22 @@
   }
 
   document.addEventListener("click", async (event) => {
+    const answerToggle = event.target.closest("[data-question-answer-toggle]");
+    if (answerToggle) {
+      const row = answerToggle.closest("[data-question-id]");
+      const form = row?.querySelector("[data-answer-form]");
+      if (!form) return;
+      form.hidden = !form.hidden;
+      if (!form.hidden) form.querySelector("textarea")?.focus();
+      return;
+    }
+
+    const answerCancel = event.target.closest("[data-question-answer-cancel]");
+    if (answerCancel) {
+      answerCancel.closest("[data-answer-form]").hidden = true;
+      return;
+    }
+
     const moreToggle = event.target.closest(".admin-more-toggle");
     if (moreToggle) {
       const dropdown = moreToggle.nextElementSibling;
@@ -939,7 +974,7 @@
     const editBtn = event.target.closest("[data-question-edit]");
     if (editBtn) {
       const row = editBtn.closest("[data-question-id]") || document.querySelector(`[data-question-id="${editBtn.dataset.questionEdit}"]`);
-      const currentText = row?.querySelector("p")?.textContent || "";
+      const currentText = row?.querySelector(".admin-question-text")?.textContent || "";
       const updated = window.prompt("Labot jautājuma tekstu (oriģināls tiek saglabāts audita žurnālā):", currentText);
       if (updated === null || !updated.trim()) return;
       try {
@@ -966,6 +1001,84 @@
       } catch (error) {
         showToast(error.message);
       }
+    }
+  });
+
+  el("moderationList")?.addEventListener("submit", async (event) => {
+    const form = event.target.closest("[data-answer-form]");
+    if (!form) return;
+    event.preventDefault();
+    const row = form.closest("[data-question-id]");
+    const answer = form.elements.answer.value.trim();
+    const submit = form.querySelector("button[type='submit']");
+    const status = form.querySelector("[data-answer-status]");
+    if (!answer) { status.textContent = "Ieraksti atbildi."; return; }
+    submit.disabled = true;
+    status.textContent = "Publicē...";
+    try {
+      await adminFetch(`/admin-questions?question_id=${row.dataset.questionId}&action=answer`, {
+        method: "POST",
+        body: JSON.stringify({ answer }),
+      });
+      showToast("Atbilde publicēta AI Pass.");
+      await refreshModeration();
+      await refreshDashboard();
+    } catch (error) {
+      status.textContent = error.message;
+      submit.disabled = false;
+    }
+  });
+
+  let answerImportRows = [];
+
+  function previewAnswerImport() {
+    const preview = el("answersImportPreview");
+    const parsed = window.ARC_QA_CSV?.parseAnswerCsv(el("answersImportText").value) || { rows: [], errors: ["CSV lasītājs nav pieejams."] };
+    answerImportRows = parsed.rows;
+    el("answersImportSubmit").disabled = Boolean(parsed.errors.length) || !parsed.rows.length;
+    preview.innerHTML = parsed.errors.length
+      ? `<strong>Imports vēl nav gatavs</strong><ul>${parsed.errors.slice(0, 8).map((error) => `<li>${esc(error)}</li>`).join("")}</ul>${parsed.errors.length > 8 ? `<p class="admin-fine">Un vēl ${parsed.errors.length - 8} kļūdas.</p>` : ""}`
+      : `<strong>${parsed.rows.length} ${parsed.rows.length === 1 ? "atbilde gatava" : "atbildes gatavas"} importam</strong><div class="admin-answer-import-sample">${parsed.rows.slice(0, 3).map((row) => `<p><code>${esc(row.questionId.slice(0, 8))}…</code>${esc(row.answer)}</p>`).join("")}</div>`;
+  }
+
+  el("answersOpenImport")?.addEventListener("click", () => {
+    el("answersImportText").value = "";
+    el("answersImportFile").value = "";
+    answerImportRows = [];
+    setText("answersImportStatus", "");
+    el("answersImportPreview").innerHTML = `<p class="admin-fine">Pievieno CSV failu, lai redzētu pārbaudes rezultātu.</p>`;
+    el("answersImportSubmit").disabled = true;
+    openModal("answersImportModal");
+  });
+  el("answersDownloadCsv")?.addEventListener("click", () => downloadCsv("/admin-questions?action=export", "ai-reality-check-qa.csv"));
+  el("answersImportText")?.addEventListener("input", debounce(previewAnswerImport, 150));
+  el("answersImportFile")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2_000_000) { setText("answersImportStatus", "CSV fails ir pārāk liels (maks. 2 MB)."); return; }
+    el("answersImportText").value = await file.text();
+    previewAnswerImport();
+  });
+  el("answersImportSubmit")?.addEventListener("click", async () => {
+    if (!answerImportRows.length) return;
+    if (!window.confirm(`Importēt ${answerImportRows.length} atbildes? Esošās atbildes šiem jautājumiem tiks aizstātas.`)) return;
+    const button = el("answersImportSubmit");
+    button.disabled = true;
+    setText("answersImportStatus", "Importē...");
+    try {
+      const result = await adminFetch("/admin-questions?action=bulk-answer", {
+        method: "POST",
+        body: JSON.stringify({ rows: answerImportRows }),
+      });
+      showToast(`Publicētas ${result.updated} atbildes.`);
+      closeModal("answersImportModal");
+      moderationStatus = "answered";
+      document.querySelectorAll("#moderationTabs button").forEach((tab) => tab.classList.toggle("is-active", tab.dataset.status === "answered"));
+      await refreshModeration();
+      await refreshDashboard();
+    } catch (error) {
+      setText("answersImportStatus", error.message);
+      button.disabled = false;
     }
   });
 

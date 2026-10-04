@@ -61,6 +61,9 @@
   .admin-question-row { grid-template-columns: auto minmax(0, 1fr); padding: 16px; gap: 12px; }
   .admin-question-row-actions { grid-column: 1 / -1; display: flex; }
   .admin-question-row-actions > .btn { flex: 1; }
+  .admin-answer-editor { grid-column: 1 / -1; padding: 14px; }
+  .admin-answer-editor > div > span { flex-basis: 100%; }
+  .admin-import-steps { grid-template-columns: minmax(0, 1fr); }
   .admin-question-meta { align-items: flex-start; flex-direction: column; gap: 5px; }
   .admin-question-agenda { font-size: 11px; }
   .admin-question-row-body p { font-size: 15px; line-height: 1.6; }
