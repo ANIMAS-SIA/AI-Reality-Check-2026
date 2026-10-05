@@ -1449,6 +1449,94 @@
 
   // ----------------------------------------------------------- settings --
 
+  function materialFileSize(bytes) {
+    const megabytes = Number(bytes || 0) / (1024 * 1024);
+    return megabytes >= 1 ? `${megabytes.toLocaleString("lv-LV", { maximumFractionDigits: 1 })} MB` : `${Math.ceil(Number(bytes || 0) / 1024)} KB`;
+  }
+
+  async function refreshConferenceMaterial() {
+    const currentBox = el("conferenceMaterialCurrent");
+    if (!currentBox || !["superadmin", "organizer"].includes(currentActor?.role)) return;
+    try {
+      const data = await adminFetch("/conference-materials?action=admin");
+      const material = data.current || null;
+      currentBox.hidden = !material;
+      if (material) {
+        const expires = new Intl.DateTimeFormat("lv-LV", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          .format(new Date(material.expiresAt));
+        currentBox.innerHTML = `
+          <div><strong>${esc(material.fileName)}</strong><span>${materialFileSize(material.sizeBytes)} · automātiski dzēsīs ${esc(expires)}</span></div>
+          <button type="button" class="btn secondary" data-delete-conference-material="${material.id}">Dzēst tagad</button>
+        `;
+        setText("conferenceMaterialStatus", "Publicēts Live Q&A sadaļā.");
+      } else {
+        currentBox.innerHTML = "";
+        setText("conferenceMaterialStatus", "Pašlaik neviens PDF nav publicēts.");
+      }
+    } catch (error) {
+      setText("conferenceMaterialStatus", error.message);
+    }
+  }
+
+  el("conferenceMaterialFile")?.addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    const button = el("conferenceMaterialUpload");
+    const valid = file && file.name.toLocaleLowerCase().endsWith(".pdf") && file.size > 0 && file.size <= 50 * 1024 * 1024;
+    button.disabled = !valid;
+    setText("conferenceMaterialStatus", !file
+      ? "Izvēlies vienu PDF failu."
+      : valid
+        ? `${file.name} · ${materialFileSize(file.size)}`
+        : "Atļauts viens PDF fails līdz 50 MB.");
+  });
+
+  el("conferenceMaterialUpload")?.addEventListener("click", async () => {
+    const fileInput = el("conferenceMaterialFile");
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    const button = el("conferenceMaterialUpload");
+    button.disabled = true;
+    setText("conferenceMaterialStatus", "Sagatavo drošu augšupielādi...");
+    try {
+      const { upload } = await adminFetch("/conference-materials?action=create-upload", {
+        method: "POST",
+        body: JSON.stringify({ fileName: file.name, sizeBytes: file.size, mimeType: "application/pdf" }),
+      });
+      setText("conferenceMaterialStatus", "Augšupielādē PDF...");
+      const { error } = await supabaseClient.storage.from(upload.bucket).uploadToSignedUrl(upload.path, upload.token, file, {
+        contentType: "application/pdf",
+        cacheControl: "3600",
+      });
+      if (error) throw error;
+      setText("conferenceMaterialStatus", "Publicē PDF...");
+      await adminFetch("/conference-materials?action=finalize", {
+        method: "POST",
+        body: JSON.stringify({ path: upload.path, fileName: file.name, sizeBytes: file.size, mimeType: "application/pdf" }),
+      });
+      fileInput.value = "";
+      showToast("Prezentāciju PDF publicēts uz 30 dienām.");
+      await refreshConferenceMaterial();
+    } catch (error) {
+      setText("conferenceMaterialStatus", error.message || "PDF neizdevās publicēt.");
+    } finally {
+      button.disabled = !fileInput.files?.length;
+    }
+  });
+
+  el("conferenceMaterialCurrent")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-delete-conference-material]");
+    if (!button || !window.confirm("Neatgriezeniski dzēst publicēto PDF?")) return;
+    button.disabled = true;
+    try {
+      await adminFetch(`/conference-materials?action=delete&id=${encodeURIComponent(button.dataset.deleteConferenceMaterial)}`, { method: "POST", body: "{}" });
+      showToast("Prezentāciju PDF dzēsts.");
+      await refreshConferenceMaterial();
+    } catch (error) {
+      showToast(error.message);
+      button.disabled = false;
+    }
+  });
+
   async function refreshSettings() {
     setText("settingsStatus", "Ielādē...");
     try {
@@ -1464,6 +1552,7 @@
       setText("settingsApprovedCount", String(settings.approved_count || 0));
       setText("settingsCapacity", String(settings.capacity || 0));
       setText("settingsStatus", "");
+      await refreshConferenceMaterial();
     } catch (error) {
       setText("settingsStatus", error.message);
     }
@@ -1669,8 +1758,8 @@
     }
   });
 
-  function emailShell(kicker, title, body, buttonLabel = "Atvērt manu AI Pass") {
-    return `<!doctype html><html lang="lv"><body style="margin:0;background:#050505;color:#f5f2ec;font-family:Arial,sans-serif"><table role="presentation" width="100%" style="background:#050505"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="620" style="max-width:620px;background:#0b0a10;border:1px solid #282530"><tr><td style="height:3px;background:#765ee9"></td></tr><tr><td style="padding:42px"><p style="margin:0 0 14px;color:#ff008f;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase">${kicker}</p><h1 style="margin:0 0 18px;color:#f5f2ec;font-size:34px;line-height:1.12">${title}</h1><div style="color:#b8b4be;font-size:16px;line-height:1.65">${body}</div><a href="{{passUrl}}" style="display:inline-block;margin-top:26px;padding:15px 20px;background:#765ee9;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">${buttonLabel} →</a><p style="margin:30px 0 0;color:#77737f;font-size:12px">30. septembris 2026 · Rīgas Motormuzejs</p></td></tr></table></td></tr></table></body></html>`;
+  function emailShell(kicker, title, body, buttonLabel = "Atvērt manu AI Pass", buttonUrl = "{{passUrl}}") {
+    return `<!doctype html><html lang="lv"><body style="margin:0;background:#050505;color:#f5f2ec;font-family:Arial,sans-serif"><table role="presentation" width="100%" style="background:#050505"><tr><td align="center" style="padding:32px 16px"><table role="presentation" width="620" style="max-width:620px;background:#0b0a10;border:1px solid #282530"><tr><td style="height:3px;background:#765ee9"></td></tr><tr><td style="padding:42px"><p style="margin:0 0 14px;color:#ff008f;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase">${kicker}</p><h1 style="margin:0 0 18px;color:#f5f2ec;font-size:34px;line-height:1.12">${title}</h1><div style="color:#b8b4be;font-size:16px;line-height:1.65">${body}</div><a href="${buttonUrl}" style="display:inline-block;margin-top:26px;padding:15px 20px;background:#765ee9;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">${buttonLabel} →</a><p style="margin:30px 0 0;color:#77737f;font-size:12px">30. septembris 2026 · Rīgas Motormuzejs</p></td></tr></table></td></tr></table></body></html>`;
   }
 
   const EMAIL_PRESETS = {
@@ -1684,7 +1773,7 @@
     },
     materials: {
       subject: "AI Reality Check 2026 materiāli un rezultāti",
-      html: emailShell("Materiāli", "Paldies par dalību", "<p>Sveiki, <strong style=\"color:#f5f2ec\">{{firstName}}</strong>!</p><p>Konferences materiāli un rezultāti tagad ir pieejami Tavā AI Pass.</p>", "Skatīt materiālus"),
+      html: emailShell("Materiāli", "Paldies par dalību", "<p>Sveiki, <strong style=\"color:#f5f2ec\">{{firstName}}</strong>!</p><p>Konferences prezentācijas vienā PDF un publicētās Q&amp;A atbildes tagad ir pieejamas Live portālā.</p><p style=\"font-size:13px;color:#88848e\">PDF lejupielāde būs pieejama 30 dienas.</p>", "Atvērt materiālus", "{{materialsUrl}}"),
     },
     custom: { subject: "", html: "" },
   };

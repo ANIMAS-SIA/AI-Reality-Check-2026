@@ -13,7 +13,7 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const errors = []; const writes = []; let failedVote = true; let pollMode = 'multiple';
     const questions = [
-      { id: 'q1', agenda_item_id: 'talk', body: 'Kā ieviest MI droši?', vote_count: 4, is_anonymous: true, status: 'approved' },
+      { id: 'q1', agenda_item_id: 'talk', body: 'Kā ieviest MI droši?', answer_body: 'Sāciet ar vienu skaidri izmērāmu procesu, datu piekļuves kontroli un cilvēka pārbaudi pirms rezultāta izmantošanas.', answered_at: '2026-09-30T11:00:00Z', vote_count: 4, is_anonymous: true, status: 'answered', agenda_items: { title: 'No stratēģijas līdz vērtībai', speaker_name: 'Testa Runātājs' } },
       { id: 'q2', agenda_item_id: 'talk', body: 'Vai pieejami praktiski piemēri?', vote_count: 4, is_anonymous: true, status: 'approved' },
     ];
     const agenda = [
@@ -34,6 +34,7 @@ try {
         const body = route.request().method() === 'POST' ? route.request().postDataJSON() : null;
         if (body) writes.push({ action: url.searchParams.get('action'), body });
         if (url.pathname.endsWith('/participant-pass')) data = { participant: { id: 'tester', firstName: 'Testa', lastName: 'Dalībnieks', access: 'Pilnā pieeja', status: 'approved' } };
+        if (url.pathname.endsWith('/conference-materials')) data = { material: { id: 'material', fileName: 'AI-Reality-Check-2026-prezentacijas.pdf', sizeBytes: 7340032, expiresAt: '2026-10-30T12:00:00Z' } };
         if (url.pathname.endsWith('/live-state')) data = { agenda };
         if (url.pathname.endsWith('/questions')) {
           data = { questions };
@@ -61,8 +62,18 @@ try {
         first: nav.firstElementChild.getBoundingClientRect().toJSON(),
         last: nav.lastElementChild.getBoundingClientRect().toJSON(),
       }));
-      assert.equal(navLayout.columns, 3, 'Participant navigation uses three equal columns');
+      assert.equal(navLayout.columns, 4, 'Participant navigation uses four equal columns');
       assert.ok(Math.abs(navLayout.first.left - navLayout.nav.left) <= 1 && Math.abs(navLayout.last.right - navLayout.nav.right) <= 1, 'Participant navigation spans the full viewport width');
+    }
+    await page.locator('[data-live-tab="qa"]:visible').click();
+    assert.equal(await page.locator('[data-panel="qa"]').getAttribute('class').then((value) => value.includes('is-active')), true, 'Q&A opens inside Live');
+    assert.equal(new URL(page.url()).searchParams.get('view'), 'qa', 'Q&A Live view is linkable');
+    await page.screenshot({ path: resolve(out, `qa-${width}.png`), fullPage: true });
+    await page.locator('[data-live-tab="program"]:visible').click();
+    if (width === 390) {
+      await page.goto('https://mobile.test/live/?event=rehearsal-ui&view=qa&token=test-only');
+      await page.locator('[data-panel="qa"].is-active').waitFor();
+      await page.locator('[data-live-tab="program"]:visible').click();
     }
     await page.locator('[data-agenda-action="questions"]').click();
     await page.locator('[data-question-vote="q2"]').waitFor();

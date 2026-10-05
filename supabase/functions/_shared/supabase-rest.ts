@@ -2,7 +2,7 @@ import { requiredEnv } from "./http.ts";
 
 type QueryValue = string | number | boolean | null | undefined;
 
-const EVENT_TABLES = new Set(["agenda_items", "participants", "questions", "polls", "checkins", "presentation_state", "presentation_links", "contact_requests", "analytics_events", "admin_audit_logs"]);
+const EVENT_TABLES = new Set(["agenda_items", "participants", "questions", "polls", "checkins", "presentation_state", "presentation_links", "conference_materials", "contact_requests", "analytics_events", "admin_audit_logs"]);
 const PARENTS: Record<string, [string, string]> = {
   participant_tokens: ["participant_id", "participants"], consents: ["participant_id", "participants"],
   wallet_passes: ["participant_id", "participants"], email_deliveries: ["participant_id", "participants"],

@@ -262,6 +262,15 @@ Ja kamera nedarbojas, pārbaudīt pārlūka kameras atļauju. Ja internets nav p
 5. Pārbauda audita žurnālu un saglabā incidentu piezīmes.
 6. Neizvieto vecākas Edge Functions un neveic rollback konferences laikā, kamēr datubāzē ir nodalīti testa dati.
 
+## Materiālu izsūtīšana pēc konferences
+
+1. Apvienot visas publiskojamās prezentācijas vienā optimizētā PDF failā līdz 50 MB. Pirms apvienošanas noņemt prezentācijas, kurām runātājs nav devis publicēšanas atļauju.
+2. Adminā atvērt **Iestatījumi → Prezentācijas vienā PDF**, izvēlēties failu un nospiest **Publicēt PDF**. Jauns fails uzreiz aizstāj iepriekšējo.
+3. Atvērt `https://konference.animas.lv/live/?view=qa` un pārbaudīt, ka redzama poga **Lejupielādēt PDF** un lejupielādējas pareizais fails.
+4. Adminā atvērt **Dalībnieki**, atlasīt apstiprinātos/ieradušos saņēmējus un izvēlēties **E-pasts izvēlētajiem**.
+5. Izvēlēties sagatavi **Materiāli pēc konferences**, pārbaudīt priekšskatījumu un nosūtīt. E-pasta poga izmanto personīgo AI Pass tokenu un atver Live Q&amp;A skatu; PDF netiek pievienots e-pastam kā smags pielikums.
+6. PDF ir pieejams 30 dienas no pēdējās augšupielādes. Admins var to izdzēst agrāk ar **Dzēst tagad**. Dzēšana ir neatgriezeniska.
+
 ## Īsā komandu karte pie pults
 
 | Situācija | Administrators | Moderators | Tehniskais operators |

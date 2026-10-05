@@ -1158,6 +1158,7 @@ function initPassCountdown(event) {
 }
 
 let passAnswerQuestions = [];
+let currentConferenceMaterial = null;
 
 function passMyQuestionIds() {
   try {
@@ -1259,27 +1260,78 @@ async function loadPassAnswers() {
   }
 }
 
-function initPassAnswers() {
-  const syncBottomNav = () => {
-    const qaActive = window.location.hash === "#qaAnswers";
-    const qaLink = document.querySelector("[data-pass-bottom-qa]");
-    const passLink = document.querySelector("[data-pass-bottom-pass]");
-    qaLink?.classList.toggle("is-active", qaActive);
-    passLink?.classList.toggle("is-active", !qaActive);
-    if (qaActive) qaLink?.setAttribute("aria-current", "page");
-    else qaLink?.removeAttribute("aria-current");
-    if (!qaActive) passLink?.setAttribute("aria-current", "page");
-    else passLink?.removeAttribute("aria-current");
-  };
-  syncBottomNav();
-  window.addEventListener("hashchange", syncBottomNav);
-  if (window.location.hash === "#qaAnswers") {
-    window.requestAnimationFrame(() => document.getElementById("qaAnswers")?.scrollIntoView({ block: "start" }));
+function formatFileSize(bytes) {
+  const megabytes = Number(bytes || 0) / (1024 * 1024);
+  return megabytes >= 1 ? `${megabytes.toLocaleString("lv-LV", { maximumFractionDigits: 1 })} MB` : `${Math.ceil(Number(bytes || 0) / 1024)} KB`;
+}
+
+async function loadConferenceMaterial() {
+  const card = document.getElementById("conferenceMaterials");
+  if (!card || !API_BASE) return;
+  try {
+    const response = await window.arcFetch(`${API_BASE}/conference-materials?action=current`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Materiālus neizdevās ielādēt.");
+    currentConferenceMaterial = data.material || null;
+    card.hidden = !currentConferenceMaterial;
+    if (!currentConferenceMaterial) return;
+    setText("conferenceMaterialName", currentConferenceMaterial.fileName || "AI Reality Check 2026 prezentācijas.pdf");
+    const availableUntil = new Intl.DateTimeFormat("lv-LV", { day: "numeric", month: "long", year: "numeric" })
+      .format(new Date(currentConferenceMaterial.expiresAt));
+    setText("conferenceMaterialMeta", `${formatFileSize(currentConferenceMaterial.sizeBytes)} · pieejams līdz ${availableUntil}`);
+  } catch (error) {
+    card.hidden = true;
+    console.warn(error);
+  }
+}
+
+async function downloadConferenceMaterial() {
+  if (!currentConferenceMaterial) return;
+  const button = document.getElementById("conferenceMaterialDownload");
+  if (button) { button.disabled = true; button.firstChild.textContent = "Sagatavo PDF "; }
+  try {
+    const response = await window.arcFetch(`${API_BASE}/conference-materials?action=download&id=${encodeURIComponent(currentConferenceMaterial.id)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.downloadUrl) throw new Error(data.error || "PDF lejupielādi neizdevās sagatavot.");
+    const link = document.createElement("a");
+    link.href = data.downloadUrl;
+    link.rel = "noopener";
+    document.body.append(link);
+    link.click();
+    link.remove();
+  } catch (error) {
+    showToast(error.message || "PDF lejupielādi neizdevās sākt.");
+    await loadConferenceMaterial();
+  } finally {
+    if (button) { button.disabled = false; button.firstChild.textContent = "Lejupielādēt PDF "; }
+  }
+}
+
+function initPassAnswers(syncPassNavigation = true) {
+  if (syncPassNavigation) {
+    const syncBottomNav = () => {
+      const qaActive = window.location.hash === "#qaAnswers";
+      const qaLink = document.querySelector("[data-pass-bottom-qa]");
+      const passLink = document.querySelector("[data-pass-bottom-pass]");
+      qaLink?.classList.toggle("is-active", qaActive);
+      passLink?.classList.toggle("is-active", !qaActive);
+      if (qaActive) qaLink?.setAttribute("aria-current", "page");
+      else qaLink?.removeAttribute("aria-current");
+      if (!qaActive) passLink?.setAttribute("aria-current", "page");
+      else passLink?.removeAttribute("aria-current");
+    };
+    syncBottomNav();
+    window.addEventListener("hashchange", syncBottomNav);
+    if (window.location.hash === "#qaAnswers") {
+      window.requestAnimationFrame(() => document.getElementById("qaAnswers")?.scrollIntoView({ block: "start" }));
+    }
   }
   document.getElementById("passQaSearch")?.addEventListener("input", renderPassAnswers);
   document.getElementById("passQaAgenda")?.addEventListener("change", renderPassAnswers);
   document.getElementById("passQaRefresh")?.addEventListener("click", loadPassAnswers);
+  document.getElementById("conferenceMaterialDownload")?.addEventListener("click", downloadConferenceMaterial);
   loadPassAnswers();
+  loadConferenceMaterial();
 }
 
 async function initPass() {
@@ -1782,12 +1834,20 @@ async function initLive() {
   setText("liveMode", p.isGuest ? "Anonīma pieeja" : (p.access === "Pilnā pieeja" ? "Pilnā pieeja" : "Pamata pieeja"));
   setText("liveUser", `${p.firstName} ${p.lastName}`.trim());
   setText("passAccess", p.access);
+  initPassAnswers(false);
 
   document.querySelectorAll(".tab-btn, [data-live-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.liveTab || button.dataset.tab;
       setActiveTab(target);
       if (target === "results") refreshResults();
+      if (target === "qa") {
+        loadPassAnswers();
+        loadConferenceMaterial();
+      }
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("view", target);
+      window.history.replaceState({}, "", nextUrl);
     });
   });
 
@@ -2323,7 +2383,7 @@ async function initLive() {
     });
   }
 
-  const availableViews = ["program", "results"];
+  const availableViews = ["program", "qa", "results"];
   const requestedView = liveParams.get("view");
   const initialView = availableViews.includes(requestedView) ? requestedView : "program";
   setActiveTab(initialView);

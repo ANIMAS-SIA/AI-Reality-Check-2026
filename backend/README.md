@@ -63,6 +63,7 @@ supabase functions deploy polls
 supabase functions deploy admin-polls
 supabase functions deploy results
 supabase functions deploy wallet
+supabase functions deploy conference-materials
 ```
 
 Pēc deploy frontend konfigurācijā jānorāda funkciju bāze:
@@ -143,6 +144,19 @@ window.SUPABASE_ANON_KEY = "ieliec_public_anon_vai_publishable_key";
 ```
 
 Ja `SUPABASE_ANON_KEY` nav norādīts, Live lapa turpina strādāt ar 10 sekunžu polling.
+
+### Konferences prezentāciju PDF un 30 dienu dzēšana
+
+`conference-materials` glabā vienu aktuālu PDF privātā Supabase Storage bucketā. Admina pārlūks augšupielādē failu ar divas stundas derīgu signed upload tokenu; dalībnieks saņem tikai 90 sekundes derīgu signed download URL. Jauns PDF uzreiz aizstāj un fiziski dzēš iepriekšējo.
+
+Migrācija `202610050001_conference_materials.sql` ieplāno ikdienas Storage tīrīšanu plkst. 02:15 UTC. Cron izsaukumam Supabase Vault vienreiz jāieliek projekta publiskais URL un publishable/anon key:
+
+```sql
+select vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'arc_project_url');
+select vault.create_secret('YOUR_PUBLISHABLE_OR_ANON_KEY', 'arc_publishable_key');
+```
+
+Publishable/anon key drīkst izmantot klienta un cron izsaukumos; `service_role` atslēgu Vault cron darbam nelikt. Failu dzēšanu veic Edge Function caur Storage API, nevis SQL pret `storage.objects`, lai nepaliktu bāreņobjekti. Papildus cron darbam publiskais materiālu GET pieprasījums veic drošu nokavēto failu tīrīšanu.
 
 ## 5. Wallet production dati
 

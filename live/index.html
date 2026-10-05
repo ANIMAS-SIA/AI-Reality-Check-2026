@@ -37,8 +37,9 @@
       </span>
     </a>
     <nav class="pass-nav" aria-label="Live portāla sadaļas">
-      <a href="../live/?view=program">Programma</a>
-      <a href="../rezultati/">Rezultāti</a>
+      <button type="button" data-live-tab="program">Programma</button>
+      <button type="button" data-live-tab="qa">Jautājumi &amp; atbildes</button>
+      <button type="button" data-live-tab="results">Rezultāti</button>
     </nav>
     <div class="top-actions pass-actions">
       <span class="mode-chip" id="passAccess">Pilna pieeja</span>
@@ -95,6 +96,47 @@
       </section>
     </section>
 
+    <section class="tab-panel live-view live-qa-view" data-panel="qa">
+      <section class="pass-qa" id="qaAnswers" aria-labelledby="passQaHeading">
+        <div class="pass-qa-heading">
+          <div>
+            <p class="pass-eyebrow">No skatuves līdz praktiskai rīcībai</p>
+            <h2 id="passQaHeading">Jautājumi.<br><em>Ar atbildēm.</em></h2>
+          </div>
+          <div class="pass-qa-count" aria-live="polite">
+            <strong id="passQaCount">—</strong>
+            <span>publicētas<br>atbildes</span>
+          </div>
+        </div>
+        <article class="conference-material" id="conferenceMaterials" hidden>
+          <div class="conference-material-icon" aria-hidden="true">PDF</div>
+          <div class="conference-material-copy">
+            <span>Konferences prezentācijas</span>
+            <h3 id="conferenceMaterialName">AI Reality Check 2026 prezentācijas</h3>
+            <p id="conferenceMaterialMeta">Visas prezentācijas vienā PDF failā.</p>
+          </div>
+          <button type="button" class="live-submit conference-material-download" id="conferenceMaterialDownload">Lejupielādēt PDF <span>↓</span></button>
+        </article>
+        <div class="pass-qa-toolbar">
+          <label class="pass-qa-search" for="passQaSearch">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <span class="sr-only">Meklēt jautājumos un atbildēs</span>
+            <input type="search" id="passQaSearch" placeholder="Meklēt jautājumā vai atbildē..." autocomplete="off">
+          </label>
+          <label class="pass-qa-filter" for="passQaAgenda">
+            <span class="sr-only">Filtrēt pēc programmas punkta vai runātāja</span>
+            <select id="passQaAgenda">
+              <option value="all">Visi programmas punkti un runātāji</option>
+            </select>
+          </label>
+          <button type="button" class="pass-qa-refresh" id="passQaRefresh">Atjaunot</button>
+        </div>
+        <div class="pass-qa-list" id="passQaList" aria-live="polite">
+          <p class="pass-qa-empty">Ielādē atbildes...</p>
+        </div>
+      </section>
+    </section>
+
   </main>
 
   <nav class="bottom-tabs live-bottom-tabs" aria-label="Mobilā navigācija">
@@ -106,10 +148,10 @@
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>
       <span>Rezultāti</span>
     </button>
-    <a data-pass-link href="../pass/#qaAnswers">
+    <button type="button" data-live-tab="qa">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v11H9l-5 4v-15Z"/><path d="M10 9a2 2 0 1 1 2.6 1.9c-.6.2-.6.7-.6 1.1M12 14.2v.1"/></svg>
       <span>Q&amp;A</span>
-    </a>
+    </button>
     <a data-pass-link href="../pass/">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="2"/><circle cx="9" cy="12" r="1.8"/><path d="M13 10h4M13 14h4"/></svg>
       <span>Pass</span>

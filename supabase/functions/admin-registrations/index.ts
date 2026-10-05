@@ -507,6 +507,15 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#039;");
 }
 
+function materialsLink(passLink: string): string {
+  const publicSite = (Deno.env.get("PUBLIC_SITE_URL") || "https://konference.animas.lv").replace(/\/$/, "");
+  const token = new URL(passLink).searchParams.get("token") || "";
+  const url = new URL(`${publicSite}/live/`);
+  url.searchParams.set("view", "qa");
+  if (token) url.searchParams.set("token", token);
+  return url.toString();
+}
+
 function personalize(value: string, participant: ParticipantRow, passLink: string, html = false): string {
   const rawValues: Record<string, string> = {
     firstName: participant.first_name,
@@ -514,6 +523,7 @@ function personalize(value: string, participant: ParticipantRow, passLink: strin
     participantName: `${participant.first_name} ${participant.last_name}`.trim(),
     email: participant.email,
     passUrl: passLink,
+    materialsUrl: materialsLink(passLink),
     eventName: "AI Reality Check 2026",
   };
   return Object.entries(rawValues).reduce(

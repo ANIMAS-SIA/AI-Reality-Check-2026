@@ -81,15 +81,31 @@ test('admin CSV export is scoped by agenda item and includes speaker context', (
 });
 
 test('mobile navigation exposes Q&A consistently and marks its hash route active', () => {
-  const pages = ['../live/index.html', '../rezultati/index.html', '../pass/index.html']
+  const live = readFileSync(new URL('../live/index.html', import.meta.url), 'utf8');
+  const pages = ['../rezultati/index.html', '../pass/index.html']
     .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'));
   const portal = readFileSync(new URL('../portal.js', import.meta.url), 'utf8');
   const chromeCss = readFileSync(new URL('../site-chrome.css', import.meta.url), 'utf8');
+  assert.match(live, /data-live-tab="qa"/);
+  assert.match(live, /data-panel="qa"/);
   pages.forEach((page) => {
     assert.match(page, /(?:\.\.\/pass\/)?#qaAnswers/);
     assert.match(page, /<span>Q&amp;A<\/span>/);
   });
+  assert.match(portal, /availableViews = \["program", "qa", "results"\]/);
   assert.match(portal, /data-pass-bottom-qa/);
   assert.match(portal, /hash === "#qaAnswers"/);
   assert.match(chromeCss, /grid-template-columns:\s*repeat\(4,/);
+});
+
+test('Live Q&A includes the expiring conference PDF download', () => {
+  const live = readFileSync(new URL('../live/index.html', import.meta.url), 'utf8');
+  const pass = readFileSync(new URL('../pass/index.html', import.meta.url), 'utf8');
+  const portal = readFileSync(new URL('../portal.js', import.meta.url), 'utf8');
+  [live, pass].forEach((page) => {
+    assert.match(page, /id="conferenceMaterials"/);
+    assert.match(page, /id="conferenceMaterialDownload"/);
+  });
+  assert.match(portal, /conference-materials\?action=current/);
+  assert.match(portal, /conference-materials\?action=download/);
 });

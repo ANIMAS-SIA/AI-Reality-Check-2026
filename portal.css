@@ -764,7 +764,11 @@ body[data-page="pass"] .portal-shell {
   margin-right: auto;
 }
 
-.pass-nav a {
+.pass-nav a,
+.pass-nav button {
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 9px;
   font-weight: 800;
@@ -773,7 +777,9 @@ body[data-page="pass"] .portal-shell {
   text-transform: uppercase;
 }
 
-.pass-nav a:hover {
+.pass-nav a:hover,
+.pass-nav button:hover,
+.pass-nav button.is-active {
   color: var(--violet);
 }
 
@@ -1290,6 +1296,63 @@ body[data-page="pass"] .portal-shell {
   margin-bottom: 8px;
 }
 
+.conference-material {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 20px;
+  border: 1px solid rgba(121, 100, 242, .55);
+  background: linear-gradient(110deg, rgba(121, 100, 242, .14), rgba(255, 0, 140, .06));
+}
+
+.conference-material[hidden] {
+  display: none;
+}
+
+.conference-material-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 66px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: var(--pink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.conference-material-copy span {
+  color: var(--green);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.conference-material-copy h3 {
+  margin: 5px 0 3px;
+  color: var(--text);
+  font-size: 17px;
+}
+
+.conference-material-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.conference-material-download {
+  white-space: nowrap;
+}
+
+body[data-page="live"] .live-qa-view .pass-qa {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .pass-qa-search {
   display: flex;
   flex: 1;
@@ -1462,6 +1525,8 @@ body[data-page="pass"] .portal-shell {
   .pass-qa-card { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
   .pass-qa-card:hover { padding-right: 4px; padding-left: 4px; }
   .pass-qa-answer { grid-template-columns: 1fr; gap: 8px; padding: 16px; }
+  .conference-material { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }
+  .conference-material-download { grid-column: 1 / -1; width: 100%; }
 }
 
 .sr-only {
@@ -6405,6 +6470,43 @@ body[data-page="registration"] .confirmation-pass .btn {
 .admin-settings-layout .admin-card h3,
 .admin-settings-layout .admin-card p {
   margin: 0;
+}
+
+.admin-material-card {
+  grid-column: 1 / -1;
+}
+
+.admin-material-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-material-current {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.admin-material-current[hidden] {
+  display: none;
+}
+
+.admin-material-current strong,
+.admin-material-current span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.admin-material-current span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .admin-settings-switch {
