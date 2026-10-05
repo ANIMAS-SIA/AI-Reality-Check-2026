@@ -1462,11 +1462,15 @@
       const material = data.current || null;
       currentBox.hidden = !material;
       if (material) {
+        el("conferenceMaterialTitle").value = material.displayTitle || "AI Reality Check 2026 prezentācijas";
         const expires = new Intl.DateTimeFormat("lv-LV", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
           .format(new Date(material.expiresAt));
         currentBox.innerHTML = `
-          <div><strong>${esc(material.fileName)}</strong><span>${materialFileSize(material.sizeBytes)} · automātiski dzēsīs ${esc(expires)}</span></div>
-          <button type="button" class="btn secondary" data-delete-conference-material="${material.id}">Dzēst tagad</button>
+          <div><strong>${esc(material.displayTitle || material.fileName)}</strong><span>${esc(material.fileName)} · ${materialFileSize(material.sizeBytes)} · automātiski dzēsīs ${esc(expires)}</span></div>
+          <div class="admin-material-actions">
+            <button type="button" class="btn secondary" data-rename-conference-material="${material.id}">Saglabāt nosaukumu</button>
+            <button type="button" class="btn secondary" data-delete-conference-material="${material.id}">Dzēst tagad</button>
+          </div>
         `;
         setText("conferenceMaterialStatus", "Publicēts Live Q&A sadaļā.");
       } else {
@@ -1494,13 +1498,18 @@
     const fileInput = el("conferenceMaterialFile");
     const file = fileInput.files?.[0];
     if (!file) return;
+    const displayTitle = el("conferenceMaterialTitle").value.trim();
+    if (!displayTitle) {
+      setText("conferenceMaterialStatus", "Ievadi nosaukumu, kas būs redzams lapā.");
+      return;
+    }
     const button = el("conferenceMaterialUpload");
     button.disabled = true;
     setText("conferenceMaterialStatus", "Sagatavo drošu augšupielādi...");
     try {
       const { upload } = await adminFetch("/conference-materials?action=create-upload", {
         method: "POST",
-        body: JSON.stringify({ fileName: file.name, sizeBytes: file.size, mimeType: "application/pdf" }),
+        body: JSON.stringify({ fileName: file.name, displayTitle, sizeBytes: file.size, mimeType: "application/pdf" }),
       });
       setText("conferenceMaterialStatus", "Augšupielādē PDF...");
       const { error } = await supabaseClient.storage.from(upload.bucket).uploadToSignedUrl(upload.path, upload.token, file, {
@@ -1511,7 +1520,7 @@
       setText("conferenceMaterialStatus", "Publicē PDF...");
       await adminFetch("/conference-materials?action=finalize", {
         method: "POST",
-        body: JSON.stringify({ path: upload.path, fileName: file.name, sizeBytes: file.size, mimeType: "application/pdf" }),
+        body: JSON.stringify({ path: upload.path, fileName: file.name, displayTitle, sizeBytes: file.size, mimeType: "application/pdf" }),
       });
       fileInput.value = "";
       showToast("Prezentāciju PDF publicēts uz 30 dienām.");
@@ -1524,6 +1533,27 @@
   });
 
   el("conferenceMaterialCurrent")?.addEventListener("click", async (event) => {
+    const renameButton = event.target.closest("[data-rename-conference-material]");
+    if (renameButton) {
+      const displayTitle = el("conferenceMaterialTitle").value.trim();
+      if (!displayTitle) {
+        showToast("Ievadi nosaukumu, kas būs redzams lapā.");
+        return;
+      }
+      renameButton.disabled = true;
+      try {
+        await adminFetch(`/conference-materials?action=rename&id=${encodeURIComponent(renameButton.dataset.renameConferenceMaterial)}`, {
+          method: "POST",
+          body: JSON.stringify({ displayTitle }),
+        });
+        showToast("Publiskais nosaukums saglabāts.");
+        await refreshConferenceMaterial();
+      } catch (error) {
+        showToast(error.message);
+        renameButton.disabled = false;
+      }
+      return;
+    }
     const button = event.target.closest("[data-delete-conference-material]");
     if (!button || !window.confirm("Neatgriezeniski dzēst publicēto PDF?")) return;
     button.disabled = true;

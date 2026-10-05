@@ -14,6 +14,7 @@ type MaterialRow = {
   event_id: string;
   storage_path: string;
   file_name: string;
+  display_title: string;
   mime_type: string;
   size_bytes: number;
   published_at: string | null;
@@ -22,8 +23,9 @@ type MaterialRow = {
   created_by: string | null;
   created_at: string;
 };
-type UploadPayload = { fileName?: string; sizeBytes?: number; mimeType?: string };
+type UploadPayload = { fileName?: string; displayTitle?: string; sizeBytes?: number; mimeType?: string };
 type FinalizePayload = UploadPayload & { path?: string };
+type RenamePayload = { displayTitle?: string };
 
 function storageAdmin() {
   return createClient(requiredEnv("SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
@@ -40,6 +42,10 @@ async function getEvent(db: SupabaseRest): Promise<EventRow> {
 function safeFileName(value?: string): string {
   const normalized = (value || "").trim().replace(/[\\/\u0000-\u001f]+/g, "-").slice(0, 160);
   return normalized.toLocaleLowerCase().endsWith(".pdf") ? normalized : "ai-reality-check-prezentacijas.pdf";
+}
+
+function safeDisplayTitle(value?: string): string {
+  return (value || "").trim().replace(/\s+/g, " ").slice(0, 120) || "AI Reality Check 2026 prezentācijas";
 }
 
 function validateUpload(payload: UploadPayload): string | null {
@@ -98,6 +104,7 @@ function publicMaterial(row: MaterialRow | null) {
   return {
     id: row.id,
     fileName: row.file_name,
+    displayTitle: row.display_title,
     sizeBytes: row.size_bytes,
     expiresAt: row.expires_at,
     createdAt: row.created_at,
@@ -120,6 +127,7 @@ async function createUpload(db: SupabaseRest, request: Request, event: EventRow)
     event_id: event.id,
     storage_path: path,
     file_name: fileName,
+    display_title: safeDisplayTitle(payload.displayTitle),
     mime_type: "application/pdf",
     size_bytes: Number(payload.sizeBytes),
     expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
@@ -166,6 +174,7 @@ async function finalizeUpload(db: SupabaseRest, request: Request, event: EventRo
   const publishedAt = new Date();
   const inserted = (await db.update<MaterialRow>("conference_materials", {
     file_name: safeFileName(payload.fileName),
+    display_title: safeDisplayTitle(payload.displayTitle),
     size_bytes: storedSize,
     published_at: publishedAt.toISOString(),
     expires_at: addDays(publishedAt, 30),
@@ -185,6 +194,22 @@ async function finalizeUpload(db: SupabaseRest, request: Request, event: EventRo
     expires_at: inserted.expires_at,
   });
   return jsonResponse({ material: publicMaterial(inserted) }, 201);
+}
+
+async function renameMaterial(db: SupabaseRest, request: Request, materialId: string): Promise<Response> {
+  const actor = await authenticateAdmin(request, db, [...MANAGE_ROLES]);
+  const payload = await readJson<RenamePayload>(request);
+  const rawTitle = (payload.displayTitle || "").trim();
+  if (!rawTitle || rawTitle.length > 120) return errorResponse("Publiskajam nosaukumam jābūt no 1 līdz 120 rakstzīmēm.", 400);
+  const row = (await db.select<MaterialRow>("conference_materials", { id: `eq.${materialId}`, deleted_at: "is.null", limit: 1 }))[0];
+  if (!row) return errorResponse("Materiāls nav atrasts.", 404);
+  const updated = (await db.update<MaterialRow>("conference_materials", {
+    display_title: safeDisplayTitle(rawTitle),
+  }, { id: `eq.${row.id}` }))[0];
+  await logAudit(db, actor, "conference_material_title_updated", "conference_materials", row.id, {
+    display_title: updated.display_title,
+  });
+  return jsonResponse({ material: publicMaterial(updated) });
 }
 
 async function deleteMaterial(db: SupabaseRest, request: Request, materialId: string): Promise<Response> {
@@ -243,6 +268,9 @@ Deno.serve(async (request) => {
     }
     if (request.method === "POST" && action === "create-upload") return await createUpload(db, request, event);
     if (request.method === "POST" && action === "finalize") return await finalizeUpload(db, request, event);
+    if (request.method === "POST" && action === "rename") {
+      return await renameMaterial(db, request, url.searchParams.get("id") || "");
+    }
     if (request.method === "POST" && action === "delete") {
       return await deleteMaterial(db, request, url.searchParams.get("id") || "");
     }

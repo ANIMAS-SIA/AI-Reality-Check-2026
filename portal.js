@@ -1275,7 +1275,7 @@ async function loadConferenceMaterial() {
     currentConferenceMaterial = data.material || null;
     card.hidden = !currentConferenceMaterial;
     if (!currentConferenceMaterial) return;
-    setText("conferenceMaterialName", currentConferenceMaterial.fileName || "AI Reality Check 2026 prezentācijas.pdf");
+    setText("conferenceMaterialName", currentConferenceMaterial.displayTitle || "AI Reality Check 2026 prezentācijas");
     const availableUntil = new Intl.DateTimeFormat("lv-LV", { day: "numeric", month: "long", year: "numeric" })
       .format(new Date(currentConferenceMaterial.expiresAt));
     setText("conferenceMaterialMeta", `${formatFileSize(currentConferenceMaterial.sizeBytes)} · pieejams līdz ${availableUntil}`);

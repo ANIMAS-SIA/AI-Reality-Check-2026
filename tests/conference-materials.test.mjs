@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const migration = readFileSync(new URL('../supabase/migrations/202610050001_conference_materials.sql', import.meta.url), 'utf8');
+const titleMigration = readFileSync(new URL('../supabase/migrations/202610050002_conference_material_display_title.sql', import.meta.url), 'utf8');
 const materialFunction = readFileSync(new URL('../supabase/functions/conference-materials/index.ts', import.meta.url), 'utf8');
 const registrationsFunction = readFileSync(new URL('../supabase/functions/admin-registrations/index.ts', import.meta.url), 'utf8');
 const admin = readFileSync(new URL('../admin/index.html', import.meta.url), 'utf8');
 const adminJs = readFileSync(new URL('../admin.js', import.meta.url), 'utf8');
+const portalJs = readFileSync(new URL('../portal.js', import.meta.url), 'utf8');
 
 test('conference PDF metadata is private, event-scoped and limited to 30 days', () => {
   assert.match(migration, /create table public\.conference_materials/i);
@@ -49,4 +51,13 @@ test('admin upload and existing bulk email flow share a stable personalized mate
   assert.match(registrationsFunction, /materialsUrl:\s*materialsLink\(passLink\)/);
   assert.match(registrationsFunction, /url\.searchParams\.set\("view", "qa"\)/);
   assert.match(registrationsFunction, /url\.searchParams\.set\("token", token\)/);
+});
+
+test('conference material public title is editable independently from the download filename', () => {
+  assert.match(titleMigration, /add column display_title text not null/i);
+  assert.match(admin, /id="conferenceMaterialTitle"/);
+  assert.match(adminJs, /conference-materials\?action=rename/);
+  assert.match(materialFunction, /displayTitle:\s*row\.display_title/);
+  assert.match(materialFunction, /download:\s*row\.file_name/);
+  assert.match(portalJs, /currentConferenceMaterial\.displayTitle/);
 });
